@@ -9,7 +9,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sshtools</groupId>
 	<artifactId>rdp</artifactId>
-	<version>2.1.0</version>
+	<version>2.1.1-SNAPSHOT</version>
 	<name>RDP</name>
 	<description>Swing RDP component based on ProperJavaRDP with some modifications to allow multiple sessions within the same runtime, and to fix some bugs and inconsistencies with newer Windows versions.</description>
 	<url>http://www.sshtools.com</url>
