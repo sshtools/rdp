@@ -6,8 +6,6 @@
  */
 package com.sshtools.javardp;
 
-import java.awt.AWTEvent;
-import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -15,18 +13,12 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
-import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.awt.image.IndexColorModel;
-import java.awt.image.MemoryImageSource;
 import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
-import javax.swing.JComponent;
-import javax.swing.JViewport;
-import javax.swing.Scrollable;
-import javax.swing.SwingConstants;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,10 +37,10 @@ import com.sshtools.javardp.orders.ScreenBltOrder;
 import com.sshtools.javardp.orders.TriBltOrder;
 
 // import org.apache.log4j.NDC;
-public class RdesktopCanvas extends JComponent implements Scrollable {
+public class RdesktopCanvas {
 	static Log logger = LogFactory.getLog(RdesktopCanvas.class);
 	private RasterOp rop = null;
-	WrappedImage backstore;
+	Display backstore;
 	// Graphics backstore_graphics;
 	private Cursor previous_cursor = null; // for setBusyCursor and
 	// unsetBusyCursor
@@ -90,8 +82,20 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @param height
 	 *            Desired height of canvas
 	 */
-	public RdesktopCanvas(IContext context, Options options, int width,
-			int height) {
+	public RdesktopCanvas(IContext context, Options options, int width, int height) {
+		this(context, options, width, height, new WrappedImage(width, height, BufferedImage.TYPE_INT_RGB));
+	}
+
+	/**
+	 * Initialise this canvas to specified width and height, also initialise
+	 * backstore
+	 * 
+	 * @param width
+	 *            Desired width of canvas
+	 * @param height
+	 *            Desired height of canvas
+	 */
+	public RdesktopCanvas(IContext context, Options options, int width, int height, Display backstore) {
 		super();
 		this.context = context;
 		this.options = options;
@@ -105,13 +109,10 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		// via getMinimumSize() and getPreferredSize(). Calling setSize() from
 		// constructor is considered as a wrong praktice.
 		// setSize(width, height);
-		backstore = new WrappedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		this.backstore = backstore;
 		// now do input listeners in registerCommLayer() / registerKeyboard()
-		enableEvents(AWTEvent.FOCUS_EVENT_MASK | AWTEvent.ACTION_EVENT_MASK
-				| AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.MOUSE_EVENT_MASK);
-		enableEvents(AWTEvent.KEY_EVENT_MASK);
-		setFocusable(true);
-		setFocusTraversalKeysEnabled(false);
+		backstore.init(this);
+		context.init(this);
 	}
 
 	private Robot robot = null;
@@ -120,8 +121,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		if (options.server_bpp == 8)
 			return;
 		BufferedImage img = null;
-		img = new BufferedImage(image.getWidth(null), image.getHeight(null),
-				BufferedImage.TYPE_INT_RGB);
+		img = new BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_INT_RGB);
 		Graphics g = img.getGraphics();
 		g.drawImage(image, 0, 0, null);
 		// Write generated image to a file
@@ -136,79 +136,21 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	}
 
 	public void movePointer(int x, int y) {
-		Point p = this.getLocationOnScreen();
+		Point p = backstore.getLocationOnScreen();
 		x = x + p.x;
 		y = y + p.y;
 		if (robot != null)
 			robot.mouseMove(x, y);
 	}
 
-	public void addNotify() {
-		super.addNotify();
-		/*
-		 * if (robot == null) { try { robot = new Robot(); } catch(AWTException
-		 * e) { logger.warn("Pointer movement not allowed"); } }
-		 */
-	}
-
-	public void update(Graphics g) {
-		Rectangle r = g.getClipBounds();
-		logger.info("Update " + r + " for " + backstore.getWidth() + "x"
-				+ backstore.getHeight());
-		int w = r.width;
-		int h = r.height;
-		if (r.x + w > backstore.getWidth()) {
-			w -= r.x + w - backstore.getWidth();
-		}
-		if (r.y + h > backstore.getHeight()) {
-			h -= r.y + h - backstore.getHeight();
-		}
-		g.drawImage(backstore.getSubimage(r.x, r.y, w, h), r.x, r.y, null);
-		if (options.save_graphics) {
-			saveToFile(options, backstore.getSubimage(r.x, r.y, w, h));
-		}
-		// }
-	}
-
-	public Dimension getPreferredScrollableViewportSize() {
-		return this.getPreferredSize();
-	}
-
-	public int getScrollableBlockIncrement(Rectangle visibleRect,
-			int orientation, int direction) {
-		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10
-				: visibleRect.width / 10;
-	}
-
-	public int getScrollableUnitIncrement(Rectangle visibleRect,
-			int orientation, int direction) {
-		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10
-				: visibleRect.width / 10;
-	}
-
-	public boolean getScrollableTracksViewportWidth() {
-		return false;
-	}
-
-	public boolean getScrollableTracksViewportHeight() {
-		return false;
-	}
-
-	// public Dimension getMinimumSize() {
-	// return (dimension);
+	// @Override
+	// public void addNotify() {
+	// super.addNotify();
+	// /*
+	// * if (robot == null) { try { robot = new Robot(); } catch(AWTException
+	// * e) { logger.warn("Pointer movement not allowed"); } }
+	// */
 	// }
-	//
-	// public Dimension getMaximumSize() {
-	// return (dimension);
-	// }
-
-	public Dimension getPreferredSize() {
-		return (dimension);
-	}
-
-	public void paintComponent(Graphics g) {
-		update(g);
-	}
 
 	/**
 	 * Register a colour palette with this canvas
@@ -244,6 +186,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		this.fbKeys = keys;
 		if (rdp != null) {
 			// rdp and keys have been registered...
+			if(input != null)
+				input.removeInputListeners();
 			input = new Input(context, options, this, rdp, keys);
 		}
 	}
@@ -282,11 +226,9 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 *            Colour model currently in use, if any
 	 * @throws RdesktopException
 	 */
-	public void displayCompressed(int x, int y, int width, int height,
-			int size, RdpPacket data, int Bpp, IndexColorModel cm)
-			throws RdesktopException {
-		backstore = Bitmap.decompressImgDirect(options, width, height, size,
-				data, Bpp, cm, x, y, backstore);
+	public void displayCompressed(int x, int y, int width, int height, int size, RdpPacket data, int Bpp,
+			IndexColorModel cm) throws RdesktopException {
+		backstore = Bitmap.decompressImgDirect(options, width, height, size, data, Bpp, cm, x, y, backstore);
 	}
 
 	/**
@@ -302,9 +244,11 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @throws RdesktopException
 	 */
 	public void displayImage(Image img, int x, int y) throws RdesktopException {
-		Graphics g = backstore.getGraphics();
+		Graphics g = backstore.getDisplayGraphics();
 		g.drawImage(img, x, y, null);
-		/* ********* Useful test for identifying image boundaries ************ */
+		/*
+		 * ********* Useful test for identifying image boundaries ************
+		 */
 		// g.setColor(Color.RED);
 		// g.drawRect(x,y,data.getWidth(null),data.getHeight(null));
 		g.dispose();
@@ -330,10 +274,11 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 *            Height of drawn image (clips, does not scale)
 	 * @throws RdesktopException
 	 */
-	public void displayImage(int[] data, int w, int h, int x, int y, int cx,
-			int cy) throws RdesktopException {
+	public void displayImage(int[] data, int w, int h, int x, int y, int cx, int cy) throws RdesktopException {
 		backstore.setRGB(x, y, cx, cy, data, 0, w);
-		/* ********* Useful test for identifying image boundaries ************ */
+		/*
+		 * ********* Useful test for identifying image boundaries ************
+		 */
 		// Graphics g = backstore.getGraphics();
 		// g.drawImage(data,x,y,null);
 		// g.setColor(Color.RED);
@@ -384,15 +329,15 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 				// image, no
 				// offset needed
 				cx);
-		this.repaint(x, y, cx, cy);
+		backstore.repaint(x, y, cx, cy);
 	}
 
 	/**
 	 * Reset clipping boundaries for canvas
 	 */
 	public void resetClip() {
-		Graphics g = this.getGraphics();
-		Rectangle bounds = this.getBounds();
+		Graphics g = backstore.getDisplayGraphics();
+		Rectangle bounds = backstore.getBounds();
 		g.setClip(bounds.x, bounds.y, bounds.width, bounds.height);
 		this.top = 0;
 		this.left = 0;
@@ -407,16 +352,14 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 *            Order defining new boundaries
 	 */
 	public void setClip(BoundsOrder bounds) {
-		Graphics g = this.getGraphics();
-		g.setClip(bounds.getLeft(), bounds.getTop(),
-				bounds.getRight() - bounds.getLeft(), bounds.getBottom()
-						- bounds.getTop());
+		Graphics g = backstore.getDisplayGraphics();
+		g.setClip(bounds.getLeft(), bounds.getTop(), bounds.getRight() - bounds.getLeft(),
+				bounds.getBottom() - bounds.getTop());
 		this.top = bounds.getTop();
 		this.left = bounds.getLeft();
 		this.right = bounds.getRight();
 		this.bottom = bounds.getBottom();
-		if (this.right >= backstore.getWidth()
-				|| this.bottom >= backstore.getHeight()) {
+		if (this.right >= backstore.getDisplayWidth() || this.bottom >= backstore.getDisplayHeight()) {
 			backingStoreResize(this.right + 1, this.bottom + 1);
 		}
 	}
@@ -425,7 +368,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		this.width = width;
 		this.height = height;
 		dimension = new Dimension(width, height);
-		backstore.resize(dimension);
+		backstore.resizeDisplay(dimension);
 		context.screenResized(width, height);
 	}
 
@@ -452,8 +395,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		color = Bitmap.convertTo24(options, color);
 		// correction for 24-bit colour
 		if (Bpp == 3)
-			color = ((color & 0xFF) << 16) | (color & 0xFF00)
-					| ((color & 0xFF0000) >> 16);
+			color = ((color & 0xFF) << 16) | (color & 0xFF00) | ((color & 0xFF0000) >> 16);
 		// Perform standard clipping checks, x-axis
 		int clipright = x + cx - 1;
 		if (clipright > this.right)
@@ -474,11 +416,11 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 			rect[i] = color;
 		// draw rectangle to backstore
 		if (logger.isInfoEnabled())
-			logger.info("rect \t(\t" + x + ",\t" + y + "),(\t" + (x + cx - 1)
-					+ ",\t" + (y + cy - 1) + ")/" + backstore.getWidth() + "x"
-					+ backstore.getHeight());
+			logger.info("rect \t(\t" + x + ",\t" + y + "),(\t" + (x + cx - 1) + ",\t" + (y + cy - 1) + ")/"
+					+ backstore.getDisplayWidth() + "x" + backstore.getDisplayHeight());
 		backstore.setRGB(x, y, cx, cy, rect, 0, cx);
-		this.repaint(x, y, cx, cy); // seems to be faster than Graphics.fillRect
+		backstore.repaint(x, y, cx, cy); // seems to be faster than
+											// Graphics.fillRect
 		// according to JProbe
 	}
 
@@ -557,7 +499,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		int x_max = x1 > x2 ? x1 : x2;
 		int y_min = y1 < y2 ? y1 : y2;
 		int y_max = y1 > y2 ? y1 : y2;
-		this.repaint(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1);
+		backstore.repaint(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1);
 	}
 
 	/**
@@ -578,8 +520,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 *            Operation code defining operation to perform on pixels within
 	 *            the line
 	 */
-	public void drawLineVerticalHorizontal(int x1, int y1, int x2, int y2,
-			int color, int opcode) {
+	public void drawLineVerticalHorizontal(int x1, int y1, int x2, int y2, int color, int opcode) {
 		int pbackstore;
 		int i;
 		// only vertical or horizontal lines
@@ -595,7 +536,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 						rop.do_pixel(opcode, backstore, x1 + i, y1, color);
 						pbackstore++;
 					}
-					repaint(x1, y1, x2 - x1 + 1, 1);
+					backstore.repaint(x1, y1, x2 - x1 + 1, 1);
 				} else { // x dec, y1=y2
 					if (x2 < this.left)
 						x2 = this.left;
@@ -606,7 +547,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 						rop.do_pixel(opcode, backstore, x2 + i, y1, color);
 						pbackstore--;
 					}
-					repaint(x2, y1, x1 - x2 + 1, 1);
+					backstore.repaint(x2, y1, x1 - x2 + 1, 1);
 				}
 			}
 		} else { // x1==x2 VERTICAL
@@ -621,7 +562,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 						rop.do_pixel(opcode, backstore, x1, y1 + i, color);
 						pbackstore += this.width;
 					}
-					repaint(x1, y1, 1, y2 - y1 + 1);
+					backstore.repaint(x1, y1, 1, y2 - y1 + 1);
 				} else { // x1=x2, y dec
 					if (y2 < this.top)
 						y2 = this.top;
@@ -632,7 +573,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 						rop.do_pixel(opcode, backstore, x1, y2 + i, color);
 						pbackstore -= this.width;
 					}
-					repaint(x1, y2, 1, y1 - y2 + 1);
+					backstore.repaint(x1, y2, 1, y1 - y2 + 1);
 				}
 			}
 		}
@@ -681,9 +622,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		if (y < this.top)
 			y = this.top;
 		cy = clipbottom - y + 1;
-		rop.do_array(destblt.getOpcode(), backstore, this.width, x, y, cx, cy,
-				null, 0, 0, 0);
-		this.repaint(x, y, cx, cy);
+		rop.do_array(destblt.getOpcode(), backstore, this.width, x, y, cx, cy, null, 0, 0, 0);
+		backstore.repaint(x, y, cx, cy);
 	}
 
 	/**
@@ -715,9 +655,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		cy = clipbottom - y + 1;
 		srcx += x - screenblt.getX();
 		srcy += y - screenblt.getY();
-		rop.do_array(screenblt.getOpcode(), backstore, this.width, x, y, cx,
-				cy, null, this.width, srcx, srcy);
-		this.repaint(x, y, cx, cy);
+		rop.do_array(screenblt.getOpcode(), backstore, this.width, x, y, cx, cy, null, this.width, srcx, srcy);
+		backstore.repaint(x, y, cx, cy);
 	}
 
 	/**
@@ -752,21 +691,19 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		srcx += x - memblt.getX();
 		srcy += y - memblt.getY();
 		if (logger.isInfoEnabled())
-			logger.info("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy
-					+ " srcx=" + srcx + " srcy=" + srcy + " opcode="
-					+ memblt.getOpcode());
+			logger.info("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy
+					+ " opcode=" + memblt.getOpcode());
 		try {
-			Bitmap bitmap = cache.getBitmap(memblt.getCacheID(),
-					memblt.getCacheIDX());
+			Bitmap bitmap = cache.getBitmap(memblt.getCacheID(), memblt.getCacheIDX());
 			// IndexColorModel cm = cache.get_colourmap(memblt.getColorTable());
 			// should use the colormap, but requires high color backstore...
 
-			if (x + cx > backstore.getWidth() || y + cy > backstore.getHeight()) {
+			if (x + cx > backstore.getDisplayWidth() || y + cy > backstore.getDisplayHeight()) {
 				backingStoreResize(x + cx, y + cy);
 			}
-			rop.do_array(memblt.getOpcode(), backstore, this.width, x, y, cx,
-					cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
-			this.repaint(x, y, cx, cy);
+			rop.do_array(memblt.getOpcode(), backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(),
+					bitmap.getWidth(), srcx, srcy);
+			backstore.repaint(x, y, cx, cy);
 		} catch (RdesktopException e) {
 		}
 	}
@@ -791,8 +728,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @param brush
 	 *            Brush object defining pattern to be drawn
 	 */
-	public void patBltOrder(int opcode, int x, int y, int cx, int cy,
-			int fgcolor, int bgcolor, Brush brush) {
+	public void patBltOrder(int opcode, int x, int y, int cx, int cy, int fgcolor, int bgcolor, Brush brush) {
 		// convert to 24-bit colour
 		fgcolor = Bitmap.convertTo24(options, fgcolor);
 		bgcolor = Bitmap.convertTo24(options, bgcolor);
@@ -819,13 +755,11 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 			src = new int[cx * cy];
 			for (i = 0; i < src.length; i++)
 				src[i] = fgcolor;
-			logger.info("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy
-					+ " width=" + this.width + " height=" + this.height
-					+ " imgwidth=" + backstore.getWidth() + " imgheight="
-					+ backstore.getHeight());
-			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx,
-					0, 0);
-			this.repaint(x, y, cx, cy);
+			logger.info("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " width=" + this.width + " height="
+					+ this.height + " imgwidth=" + backstore.getDisplayWidth() + " imgheight="
+					+ backstore.getDisplayHeight());
+			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx, 0, 0);
+			backstore.repaint(x, y, cx, cy);
 			break;
 		case 2: // hatch
 			System.out.println("hatch");
@@ -851,9 +785,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 					psrc++;
 				}
 			}
-			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx,
-					0, 0);
-			this.repaint(x, y, cx, cy);
+			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx, 0, 0);
+			backstore.repaint(x, y, cx, cy);
 			break;
 		default:
 			logger.warn("Unsupported brush style " + brush.getStyle());
@@ -916,29 +849,28 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 			y = this.top;
 		cy = clipbottom - y + 1;
 		try {
-			Bitmap bitmap = cache.getBitmap(triblt.getCacheID(),
-					triblt.getCacheIDX());
+			Bitmap bitmap = cache.getBitmap(triblt.getCacheID(), triblt.getCacheIDX());
 			switch (triblt.getOpcode()) {
 			case 0x69: // PDSxxn
-				rop.do_array(ROP2_XOR, backstore, this.width, x, y, cx, cy,
-						bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
+				rop.do_array(ROP2_XOR, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
+						srcx, srcy);
 				patBltOrder(ROP2_NXOR, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			case 0xb8: // PSDPxax
 				patBltOrder(ROP2_XOR, x, y, cx, cy, fgcolor, bgcolor, brush);
-				rop.do_array(ROP2_AND, backstore, this.width, x, y, cx, cy,
-						bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
+				rop.do_array(ROP2_AND, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
+						srcx, srcy);
 				patBltOrder(ROP2_XOR, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			case 0xc0: // PSa
-				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy,
-						bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
+				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
+						srcx, srcy);
 				patBltOrder(ROP2_AND, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			default:
 				logger.warn("Unimplemented Triblt opcode:" + triblt.getOpcode());
-				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy,
-						bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
+				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
+						srcx, srcy);
 			}
 		} catch (RdesktopException e) {
 		}
@@ -1012,8 +944,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 */
 	public void drawRectangleOrder(RectangleOrder rect) {
 		// if(logger.isInfoEnabled()) logger.info("RectangleOrder!");
-		fillRectangle(rect.getX(), rect.getY(), rect.getCX(), rect.getCY(),
-				rect.getColor());
+		fillRectangle(rect.getX(), rect.getY(), rect.getCX(), rect.getCY(), rect.getColor());
 	}
 
 	/**
@@ -1032,10 +963,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		int Bpp = options.Bpp;
 		// correction for 24-bit colour
 		if (Bpp == 3)
-			color = ((color & 0xFF) << 16) | (color & 0xFF00)
-					| ((color & 0xFF0000) >> 16);
-		if ((x < this.left) || (x > this.right) || (y < this.top)
-				|| (y > this.bottom)) { // Clip
+			color = ((color & 0xFF) << 16) | (color & 0xFF00) | ((color & 0xFF0000) >> 16);
+		if ((x < this.left) || (x > this.right) || (y < this.top) || (y > this.bottom)) { // Clip
 		} else {
 			rop.do_pixel(opcode, backstore, x, y, color);
 		}
@@ -1062,8 +991,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @param fgcolor
 	 *            Foreground colour for glyph pattern
 	 */
-	public void drawGlyph(int mixmode, int x, int y, int cx, int cy,
-			byte[] data, int bgcolor, int fgcolor) {
+	public void drawGlyph(int mixmode, int x, int y, int cx, int cy, byte[] data, int bgcolor, int fgcolor) {
 		int pdata = 0;
 		int index = 0x80;
 		int bytes_per_row = (cx - 1) / 8 + 1;
@@ -1074,10 +1002,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		bgcolor = Bitmap.convertTo24(options, bgcolor);
 		// correction for 24-bit colour
 		if (Bpp == 3) {
-			fgcolor = ((fgcolor & 0xFF) << 16) | (fgcolor & 0xFF00)
-					| ((fgcolor & 0xFF0000) >> 16);
-			bgcolor = ((bgcolor & 0xFF) << 16) | (bgcolor & 0xFF00)
-					| ((bgcolor & 0xFF0000) >> 16);
+			fgcolor = ((fgcolor & 0xFF) << 16) | (fgcolor & 0xFF00) | ((fgcolor & 0xFF0000) >> 16);
+			bgcolor = ((bgcolor & 0xFF) << 16) | (bgcolor & 0xFF00) | ((bgcolor & 0xFF0000) >> 16);
 		}
 		// clip here instead
 		if (x > this.right || y > this.bottom)
@@ -1148,49 +1074,45 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		}
 		// if(logger.isInfoEnabled()) logger.info("glyph
 		// \t(\t"+x+",\t"+y+"),(\t"+(x+cx-1)+",\t"+(y+cy-1)+")");
-		this.repaint(newx, newy, newcx, newcy);
+		backstore.repaint(newx, newy, newcx, newcy);
 	}
 
-	public Cursor createCursorXXX(int x, int y, int w, int h, byte[] maskBuf,
-			byte[] pixBuf, int cache_idx) {
-		// Decode pixel data into softCursorPixels[].
-		int[] softCursorPixels = new int[width * height];
-		byte maskByte;
-		int dx, dy, n, result;
-		int scanline = w / 8;
-		int i = 0;
-		for (dy = 0; dy < height; dy++) {
-			for (dx = 0; dx < width / 8; dx++) {
-				maskByte = maskBuf[dy * scanline + dx];
-				for (n = 7; n >= 0; n--) {
-					if ((maskByte >> n & 1) != 0) {
-						result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16
-								| (pixBuf[i * 4 + 2] & 0xFF) << 8
-								| (pixBuf[i * 4 + 3] & 0xFF);
-					} else {
-						result = 0; // Transparent pixel
-					}
-					softCursorPixels[i++] = result;
-				}
-			}
-			for (n = 7; n >= 8 - width % 8; n--) {
-				if ((maskBuf[dy * scanline + dx] >> n & 1) != 0) {
-					result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16
-							| (pixBuf[i * 4 + 2] & 0xFF) << 8
-							| (pixBuf[i * 4 + 3] & 0xFF);
-				} else {
-					result = 0; // Transparent pixel
-				}
-				softCursorPixels[i++] = result;
-			}
-
-		}
-		MemoryImageSource imgSource = new MemoryImageSource(width, height,
-				softCursorPixels, 0, width);
-		Image wincursor = this.createImage(imgSource);
-		Point p = new Point(x, y);
-		return createCustomCursor(wincursor, p, "", cache_idx);
-	}
+//	public Cursor createCursorXXX(int x, int y, int w, int h, byte[] maskBuf, byte[] pixBuf, int cache_idx) {
+//		// Decode pixel data into softCursorPixels[].
+//		int[] softCursorPixels = new int[width * height];
+//		byte maskByte;
+//		int dx, dy, n, result;
+//		int scanline = w / 8;
+//		int i = 0;
+//		for (dy = 0; dy < height; dy++) {
+//			for (dx = 0; dx < width / 8; dx++) {
+//				maskByte = maskBuf[dy * scanline + dx];
+//				for (n = 7; n >= 0; n--) {
+//					if ((maskByte >> n & 1) != 0) {
+//						result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16 | (pixBuf[i * 4 + 2] & 0xFF) << 8
+//								| (pixBuf[i * 4 + 3] & 0xFF);
+//					} else {
+//						result = 0; // Transparent pixel
+//					}
+//					softCursorPixels[i++] = result;
+//				}
+//			}
+//			for (n = 7; n >= 8 - width % 8; n--) {
+//				if ((maskBuf[dy * scanline + dx] >> n & 1) != 0) {
+//					result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16 | (pixBuf[i * 4 + 2] & 0xFF) << 8
+//							| (pixBuf[i * 4 + 3] & 0xFF);
+//				} else {
+//					result = 0; // Transparent pixel
+//				}
+//				softCursorPixels[i++] = result;
+//			}
+//
+//		}
+//		MemoryImageSource imgSource = new MemoryImageSource(width, height, softCursorPixels, 0, width);
+//		Image wincursor = backstore.createImage(imgSource);
+//		Point p = new Point(x, y);
+//		return createCustomCursor(wincursor, p, "", cache_idx);
+//	}
 
 	/**
 	 * Create an AWT Cursor object
@@ -1204,8 +1126,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @param cache_idx
 	 * @return Created Cursor
 	 */
-	public Cursor createCursor(int x, int y, int w, int h, byte[] andmask,
-			byte[] xormask, int cache_idx) {
+	public RdpCursor createCursor(int x, int y, int w, int h, byte[] andmask, byte[] xormask, int cache_idx) {
 		int pxormask = 0;
 		int pandmask = 0;
 		Point p = new Point(x, y);
@@ -1213,7 +1134,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		int scanline = w / 8;
 		int offset = 0;
 		byte[] mask = new byte[size];
-		int[] cursor = new int[size];
+//		int[] cursor = new int[size];
 		int pcursor = 0, pmask = 0;
 		offset = size;
 		for (int i = 0; i < h; i++) {
@@ -1231,6 +1152,8 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 				pandmask++;
 			}
 		}
+		
+		BufferedImage bim = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
 
 		offset = 0;
 		for (int i = 0; i < h; i++) {
@@ -1240,27 +1163,25 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 			}
 			System.out.println();
 		}
-		
-		
+
 		offset = size;
 		pcursor = 0;
 		for (int i = 0; i < h; i++) {
 			offset -= w;
 			pcursor = offset;
 			for (int j = 0; j < w; j++) {
-				cursor[pcursor] = ((xormask[pxormask + 2] << 16) & 0x00ff0000)
-						| ((xormask[pxormask + 1] << 8) & 0x0000ff00)
-						| (xormask[pxormask] & 0x000000ff);
+				bim.getRaster().getDataBuffer().setElem(pcursor, ((xormask[pxormask + 2] << 16) & 0x00ff0000)
+						| ((xormask[pxormask + 1] << 8) & 0x0000ff00) | (xormask[pxormask] & 0x000000ff));
 				pxormask += 3;
 				pcursor++;
 			}
 		}
-		
+
 		offset = 0;
 		System.out.println();
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", cursor[offset] >> 16 & 0xff));
+				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(pcursor) >> 16 & 0xff));
 				offset++;
 			}
 			System.out.println();
@@ -1270,7 +1191,7 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		System.out.println();
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", cursor[offset] >> 8 & 0xff));
+				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(offset) >> 8 & 0xff));
 				offset++;
 			}
 			System.out.println();
@@ -1280,32 +1201,30 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 		System.out.println();
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", cursor[offset] & 0xff));
+				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(offset) & 0xff));
 				offset++;
 			}
 			System.out.println();
 		}
-		
-		
+
 		offset = size;
 		pmask = 0;
 		pcursor = 0;
 		pxormask = 0;
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				if ((mask[pmask] == 0) && (cursor[pcursor] != 0)) {
-					cursor[pcursor] = ~(cursor[pcursor]);
-					cursor[pcursor] |= 0xff000000;
-				} else if ((mask[pmask] == 1) || (cursor[pcursor] != 0)) {
-					cursor[pcursor] |= 0xff000000;
+				if ((mask[pmask] == 0) && (bim.getRaster().getDataBuffer().getElem(pcursor) != 0)) {
+					bim.getRaster().getDataBuffer().setElem(pcursor,  ~(bim.getRaster().getDataBuffer().getElem(pcursor)));
+					bim.getRaster().getDataBuffer().setElem(pcursor, bim.getRaster().getDataBuffer().getElem(pcursor) | 0xff000000);
+				} else if ((mask[pmask] == 1) || (bim.getRaster().getDataBuffer().getElem(pcursor) != 0)) {
+					bim.getRaster().getDataBuffer().setElem(pcursor, bim.getRaster().getDataBuffer().getElem(pcursor) | 0xff000000);
 				}
 				pcursor++;
 				pmask++;
 			}
 		}
-		Image wincursor = this.createImage(new MemoryImageSource(w, h, cursor,
-				0, w));
-		return createCustomCursor(wincursor, p, "", cache_idx);
+		
+		return createCustomCursor(bim, p, "", cache_idx);
 	}
 
 	/**
@@ -1317,12 +1236,11 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 * @param cache_idx
 	 * @return Generated Cursor object
 	 */
-	protected Cursor createCustomCursor(Image wincursor, Point p, String s,
-			int cache_idx) {
-		System.out.println("createCustomCursor CACHE IDX:" +cache_idx + " : " + s + "  "+ p);
-//		if (cache_idx == 1)
-//			return Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR);
-		return Toolkit.getDefaultToolkit().createCustomCursor(wincursor, p, "");
+	protected RdpCursor createCustomCursor(Image wincursor, Point p, String s, int cache_idx) {
+		System.out.println("createCustomCursor CACHE IDX:" + cache_idx + " : " + s + "  " + p);
+		// if (cache_idx == 1)
+		// return Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR);
+		return backstore.createCursor("", p, wincursor);
 	}
 
 	/**
@@ -1354,5 +1272,9 @@ public class RdesktopCanvas extends JComponent implements Scrollable {
 	 */
 	public Input getInput() {
 		return (input);
+	}
+
+	public Display getDisplay() {
+		return backstore;
 	}
 }

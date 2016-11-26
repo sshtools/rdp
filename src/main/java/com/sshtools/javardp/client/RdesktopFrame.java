@@ -25,6 +25,8 @@ import java.awt.event.FocusListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
+import javax.swing.JComponent;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -53,15 +55,15 @@ public class RdesktopFrame extends Frame implements IContext {
 	 * @param c ClipChannel object for controlling clipboard mapping
 	 */
 	public void setClip(ClipChannel c) {
-		canvas.addFocusListener(c);
-	}
-
-	public boolean isReadyToSend() {
-		return readyToSend;
+		((JComponent)canvas.getDisplay()).addFocusListener(c);
 	}
 
 	public void setLoggedOn() {
 		loggedOn = true;
+	}
+
+	public boolean isReadyToSend() {
+		return readyToSend;
 	}
 
 	public void setReadyToSend() {
@@ -127,7 +129,7 @@ public class RdesktopFrame extends Frame implements IContext {
 			menu = new RdpMenu(this);
 		if (!menuVisible)
 			this.setMenuBar(menu);
-		canvas.repaint();
+		canvas.getDisplay().repaint();
 		menuVisible = true;
 	}
 
@@ -180,7 +182,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		if (menuVisible)
 			this.setMenuBar(null);
 		// canvas.setSize(this.WIDTH, this.HEIGHT);
-		canvas.repaint();
+		canvas.getDisplay().repaint();
 		menuVisible = false;
 	}
 
@@ -205,8 +207,8 @@ public class RdesktopFrame extends Frame implements IContext {
 		setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
 		menu = new RdpMenu(this);
 		setMenuBar(menu);
-		this.canvas = new RdesktopCanvas(this, options, options.width, options.height);
-		add(this.canvas);
+		new RdesktopCanvas(this, options, options.width, options.height);
+		add((JComponent)this.canvas.getDisplay());
 		setTitle(options.windowTitle);
 		if (Constants.OS == Constants.WINDOWS)
 			setResizable(false);
@@ -220,19 +222,23 @@ public class RdesktopFrame extends Frame implements IContext {
 			pack();
 			centreWindow();
 		}
-		logger.info("canvas:" + canvas.getSize());
+		logger.info("canvas:" + ((JComponent)this.canvas.getDisplay()).getSize());
 		logger.info("frame: " + getSize());
 		logger.info("insets:" + getInsets());
 		if (Constants.OS != Constants.WINDOWS)
 			setResizable(false);
 		// Linux Java 1.3 needs pack() before setResizeable
 		addWindowListener(new RdesktopWindowAdapter());
-		canvas.addFocusListener(new RdesktopFocusListener());
+		((JComponent)this.canvas.getDisplay()).addFocusListener(new RdesktopFocusListener());
 		if (Constants.OS == Constants.WINDOWS) {
 			// redraws screen on window move
 			addComponentListener(new RdesktopComponentAdapter());
 		}
-		canvas.requestFocus();
+		((JComponent)this.canvas.getDisplay()).requestFocus();
+	}
+	
+	public void init(RdesktopCanvas canvas) {
+		this.canvas = canvas;
 	}
 
 	/**
@@ -267,7 +273,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		public void focusGained(FocusEvent arg0) {
 			if (Constants.OS == Constants.WINDOWS) {
 				// canvas.repaint();
-				canvas.repaint(0, 0, options.width, options.height);
+				canvas.getDisplay().repaint(0, 0, options.width, options.height);
 			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
@@ -294,7 +300,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		public void windowDeiconified(WindowEvent e) {
 			if (Constants.OS == Constants.WINDOWS) {
 				// canvas.repaint();
-				canvas.repaint(0, 0, options.width, options.height);
+				canvas.getDisplay().repaint(0, 0, options.width, options.height);
 			}
 			canvas.gainedFocus();
 		}
@@ -302,7 +308,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		public void windowActivated(WindowEvent e) {
 			if (Constants.OS == Constants.WINDOWS) {
 				// canvas.repaint();
-				canvas.repaint(0, 0, options.width, options.height);
+				canvas.getDisplay().repaint(0, 0, options.width, options.height);
 			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
@@ -311,7 +317,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		public void windowGainedFocus(WindowEvent e) {
 			if (Constants.OS == Constants.WINDOWS) {
 				// canvas.repaint();
-				canvas.repaint(0, 0, options.width, options.height);
+				canvas.getDisplay().repaint(0, 0, options.width, options.height);
 			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
@@ -320,7 +326,7 @@ public class RdesktopFrame extends Frame implements IContext {
 
 	class RdesktopComponentAdapter extends ComponentAdapter {
 		public void componentMoved(ComponentEvent e) {
-			canvas.repaint(0, 0, options.width, options.height);
+			canvas.getDisplay().repaint(0, 0, options.width, options.height);
 		}
 	}
 

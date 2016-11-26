@@ -253,8 +253,8 @@ public class Bitmap {
 	 *         specified coordinates
 	 * @throws RdesktopException
 	 */
-	public static WrappedImage decompressImgDirect(Options options, int width, int height, int size, RdpPacket data,
-			int Bpp, IndexColorModel cm, int left, int top, WrappedImage w) throws RdesktopException {
+	public static Display decompressImgDirect(Options options, int width, int height, int size, RdpPacket data,
+			int Bpp, IndexColorModel cm, int left, int top, Display w) throws RdesktopException {
 		// WrappedImage w = null;
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);
@@ -634,7 +634,7 @@ public class Bitmap {
 	 */
 	public static Image decompressImg(Options options, int width, int height, int size, RdpPacket data, int Bpp,
 			IndexColorModel cm) throws RdesktopException {
-		WrappedImage w = null;
+		Display w = null;
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);
 		data.incrementPosition(size);

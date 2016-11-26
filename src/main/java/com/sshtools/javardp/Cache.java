@@ -12,7 +12,6 @@
  */
 package com.sshtools.javardp;
 
-import java.awt.Cursor;
 import java.awt.image.IndexColorModel;
 
 import org.apache.commons.logging.Log;
@@ -26,7 +25,7 @@ public class Cache {
 
 	private Bitmap[][] bitmapcache = new Bitmap[3][600];
 
-	private Cursor[] cursorcache = new Cursor[32];
+	private RdpCursor[] cursorcache = new RdpCursor[32];
 
 	private Glyph[][] fontcache = new Glyph[12][256];
 
@@ -161,8 +160,8 @@ public class Cache {
 	 * @return Cursor stored in specified cache
 	 * @throws RdesktopException
 	 */
-	public Cursor getCursor(int cache_idx) throws RdesktopException {
-		Cursor cursor = null;
+	public RdpCursor getCursor(int cache_idx) throws RdesktopException {
+		RdpCursor cursor = null;
 
 		if (cache_idx < cursorcache.length) {
 			cursor = cursorcache[cache_idx];
@@ -180,7 +179,7 @@ public class Cache {
 	 * @param cursor Cursor object to assign to cache
 	 * @throws RdesktopException
 	 */
-	public void putCursor(int cache_idx, Cursor cursor) throws RdesktopException {
+	public void putCursor(int cache_idx, RdpCursor cursor) throws RdesktopException {
 
 		if (cache_idx < cursorcache.length) {
 			cursorcache[cache_idx] = cursor;

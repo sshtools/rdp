@@ -1,12 +1,19 @@
 package com.sshtools.javardp;
 
-import com.sshtools.javardp.rdp5.Rdp5;
-
 public abstract class AbstractContext implements IContext {
 	private Secure secure;
 	private MCS mcs;
-	private Rdp5 rdp;
+	private Rdp rdp;
 	private boolean underApplet;
+	private boolean readyToSend;
+
+	public boolean isReadyToSend() {
+		return readyToSend;
+	}
+
+	public void setReadyToSend() {
+		readyToSend = true;
+	}
 
 	public void setSecure(Secure secure) {
 		this.secure = secure;
@@ -24,11 +31,11 @@ public abstract class AbstractContext implements IContext {
 		return mcs;
 	}
 
-	public void setRdp(Rdp5 rdp) {
+	public void setRdp(Rdp rdp) {
 		this.rdp = rdp;
 	}
 
-	public Rdp5 getRdp() {
+	public Rdp getRdp() {
 		return rdp;
 	}
 
@@ -42,5 +49,4 @@ public abstract class AbstractContext implements IContext {
 
 	public abstract void exit();
 
-	public abstract void triggerReadyToSend();
 }

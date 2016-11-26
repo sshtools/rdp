@@ -12,7 +12,6 @@
 package com.sshtools.javardp;
 
 import java.awt.Cursor;
-import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.image.IndexColorModel;
@@ -1129,7 +1128,7 @@ public class Rdp {
 		switch (system_pointer_type) {
 		case RDP_NULL_POINTER:
 			logger.debug("RDP_NULL_POINTER");
-			surface.setCursor(null);
+			surface.getDisplay().setCursor(null);
 			break;
 		default:
 			logger.warn("Unimplemented system pointer message 0x" + Integer.toHexString(system_pointer_type));
@@ -1145,8 +1144,8 @@ public class Rdp {
 		byte[] pixel = null;
 		int minX, minY, maxX, maxY;
 		maxX = maxY = 0;
-		minX = surface.getWidth();
-		minY = surface.getHeight();
+		minX = surface.getDisplay().getDisplayWidth();
+		minY = surface.getDisplay().getDisplayHeight();
 		n_updates = data.getLittleEndian16();
 		for (int i = 0; i < n_updates; i++) {
 			left = data.getLittleEndian16();
@@ -1217,7 +1216,7 @@ public class Rdp {
 				}
 			}
 		}
-		surface.repaint(minX, minY, maxX - minX + 1, maxY - minY + 1);
+		surface.getDisplay().repaint(minX, minY, maxX - minX + 1, maxY - minY + 1);
 	}
 
 	protected void processPalette(RdpPacket data) {
@@ -1256,14 +1255,14 @@ public class Rdp {
 	protected void process_null_system_pointer_pdu(RdpPacket s) throws RdesktopException {
 		// FIXME: We should probably set another cursor here,
 		// like the X window system base cursor or something.
-		surface.setCursor(cache.getCursor(0));
+		surface.getDisplay().setCursor(cache.getCursor(0));
 	}
 
 	protected void process_colour_pointer_pdu(RdpPacket data) throws RdesktopException {
 		logger.debug("Rdp.RDP_POINTER_COLOR");
 		int x = 0, y = 0, width = 0, height = 0, cache_idx = 0, masklen = 0, datalen = 0;
 		byte[] mask = null, pixel = null;
-		Cursor cursor = null;
+		RdpCursor cursor = null;
 		cache_idx = data.getLittleEndian16();
 		x = data.getLittleEndian16();
 		y = data.getLittleEndian16();
@@ -1279,7 +1278,7 @@ public class Rdp {
 		data.incrementPosition(masklen);
 		cursor = surface.createCursor(x, y, width, height, mask, pixel, cache_idx);
 		// logger.info("Creating and setting cursor " + cache_idx);
-		surface.setCursor(cursor);
+		surface.getDisplay().setCursor(cursor);
 		cache.putCursor(cache_idx, cursor);
 	}
 
@@ -1288,7 +1287,7 @@ public class Rdp {
 		int cache_idx = data.getLittleEndian16();
 		System.out.println("Cached cursor: " + cache_idx);
 		// logger.info("Setting cursor "+cache_idx);
-		surface.setCursor(cache.getCursor(cache_idx));
+		surface.getDisplay().setCursor(cache.getCursor(cache_idx));
 	}
 
 	class DefaultIO implements IO {

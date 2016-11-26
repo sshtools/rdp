@@ -37,13 +37,13 @@ public class Input {
 	protected static Log logger = LogFactory.getLog(Input.class);
 	KeyCode_FileBased newKeyMapper = null;
 	protected Vector pressedKeys;
-	protected static boolean capsLockOn = false;
-	protected static boolean numLockOn = false;
-	protected static boolean scrollLockOn = false;
-	protected static boolean serverAltDown = false;
-	protected static boolean altDown = false;
-	protected static boolean ctrlDown = false;
-	protected static long last_mousemove = 0;
+	protected  boolean capsLockOn = false;
+	protected  boolean numLockOn = false;
+	protected  boolean scrollLockOn = false;
+	protected  boolean serverAltDown = false;
+	protected  boolean altDown = false;
+	protected  boolean ctrlDown = false;
+	protected  long last_mousemove = 0;
 	// Using this flag value (0x0001) seems to do nothing, and after running
 	// through other possible values, the RIGHT flag does not appear to be
 	// implemented
@@ -134,11 +134,11 @@ public class Input {
 	 */
 	public void addInputListeners() {
 		if (mouseListener == null) {
-			canvas.addMouseListener(mouseListener = new RdesktopMouseAdapter());
-			canvas.addMouseMotionListener(mouseMotionListener = new RdesktopMouseMotionAdapter());
-			canvas.addKeyListener(keyListener = new RdesktopKeyAdapter());
+			canvas.getDisplay().addMouseListener(mouseListener = new RdesktopMouseAdapter());
+			canvas.getDisplay().addMouseMotionListener(mouseMotionListener = new RdesktopMouseMotionAdapter());
+			canvas.getDisplay().addKeyListener(keyListener = new RdesktopKeyAdapter());
 		}
-		canvas.addMouseWheelListener(new RdesktopMouseWheelAdapter());
+		canvas.getDisplay().addMouseWheelListener(new RdesktopMouseWheelAdapter());
 	}
 
 	/**
@@ -146,9 +146,9 @@ public class Input {
 	 */
 	public void removeInputListeners() {
 		if (mouseListener != null) {
-			canvas.removeMouseListener(mouseListener);
-			canvas.removeMouseMotionListener(mouseMotionListener);
-			canvas.removeKeyListener(keyListener);
+			canvas.getDisplay().removeMouseListener(mouseListener);
+			canvas.getDisplay().removeMouseMotionListener(mouseMotionListener);
+			canvas.getDisplay().removeKeyListener(keyListener);
 			mouseListener = null;
 			mouseMotionListener = null;
 			keyListener = null;
@@ -312,6 +312,8 @@ public class Input {
 			// Some java versions have keys that don't generate keyPresses -
 			// here we add the key so we can later check if it happened
 			pressedKeys.addElement(new Integer(e.getKeyCode()));
+			System.err.println("PRESSED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
+					+ ((char) e.getKeyCode()) + "'");
 			logger.debug("PRESSED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
 				+ ((char) e.getKeyCode()) + "'");
 			if (rdp != null) {
@@ -335,6 +337,8 @@ public class Input {
 			pressedKeys.addElement(new Integer(e.getKeyCode()));
 			logger.debug("TYPED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
 				+ ((char) e.getKeyCode()) + "'");
+			System.err.println("TYPED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
+						+ ((char) e.getKeyCode()) + "'");
 			if (rdp != null) {
 				if (!handleSpecialKeys(time, e, true))
 					sendKeyPresses(newKeyMapper.getKeyStrokes(e));
@@ -360,6 +364,8 @@ public class Input {
 			long time = getTime();
 			logger.debug("RELEASED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
 				+ ((char) e.getKeyCode()) + "'");
+			System.err.println("RELEASED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
+					+ ((char) e.getKeyCode()) + "'");
 			if (rdp != null) {
 				if (!handleSpecialKeys(time, e, false))
 					sendKeyPresses(newKeyMapper.getKeyStrokes(e));

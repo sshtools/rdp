@@ -10,6 +10,8 @@ public interface IContext {
 	boolean isUnderApplet();
 
 	Secure getSecure();
+	
+	void init(RdesktopCanvas canvas);
 
 	void exit();
 

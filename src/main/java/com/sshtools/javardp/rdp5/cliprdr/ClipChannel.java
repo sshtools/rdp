@@ -293,4 +293,12 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	public void copyToClipboard(Transferable t) {
 		clipboard.setContents(t, this);
 	}
+
+	public Clipboard getClipboard() {
+		return clipboard;
+	}
+
+	public void setClipboard(Clipboard clipboard) {
+		this.clipboard = clipboard;
+	}
 }
