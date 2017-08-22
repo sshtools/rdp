@@ -80,6 +80,9 @@ public class Options {
 	public boolean owncolmap;
 	public boolean use_ssl = false;
 	public boolean map_clipboard = true;
+	public boolean color_pointer = true;
+	public int pointer_cache_size = 20;
+	public int color_pointer_cache_size = 20;
 	public int rdp5_performanceflags = Rdp.RDP5_NO_CURSOR_SHADOW
 			| Rdp.RDP5_NO_CURSORSETTINGS | Rdp.RDP5_NO_FULLWINDOWDRAG
 			| Rdp.RDP5_NO_MENUANIMATIONS | Rdp.RDP5_NO_THEMING

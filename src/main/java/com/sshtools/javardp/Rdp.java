@@ -11,7 +11,6 @@
  */
 package com.sshtools.javardp;
 
-import java.awt.Cursor;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.image.IndexColorModel;
@@ -38,8 +37,9 @@ public class Rdp {
 	public static int RDP5_NO_THEMING = 0x08;
 	public static int RDP5_NO_CURSOR_SHADOW = 0x20;
 	public static int RDP5_NO_CURSORSETTINGS = 0x40; /*
-													 * disables cursor blinking
-													 */
+														 * disables cursor
+														 * blinking
+														 */
 	protected static Log logger = LogFactory.getLog(Rdp.class);
 	/* constants for RDP Layer */
 	public static final int RDP_LOGON_NORMAL = 0x33;
@@ -75,6 +75,7 @@ public class Rdp {
 	private static final int RDP_POINTER_MOVE = 3;
 	private static final int RDP_POINTER_COLOR = 6;
 	private static final int RDP_POINTER_CACHED = 7;
+	private static final int RDP_POINTER_POINTER = 8;
 	// System Pointer Types
 	private static final int RDP_NULL_POINTER = 0;
 	private static final int RDP_DEFAULT_POINTER = 0x7F00;
@@ -102,12 +103,14 @@ public class Rdp {
 	private static final int RDP_CAPSET_ACTIVATE = 7;
 	private static final int RDP_CAPLEN_ACTIVATE = 0x0C;
 	private static final int RDP_CAPSET_POINTER = 8;
-	private static final int RDP_CAPLEN_POINTER = 0x08;
+	private static final int RDP_CAPLEN_POINTER = 0x0A;
 	private static final int RDP_CAPSET_SHARE = 9;
 	private static final int RDP_CAPLEN_SHARE = 0x08;
+	private static final int RDP_CAPSET_GLYPHCACHE = 0x10;
+	private static final int RDP_CAPLEN_GLYPHCACHE = 0x34;
 	private static final int RDP_CAPSET_COLCACHE = 10;
 	private static final int RDP_CAPLEN_COLCACHE = 0x08;
-	private static final int RDP_CAPSET_UNKNOWN = 13;
+	private static final int RDP_CAPSET_INPUT = 13;
 	private static final int RDP_CAPLEN_UNKNOWN = 0x9C;
 	private static final int RDP_CAPSET_BMPCACHE2 = 19;
 	private static final int RDP_CAPLEN_BMPCACHE2 = 0x28;
@@ -161,26 +164,26 @@ public class Rdp {
 	 * (byte)0x01, (byte)0x02, (byte)0x00, (byte)0x00, (byte)0x00 };
 	 */
 	private final byte[] canned_caps = { 0x01, 0x00, 0x00, 0x00, 0x09, 0x04, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x08,
-		0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x34, 0x00, (byte) 0xfe, 0x00, 0x04, 0x00, (byte) 0xfe, 0x00, 0x04, 0x00,
-		(byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x10, 0x00, (byte) 0xFE, 0x00, 0x20, 0x00,
-		(byte) 0xFE, 0x00, 0x40, 0x00, (byte) 0xFE, 0x00, (byte) 0x80, 0x00, (byte) 0xFE, 0x00, 0x00, 0x01, 0x40, 0x00, 0x00, 0x08,
-		0x00, 0x01, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00 };
+			0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x08,
+			0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x34, 0x00, (byte) 0xfe, 0x00, 0x04, 0x00, (byte) 0xfe, 0x00, 0x04, 0x00,
+			(byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x10, 0x00, (byte) 0xFE, 0x00, 0x20,
+			0x00, (byte) 0xFE, 0x00, 0x40, 0x00, (byte) 0xFE, 0x00, (byte) 0x80, 0x00, (byte) 0xFE, 0x00, 0x00, 0x01, 0x40, 0x00,
+			0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00 };
 	private IContext context;
 	static byte caps_0x0d[] = { 0x01, 0x00, 0x00, 0x00, 0x09, 0x04, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+			0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	static byte caps_0x0c[] = { 0x01, 0x00, 0x00, 0x00 };
 	static byte caps_0x0e[] = { 0x01, 0x00, 0x00, 0x00 };
 	static byte caps_0x10[] = { (byte) 0xFE, 0x00, 0x04, 0x00, (byte) 0xFE, 0x00, 0x04, 0x00, (byte) 0xFE, 0x00, 0x08, 0x00,
-		(byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x10, 0x00, (byte) 0xFE, 0x00, 0x20, 0x00, (byte) 0xFE, 0x00, 0x40, 0x00,
-		(byte) 0xFE, 0x00, (byte) 0x80, 0x00, (byte) 0xFE, 0x00, 0x00, 0x01, 0x40, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x02,
-		0x00, 0x00, 0x00 };
+			(byte) 0xFE, 0x00, 0x08, 0x00, (byte) 0xFE, 0x00, 0x10, 0x00, (byte) 0xFE, 0x00, 0x20, 0x00, (byte) 0xFE, 0x00, 0x40,
+			0x00, (byte) 0xFE, 0x00, (byte) 0x80, 0x00, (byte) 0xFE, 0x00, 0x00, 0x01, 0x40, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
+			0x01, 0x02, 0x00, 0x00, 0x00 };
 
 	/**
 	 * Process a general capability set
@@ -194,6 +197,15 @@ public class Rdp {
 		pad2octetsB = data.getLittleEndian16(); // in_uint16_le(s, pad2octetsB);
 		if (pad2octetsB != 0)
 			options.use_rdp5 = false;
+	}
+
+	static void processPointerCaps(Options options, RdpPacket data) {
+		options.color_pointer = data.getLittleEndian16() == 1;
+		options.color_pointer_cache_size = data.getLittleEndian16();
+		if (data.size() >= 10)
+			options.pointer_cache_size = data.getLittleEndian16();
+		else
+			options.pointer_cache_size = 0;
 	}
 
 	/**
@@ -254,9 +266,15 @@ public class Rdp {
 				processGeneralCaps(options, data);
 				break;
 			case RDP_CAPSET_BITMAP:
-				if(processBitmapCaps(options, data)) {
-					surface.backingStoreResize(options.width, options.height);
+				if (processBitmapCaps(options, data)) {
+					surface.backingStoreResize(options.width, options.height, false);
 				}
+				break;
+			case RDP_CAPSET_POINTER:
+				processPointerCaps(options, data);
+				break;
+			default:
+				logger.warn("Unhandled CAPSET " + capset_type);
 				break;
 			}
 			data.setPosition(next);
@@ -389,8 +407,8 @@ public class Rdp {
 	 * @throws ConnectionException
 	 */
 	public void connect(String username, InetAddress server, int flags, String domain, String password, String command,
-			String directory) throws SocketException, ConnectionException, IOException, RdesktopException, CryptoException,
-			OrderException {
+			String directory)
+			throws SocketException, ConnectionException, IOException, RdesktopException, CryptoException, OrderException {
 		try {
 			connect(username, new DefaultIO(server), flags, domain, password, command, directory);
 		}
@@ -458,8 +476,8 @@ public class Rdp {
 	 * @throws OrderException
 	 * @throws CryptoException
 	 */
-	public void mainLoop(boolean[] deactivated, int[] ext_disc_reason) throws IOException, RdesktopException, OrderException,
-			CryptoException {
+	public void mainLoop(boolean[] deactivated, int[] ext_disc_reason)
+			throws IOException, RdesktopException, OrderException, CryptoException {
 		int[] type = new int[1];
 		boolean disc = false; /* True when a disconnect PDU was received */
 		boolean cont = true;
@@ -549,38 +567,36 @@ public class Rdp {
 		} else {
 			flags |= RDP_LOGON_BLOB;
 			logger.debug("Sending RDP5-style Logon packet");
-			packetlen = 4
-				+ // Unknown uint32
-				4
-				+ // flags
-				2
-				+ // len_domain
-				2
-				+ // len_user
-				((flags & RDP_LOGON_AUTO) != 0 ? 2 : 0)
-				+ // len_password
-				((flags & RDP_LOGON_BLOB) != 0 ? 2 : 0)
-				+ // Length of BLOB
-				2
-				+ // len_program
-				2
-				+ // len_directory
-				(0 < domainlen ? domainlen + 2 : 2)
-				+ // domain
-				userlen + ((flags & RDP_LOGON_AUTO) != 0 ? passlen : 0) + 0
-				+ // We have no 512 byte BLOB. Perhaps we must?
-				((flags & RDP_LOGON_BLOB) != 0 && (flags & RDP_LOGON_AUTO) == 0 ? 2 : 0) + (0 < commandlen ? commandlen + 2 : 2)
-				+ (0 < dirlen ? dirlen + 2 : 2) + 2 + // Unknown (2)
-				2 + // Client ip length
-				len_ip + // Client ip
-				2 + // DLL string length
-				len_dll + // DLL string
-				2 + // Unknown
-				2 + // Unknown
-				64 + // Time zone #0
-				20 + // Unknown
-				64 + // Time zone #1
-				32 + 6; // Unknown
+			packetlen = 4 + // Unknown uint32
+					4 + // flags
+					2 + // len_domain
+					2 + // len_user
+					((flags & RDP_LOGON_AUTO) != 0 ? 2 : 0) + // len_password
+					((flags & RDP_LOGON_BLOB) != 0 ? 2 : 0) + // Length of BLOB
+					2 + // len_program
+					2 + // len_directory
+					(0 < domainlen ? domainlen + 2 : 2) + // domain
+					userlen + ((flags & RDP_LOGON_AUTO) != 0 ? passlen : 0) + 0 + // We
+																					// have
+																					// no
+																					// 512
+																					// byte
+																					// BLOB.
+																					// Perhaps
+																					// we
+																					// must?
+					((flags & RDP_LOGON_BLOB) != 0 && (flags & RDP_LOGON_AUTO) == 0 ? 2 : 0) + (0 < commandlen ? commandlen + 2 : 2)
+					+ (0 < dirlen ? dirlen + 2 : 2) + 2 + // Unknown (2)
+					2 + // Client ip length
+					len_ip + // Client ip
+					2 + // DLL string length
+					len_dll + // DLL string
+					2 + // Unknown
+					2 + // Unknown
+					64 + // Time zone #0
+					20 + // Unknown
+					64 + // Time zone #1
+					32 + 6; // Unknown
 			data = secureLayer.init(sec_flags, packetlen); // s =
 			// sec_init(sec_flags,
 			// packetlen);
@@ -643,7 +659,8 @@ public class Rdp {
 			data.setLittleEndian16(0xffc4); // out_uint16_le(s, 0xffc4);
 			data.setLittleEndian16(0xffff); // out_uint16_le(s, 0xffff);
 			data.outUnicodeString("GTB, normaltid", 2 * "GTB, normaltid".length()); // rdp_out_unistr(s,
-																					// "GTB, normaltid",
+																					// "GTB,
+																					// normaltid",
 																					// 2
 																					// *
 			// strlen("GTB, normaltid"));
@@ -658,7 +675,8 @@ public class Rdp {
 			data.setLittleEndian32(0); // out_uint32_le(s, 0);
 			data.setLittleEndian32(0); // out_uint32_le(s, 0);
 			data.outUnicodeString("GTB, sommartid", 2 * "GTB, sommartid".length()); // rdp_out_unistr(s,
-																					// "GTB, sommartid",
+																					// "GTB,
+																					// sommartid",
 																					// 2
 																					// *
 			// strlen("GTB, sommartid"));
@@ -693,16 +711,14 @@ public class Rdp {
 	 * @throws CryptoException
 	 * @throws OrderException
 	 */
-	private void processDemandActive(RdpPacket data) throws RdesktopException, IOException, CryptoException,
-			OrderException {
+	private void processDemandActive(RdpPacket data) throws RdesktopException, IOException, CryptoException, OrderException {
 		int type[] = new int[1];
 		this.rdp_shareid = data.getLittleEndian32();
 		int len_src_descriptor = data.getLittleEndian16();
 		int len_combined_caps = data.getLittleEndian16();
-		data.incrementPosition(len_src_descriptor);  // in_uint8s(s, len_src_descriptor);
-		
+		data.incrementPosition(len_src_descriptor); // in_uint8s(s,
+													// len_src_descriptor);
 		processServerCaps(data, len_combined_caps);
-		
 		this.sendConfirmActive();
 		this.sendSynchronize();
 		this.sendControl(RDP_CTL_COOPERATE);
@@ -800,10 +816,10 @@ public class Rdp {
 
 	private void sendConfirmActive() throws RdesktopException, IOException, CryptoException {
 		int caplen = RDP_CAPLEN_GENERAL + RDP_CAPLEN_BITMAP + RDP_CAPLEN_ORDER + RDP_CAPLEN_BMPCACHE + RDP_CAPLEN_COLCACHE
-			+ RDP_CAPLEN_ACTIVATE + RDP_CAPLEN_CONTROL + RDP_CAPLEN_POINTER + RDP_CAPLEN_SHARE + RDP_CAPLEN_UNKNOWN + 4; // this
-																															// is
-																															// a
-																															// fix
+				+ RDP_CAPLEN_ACTIVATE + RDP_CAPLEN_CONTROL + RDP_CAPLEN_POINTER + RDP_CAPLEN_SHARE + RDP_CAPLEN_UNKNOWN + 4; // this
+																																// is
+																																// a
+																																// fix
 		// for W2k.
 		// Purpose
 		// unknown
@@ -813,7 +829,7 @@ public class Rdp {
 		// RDP_SOURCE.length);
 		data.setLittleEndian16(2 + 14 + caplen + RDP_SOURCE.length);
 		data.setLittleEndian16((RDP_PDU_CONFIRM_ACTIVE | 0x10));
-		data.setLittleEndian16(context.getMcs().getUserID() /* McsUserID() */+ 1001);
+		data.setLittleEndian16(context.getMcs().getUserID() /* McsUserID() */ + 1001);
 		data.setLittleEndian32(this.rdp_shareid);
 		data.setLittleEndian16(0x3ea); // user id
 		data.setLittleEndian16(RDP_SOURCE.length);
@@ -836,7 +852,9 @@ public class Rdp {
 		this.sendControlCaps(data);
 		this.sendPointerCaps(data);
 		this.sendShareCaps(data);
-		// this.sendUnknownCaps(data);
+		this.sendGlyphCacheCaps(data);
+		// https://msdn.microsoft.com/en-us/library/cc240564.aspx
+		// TS_BRUSH_CAPABILITYSET
 		this.sendUnknownCaps(data, 0x0d, 0x58, caps_0x0d); // rdp_out_unknown_caps(s,
 		// 0x0d, 0x58,
 		// caps_0x0d); /*
@@ -847,10 +865,8 @@ public class Rdp {
 		this.sendUnknownCaps(data, 0x0e, 0x08, caps_0x0e); // rdp_out_unknown_caps(s,
 		// 0x0e, 0x08,
 		// caps_0x0e);
-		this.sendUnknownCaps(data, 0x10, 0x34, caps_0x10); // rdp_out_unknown_caps(s,
-		// 0x10, 0x34,
-		// caps_0x10); /*
-		// glyph cache? */
+		// https://msdn.microsoft.com/en-us/library/cc240565.aspx
+		// GLYPHCACHE
 		data.markEnd();
 		logger.debug("confirm active");
 		// this.send(data, RDP_PDU_CONFIRM_ACTIVE);
@@ -890,10 +906,10 @@ public class Rdp {
 		data.setLittleEndian16(options.height); /* Desktop height */
 		data.setLittleEndian16(0); /* Pad */
 		data.setLittleEndian16(1); /* Allow resize */
-		data.setLittleEndian16(options.bitmap_compression ? 1 : 0); /*
-																	 * Support
-																	 * compression
-																	 */
+		data.setLittleEndian16(
+				options.bitmap_compression ? 1 : 0); /*
+														 * Support compression
+														 */
 		data.setLittleEndian16(0); /* Unknown */
 		data.setLittleEndian16(1); /* Unknown */
 		data.setLittleEndian16(0); /* Pad */
@@ -925,20 +941,19 @@ public class Rdp {
 		data.setLittleEndian16(20); /* Cache Y granularity */
 		data.setLittleEndian16(0); /* Pad */
 		data.setLittleEndian16(1); /* Max order level */
-		data.setLittleEndian16(0x147); /* Number of fonts */
+		data.setLittleEndian16(0); /* Number of fonts */
 		data.setLittleEndian16(0x2a); /* Capability flags */
-		data.copyFromByteArray(order_caps, 0, data.getPosition(), 32); /*
-																		 * Orders
-																		 * supported
-																		 */
+		data.copyFromByteArray(order_caps, 0, data.getPosition(),
+				32); /*
+						 * Orders supported
+						 */
 		data.incrementPosition(32);
 		data.setLittleEndian16(0x6a1); /* Text capability flags */
 		data.incrementPosition(6); /* Pad */
-		data.setLittleEndian32(Constants.desktop_save ? 0x38400 : 0); /*
-																	 * Desktop
-																	 * cache
-																	 * size
-																	 */
+		data.setLittleEndian32(
+				Constants.desktop_save ? 0x38400 : 0); /*
+														 * Desktop cache size
+														 */
 		data.setLittleEndian32(0); /* Unknown */
 		data.setLittleEndian32(0x4e4); /* Unknown */
 	}
@@ -1010,8 +1025,27 @@ public class Rdp {
 	private void sendPointerCaps(RdpPacket data) {
 		data.setLittleEndian16(RDP_CAPSET_POINTER);
 		data.setLittleEndian16(RDP_CAPLEN_POINTER);
-		data.setLittleEndian16(0); /* Colour pointer */
-		data.setLittleEndian16(20); /* Cache size */
+		data.setLittleEndian16(
+				options.color_pointer ? 1 : 0); /* Colour pointer */
+		data.setLittleEndian16(
+				options.color_pointer_cache_size); /*
+													 * Color Pointer Cache size
+													 */
+		data.setLittleEndian16(
+				options.pointer_cache_size); /* Pointer (new) Cache size */
+	}
+
+	private void sendGlyphCacheCaps(RdpPacket data) {
+		data.setLittleEndian16(RDP_CAPSET_GLYPHCACHE);
+		data.setLittleEndian16(RDP_CAPLEN_GLYPHCACHE);
+		for (int i = 0; i < 10; i++) {
+			data.setLittleEndian16(0xfe); /* no. of entries */
+			data.setLittleEndian16(0xfe); /* no. of entries */
+		}
+		data.setLittleEndian16(0x100); /* frag cache entries */
+		data.setLittleEndian16(0x100); /* frag cache size */
+		data.setLittleEndian16(2); /* glyph support level */
+		data.setLittleEndian16(0); /* pad */
 	}
 
 	private void sendShareCaps(RdpPacket data) {
@@ -1025,7 +1059,7 @@ public class Rdp {
 		data.setLittleEndian16(id /* RDP_CAPSET_UNKNOWN */);
 		data.setLittleEndian16(length /* 0x58 */);
 		data.copyFromByteArray(caps, 0, data.getPosition(), /* RDP_CAPLEN_UNKNOWN */
-			length - 4);
+				length - 4);
 		data.incrementPosition(/* RDP_CAPLEN_UNKNOWN */length - 4);
 	}
 
@@ -1115,6 +1149,9 @@ public class Rdp {
 			break;
 		case RDP_POINTER_SYSTEM:
 			process_system_pointer_pdu(data);
+			break;
+		case RDP_POINTER_POINTER:
+			process_colour_pointer_pdu_new(data);
 			break;
 		default:
 			break;
@@ -1258,6 +1295,32 @@ public class Rdp {
 		surface.getDisplay().setCursor(cache.getCursor(0));
 	}
 
+	protected void process_colour_pointer_pdu_new(RdpPacket data) throws RdesktopException {
+		logger.debug("Rdp.RDP_POINTER_POINTER");
+		// TODO
+		int x = 0, y = 0, width = 0, height = 0, cache_idx = 0, masklen = 0, datalen = 0;
+		byte[] mask = null, pixel = null;
+		RdpCursor cursor = null;
+		int xorBpp = data.getLittleEndian16();
+		cache_idx = data.getLittleEndian16();
+		x = data.getLittleEndian16();
+		y = data.getLittleEndian16();
+		width = data.getLittleEndian16();
+		height = data.getLittleEndian16();
+		masklen = data.getLittleEndian16();
+		datalen = data.getLittleEndian16();
+		mask = new byte[masklen];
+		pixel = new byte[datalen];
+		data.copyToByteArray(pixel, 0, data.getPosition(), datalen);
+		data.incrementPosition(datalen);
+		data.copyToByteArray(mask, 0, data.getPosition(), masklen);
+		data.incrementPosition(masklen);
+		cursor = surface.createCursor(x, y, width, height, mask, pixel, cache_idx, xorBpp, false);
+		// logger.info("Creating and setting cursor " + cache_idx);
+		surface.getDisplay().setCursor(cursor);
+		cache.putCursor(cache_idx, cursor);
+	}
+
 	protected void process_colour_pointer_pdu(RdpPacket data) throws RdesktopException {
 		logger.debug("Rdp.RDP_POINTER_COLOR");
 		int x = 0, y = 0, width = 0, height = 0, cache_idx = 0, masklen = 0, datalen = 0;
@@ -1276,7 +1339,7 @@ public class Rdp {
 		data.incrementPosition(datalen);
 		data.copyToByteArray(mask, 0, data.getPosition(), masklen);
 		data.incrementPosition(masklen);
-		cursor = surface.createCursor(x, y, width, height, mask, pixel, cache_idx);
+		cursor = surface.createCursor(x, y, width, height, mask, pixel, cache_idx, 24, true);
 		// logger.info("Creating and setting cursor " + cache_idx);
 		surface.getDisplay().setCursor(cursor);
 		cache.putCursor(cache_idx, cursor);
@@ -1285,8 +1348,7 @@ public class Rdp {
 	protected void process_cached_pointer_pdu(RdpPacket data) throws RdesktopException {
 		logger.debug("Rdp.RDP_POINTER_CACHED");
 		int cache_idx = data.getLittleEndian16();
-		System.out.println("Cached cursor: " + cache_idx);
-		// logger.info("Setting cursor "+cache_idx);
+		logger.info(String.format("Setting cache cursor %d", cache_idx));
 		surface.getDisplay().setCursor(cache.getCursor(cache_idx));
 	}
 

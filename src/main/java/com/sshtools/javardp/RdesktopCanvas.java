@@ -6,6 +6,7 @@
  */
 package com.sshtools.javardp;
 
+import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -77,10 +78,8 @@ public class RdesktopCanvas {
 	 * Initialise this canvas to specified width and height, also initialise
 	 * backstore
 	 * 
-	 * @param width
-	 *            Desired width of canvas
-	 * @param height
-	 *            Desired height of canvas
+	 * @param width Desired width of canvas
+	 * @param height Desired height of canvas
 	 */
 	public RdesktopCanvas(IContext context, Options options, int width, int height) {
 		this(context, options, width, height, new WrappedImage(width, height, BufferedImage.TYPE_INT_RGB));
@@ -90,10 +89,8 @@ public class RdesktopCanvas {
 	 * Initialise this canvas to specified width and height, also initialise
 	 * backstore
 	 * 
-	 * @param width
-	 *            Desired width of canvas
-	 * @param height
-	 *            Desired height of canvas
+	 * @param width Desired width of canvas
+	 * @param height Desired height of canvas
 	 */
 	public RdesktopCanvas(IContext context, Options options, int width, int height, Display backstore) {
 		super();
@@ -151,12 +148,10 @@ public class RdesktopCanvas {
 	// * e) { logger.warn("Pointer movement not allowed"); } }
 	// */
 	// }
-
 	/**
 	 * Register a colour palette with this canvas
 	 * 
-	 * @param cm
-	 *            Colour model to be used with this canvas
+	 * @param cm Colour model to be used with this canvas
 	 */
 	public void registerPalette(IndexColorModel cm) {
 		this.colormap = cm;
@@ -167,8 +162,7 @@ public class RdesktopCanvas {
 	 * Register the Rdp layer to act as the communications interface to this
 	 * canvas
 	 * 
-	 * @param rdp
-	 *            Rdp object controlling Rdp layer communication
+	 * @param rdp Rdp object controlling Rdp layer communication
 	 */
 	public void registerCommLayer(Rdp rdp) {
 		this.rdp = rdp;
@@ -179,14 +173,13 @@ public class RdesktopCanvas {
 	/**
 	 * Register keymap
 	 * 
-	 * @param keys
-	 *            Keymapping object for use in handling keyboard events
+	 * @param keys Keymapping object for use in handling keyboard events
 	 */
 	public void registerKeyboard(KeyCode_FileBased keys) {
 		this.fbKeys = keys;
 		if (rdp != null) {
 			// rdp and keys have been registered...
-			if(input != null)
+			if (input != null)
 				input.removeInputListeners();
 			input = new Input(context, options, this, rdp, keys);
 		}
@@ -195,8 +188,7 @@ public class RdesktopCanvas {
 	/**
 	 * Set cache for this session
 	 * 
-	 * @param cache
-	 *            Cache to be used in this session
+	 * @param cache Cache to be used in this session
 	 */
 	public void registerCache(Cache cache) {
 		this.cache = cache;
@@ -207,27 +199,19 @@ public class RdesktopCanvas {
 	 * functioning correctly, see Bitmap.decompressImgDirect Does not call
 	 * repaint. Image is drawn to canvas on next update
 	 * 
-	 * @param x
-	 *            x coordinate within backstore for drawing of bitmap
-	 * @param y
-	 *            y coordinate within backstore for drawing of bitmap
-	 * @param width
-	 *            Width of bitmap
-	 * @param height
-	 *            Height of bitmap
-	 * @param size
-	 *            Size (bytes) of compressed bitmap data
-	 * @param data
-	 *            Packet containing compressed bitmap data at current read
+	 * @param x x coordinate within backstore for drawing of bitmap
+	 * @param y y coordinate within backstore for drawing of bitmap
+	 * @param width Width of bitmap
+	 * @param height Height of bitmap
+	 * @param size Size (bytes) of compressed bitmap data
+	 * @param data Packet containing compressed bitmap data at current read
 	 *            position
-	 * @param Bpp
-	 *            Bytes-per-pixel for bitmap
-	 * @param cm
-	 *            Colour model currently in use, if any
+	 * @param Bpp Bytes-per-pixel for bitmap
+	 * @param cm Colour model currently in use, if any
 	 * @throws RdesktopException
 	 */
-	public void displayCompressed(int x, int y, int width, int height, int size, RdpPacket data, int Bpp,
-			IndexColorModel cm) throws RdesktopException {
+	public void displayCompressed(int x, int y, int width, int height, int size, RdpPacket data, int Bpp, IndexColorModel cm)
+			throws RdesktopException {
 		backstore = Bitmap.decompressImgDirect(options, width, height, size, data, Bpp, cm, x, y, backstore);
 	}
 
@@ -235,12 +219,9 @@ public class RdesktopCanvas {
 	 * Draw an image object to the backstore, does not call repaint. Image is
 	 * drawn to canvas on next update.
 	 * 
-	 * @param img
-	 *            Image to draw to backstore
-	 * @param x
-	 *            x coordinate for drawing location
-	 * @param y
-	 *            y coordinate for drawing location
+	 * @param img Image to draw to backstore
+	 * @param x x coordinate for drawing location
+	 * @param y y coordinate for drawing location
 	 * @throws RdesktopException
 	 */
 	public void displayImage(Image img, int x, int y) throws RdesktopException {
@@ -258,20 +239,13 @@ public class RdesktopCanvas {
 	 * Draw an image (from an integer array of colour data) to the backstore,
 	 * does not call repaint. Image is drawn to canvas on next update.
 	 * 
-	 * @param data
-	 *            Integer array of pixel colour information
-	 * @param w
-	 *            Width of image
-	 * @param h
-	 *            Height of image
-	 * @param x
-	 *            x coordinate for drawing location
-	 * @param y
-	 *            y coordinate for drawing location
-	 * @param cx
-	 *            Width of drawn image (clips, does not scale)
-	 * @param cy
-	 *            Height of drawn image (clips, does not scale)
+	 * @param data Integer array of pixel colour information
+	 * @param w Width of image
+	 * @param h Height of image
+	 * @param x x coordinate for drawing location
+	 * @param y y coordinate for drawing location
+	 * @param cx Width of drawn image (clips, does not scale)
+	 * @param cy Height of drawn image (clips, does not scale)
 	 * @throws RdesktopException
 	 */
 	public void displayImage(int[] data, int w, int h, int x, int y, int cx, int cy) throws RdesktopException {
@@ -289,14 +263,10 @@ public class RdesktopCanvas {
 	/**
 	 * Retrieve an image from the backstore, as integer pixel information
 	 * 
-	 * @param x
-	 *            x coordinate of image to retrieve
-	 * @param y
-	 *            y coordinage of image to retrieve
-	 * @param cx
-	 *            width of image to retrieve
-	 * @param cy
-	 *            height of image to retrieve
+	 * @param x x coordinate of image to retrieve
+	 * @param y y coordinage of image to retrieve
+	 * @param cx width of image to retrieve
+	 * @param cy height of image to retrieve
 	 * @return Requested area of backstore, as an array of integer pixel colours
 	 */
 	public int[] getImage(int x, int y, int cx, int cy) {
@@ -312,16 +282,11 @@ public class RdesktopCanvas {
 	 * Draw an image (from an integer array of colour data) to the backstore,
 	 * also calls repaint to draw image to canvas
 	 * 
-	 * @param x
-	 *            x coordinate at which to draw image
-	 * @param y
-	 *            y coordinate at which to draw image
-	 * @param cx
-	 *            Width of drawn image (clips, does not scale)
-	 * @param cy
-	 *            Height of drawn image (clips, does not scale)
-	 * @param data
-	 *            Image to draw, represented as an array of integer pixel
+	 * @param x x coordinate at which to draw image
+	 * @param y y coordinate at which to draw image
+	 * @param cx Width of drawn image (clips, does not scale)
+	 * @param cy Height of drawn image (clips, does not scale)
+	 * @param data Image to draw, represented as an array of integer pixel
 	 *            colours
 	 */
 	public void putImage(int x, int y, int cx, int cy, int[] data) {
@@ -348,43 +313,36 @@ public class RdesktopCanvas {
 	/**
 	 * Set clipping boundaries for canvas, based on a bounds order
 	 * 
-	 * @param bounds
-	 *            Order defining new boundaries
+	 * @param bounds Order defining new boundaries
 	 */
 	public void setClip(BoundsOrder bounds) {
 		Graphics g = backstore.getDisplayGraphics();
-		g.setClip(bounds.getLeft(), bounds.getTop(), bounds.getRight() - bounds.getLeft(),
-				bounds.getBottom() - bounds.getTop());
+		g.setClip(bounds.getLeft(), bounds.getTop(), bounds.getRight() - bounds.getLeft(), bounds.getBottom() - bounds.getTop());
 		this.top = bounds.getTop();
 		this.left = bounds.getLeft();
 		this.right = bounds.getRight();
 		this.bottom = bounds.getBottom();
 		if (this.right >= backstore.getDisplayWidth() || this.bottom >= backstore.getDisplayHeight()) {
-			backingStoreResize(this.right + 1, this.bottom + 1);
+			backingStoreResize(this.right + 1, this.bottom + 1, false);
 		}
 	}
 
-	public void backingStoreResize(int width, int height) {
+	public void backingStoreResize(int width, int height, boolean clientInitiated) {
 		this.width = width;
 		this.height = height;
 		dimension = new Dimension(width, height);
 		backstore.resizeDisplay(dimension);
-		context.screenResized(width, height);
+		context.screenResized(width, height, clientInitiated);
 	}
 
 	/**
 	 * Draw a filled rectangle to the screen
 	 * 
-	 * @param x
-	 *            x coordinate (left) of rectangle
-	 * @param y
-	 *            y coordinate (top) of rectangle
-	 * @param cx
-	 *            Width of rectangle
-	 * @param cy
-	 *            Height of rectangle
-	 * @param color
-	 *            Colour of rectangle
+	 * @param x x coordinate (left) of rectangle
+	 * @param y y coordinate (top) of rectangle
+	 * @param cx Width of rectangle
+	 * @param cy Height of rectangle
+	 * @param color Colour of rectangle
 	 */
 	public void fillRectangle(int x, int y, int cx, int cy, int color) {
 		// clip here instead
@@ -415,8 +373,8 @@ public class RdesktopCanvas {
 		for (int i = 0; i < rect.length; i++)
 			rect[i] = color;
 		// draw rectangle to backstore
-		if (logger.isInfoEnabled())
-			logger.info("rect \t(\t" + x + ",\t" + y + "),(\t" + (x + cx - 1) + ",\t" + (y + cy - 1) + ")/"
+		if (logger.isDebugEnabled())
+			logger.debug("rect \t(\t" + x + ",\t" + y + "),(\t" + (x + cx - 1) + ",\t" + (y + cy - 1) + ")/"
 					+ backstore.getDisplayWidth() + "x" + backstore.getDisplayHeight());
 		backstore.setRGB(x, y, cx, cy, rect, 0, cx);
 		backstore.repaint(x, y, cx, cy); // seems to be faster than
@@ -427,19 +385,13 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a line to the screen
 	 * 
-	 * @param x1
-	 *            x coordinate of start point of line
-	 * @param y1
-	 *            y coordinate of start point of line
-	 * @param x2
-	 *            x coordinate of end point of line
-	 * @param y2
-	 *            y coordinate of end point of line
-	 * @param color
-	 *            colour of line
-	 * @param opcode
-	 *            Operation code defining operation to perform on pixels within
-	 *            the line
+	 * @param x1 x coordinate of start point of line
+	 * @param y1 y coordinate of start point of line
+	 * @param x2 x coordinate of end point of line
+	 * @param y2 y coordinate of end point of line
+	 * @param color colour of line
+	 * @param opcode Operation code defining operation to perform on pixels
+	 *            within the line
 	 */
 	public void drawLine(int x1, int y1, int x2, int y2, int color, int opcode) {
 		// convert to 24-bit colour
@@ -506,19 +458,13 @@ public class RdesktopCanvas {
 	 * Helper function for drawLine, draws a horizontal or vertical line using a
 	 * much faster method than used for diagonal lines
 	 * 
-	 * @param x1
-	 *            x coordinate of start point of line
-	 * @param y1
-	 *            y coordinate of start point of line
-	 * @param x2
-	 *            x coordinate of end point of line
-	 * @param y2
-	 *            y coordinate of end point of line
-	 * @param color
-	 *            colour of line
-	 * @param opcode
-	 *            Operation code defining operation to perform on pixels within
-	 *            the line
+	 * @param x1 x coordinate of start point of line
+	 * @param y1 y coordinate of start point of line
+	 * @param x2 x coordinate of end point of line
+	 * @param y2 y coordinate of end point of line
+	 * @param color colour of line
+	 * @param opcode Operation code defining operation to perform on pixels
+	 *            within the line
 	 */
 	public void drawLineVerticalHorizontal(int x1, int y1, int x2, int y2, int color, int opcode) {
 		int pbackstore;
@@ -584,8 +530,7 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a line to the screen
 	 * 
-	 * @param line
-	 *            LineOrder describing line to be drawn
+	 * @param line LineOrder describing line to be drawn
 	 */
 	public void drawLineOrder(LineOrder line) {
 		int x1 = line.getStartX();
@@ -600,8 +545,7 @@ public class RdesktopCanvas {
 	/**
 	 * Perform a dest blt
 	 * 
-	 * @param destblt
-	 *            DestBltOrder describing the blit to be performed
+	 * @param destblt DestBltOrder describing the blit to be performed
 	 */
 	public void drawDestBltOrder(DestBltOrder destblt) {
 		int x = destblt.getX();
@@ -629,8 +573,7 @@ public class RdesktopCanvas {
 	/**
 	 * Perform a screen blit
 	 * 
-	 * @param screenblt
-	 *            ScreenBltOrder describing the blit to be performed
+	 * @param screenblt ScreenBltOrder describing the blit to be performed
 	 */
 	public void drawScreenBltOrder(ScreenBltOrder screenblt) {
 		int x = screenblt.getX();
@@ -662,8 +605,7 @@ public class RdesktopCanvas {
 	/**
 	 * Perform a memory blit
 	 * 
-	 * @param memblt
-	 *            MemBltOrder describing the blit to be performed
+	 * @param memblt MemBltOrder describing the blit to be performed
 	 */
 	public void drawMemBltOrder(MemBltOrder memblt) {
 		int x = memblt.getX();
@@ -691,18 +633,17 @@ public class RdesktopCanvas {
 		srcx += x - memblt.getX();
 		srcy += y - memblt.getY();
 		if (logger.isInfoEnabled())
-			logger.info("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy
-					+ " opcode=" + memblt.getOpcode());
+			logger.info("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy + " opcode="
+					+ memblt.getOpcode());
 		try {
 			Bitmap bitmap = cache.getBitmap(memblt.getCacheID(), memblt.getCacheIDX());
 			// IndexColorModel cm = cache.get_colourmap(memblt.getColorTable());
 			// should use the colormap, but requires high color backstore...
-
 			if (x + cx > backstore.getDisplayWidth() || y + cy > backstore.getDisplayHeight()) {
-				backingStoreResize(x + cx, y + cy);
+				backingStoreResize(x + cx, y + cy, false);
 			}
-			rop.do_array(memblt.getOpcode(), backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(),
-					bitmap.getWidth(), srcx, srcy);
+			rop.do_array(memblt.getOpcode(), backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx,
+					srcy);
 			backstore.repaint(x, y, cx, cy);
 		} catch (RdesktopException e) {
 		}
@@ -711,22 +652,14 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a pattern to the screen (pattern blit)
 	 * 
-	 * @param opcode
-	 *            Code defining operation to be performed
-	 * @param x
-	 *            x coordinate for left of blit area
-	 * @param y
-	 *            y coordinate for top of blit area
-	 * @param cx
-	 *            Width of blit area
-	 * @param cy
-	 *            Height of blit area
-	 * @param fgcolor
-	 *            Foreground colour for pattern
-	 * @param bgcolor
-	 *            Background colour for pattern
-	 * @param brush
-	 *            Brush object defining pattern to be drawn
+	 * @param opcode Code defining operation to be performed
+	 * @param x x coordinate for left of blit area
+	 * @param y y coordinate for top of blit area
+	 * @param cx Width of blit area
+	 * @param cy Height of blit area
+	 * @param fgcolor Foreground colour for pattern
+	 * @param bgcolor Background colour for pattern
+	 * @param brush Brush object defining pattern to be drawn
 	 */
 	public void patBltOrder(int opcode, int x, int y, int cx, int cy, int fgcolor, int bgcolor, Brush brush) {
 		// convert to 24-bit colour
@@ -755,9 +688,8 @@ public class RdesktopCanvas {
 			src = new int[cx * cy];
 			for (i = 0; i < src.length; i++)
 				src[i] = fgcolor;
-			logger.info("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " width=" + this.width + " height="
-					+ this.height + " imgwidth=" + backstore.getDisplayWidth() + " imgheight="
-					+ backstore.getDisplayHeight());
+			logger.info("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " width=" + this.width + " height=" + this.height
+					+ " imgwidth=" + backstore.getDisplayWidth() + " imgheight=" + backstore.getDisplayHeight());
 			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx, 0, 0);
 			backstore.repaint(x, y, cx, cy);
 			break;
@@ -796,8 +728,7 @@ public class RdesktopCanvas {
 	/**
 	 * Perform a pattern blit on the screen
 	 * 
-	 * @param patblt
-	 *            PatBltOrder describing the blit to be performed
+	 * @param patblt PatBltOrder describing the blit to be performed
 	 */
 	public void drawPatBltOrder(PatBltOrder patblt) {
 		Brush brush = patblt.getBrush();
@@ -816,8 +747,7 @@ public class RdesktopCanvas {
 	/**
 	 * Perform a tri blit on the screen
 	 * 
-	 * @param triblt
-	 *            TriBltOrder describing the blit
+	 * @param triblt TriBltOrder describing the blit
 	 */
 	public void drawTriBltOrder(TriBltOrder triblt) {
 		int x = triblt.getX();
@@ -852,25 +782,21 @@ public class RdesktopCanvas {
 			Bitmap bitmap = cache.getBitmap(triblt.getCacheID(), triblt.getCacheIDX());
 			switch (triblt.getOpcode()) {
 			case 0x69: // PDSxxn
-				rop.do_array(ROP2_XOR, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
-						srcx, srcy);
+				rop.do_array(ROP2_XOR, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
 				patBltOrder(ROP2_NXOR, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			case 0xb8: // PSDPxax
 				patBltOrder(ROP2_XOR, x, y, cx, cy, fgcolor, bgcolor, brush);
-				rop.do_array(ROP2_AND, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
-						srcx, srcy);
+				rop.do_array(ROP2_AND, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
 				patBltOrder(ROP2_XOR, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			case 0xc0: // PSa
-				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
-						srcx, srcy);
+				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
 				patBltOrder(ROP2_AND, x, y, cx, cy, fgcolor, bgcolor, brush);
 				break;
 			default:
 				logger.warn("Unimplemented Triblt opcode:" + triblt.getOpcode());
-				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(),
-						srcx, srcy);
+				rop.do_array(ROP2_COPY, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
 			}
 		} catch (RdesktopException e) {
 		}
@@ -898,8 +824,7 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a multi-point set of lines to the screen
 	 * 
-	 * @param polyline
-	 *            PolyLineOrder describing the set of lines to draw
+	 * @param polyline PolyLineOrder describing the set of lines to draw
 	 */
 	public void drawPolyLineOrder(PolyLineOrder polyline) {
 		int x = polyline.getX();
@@ -939,8 +864,7 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a rectangle to the screen
 	 * 
-	 * @param rect
-	 *            RectangleOrder defining the rectangle to be drawn
+	 * @param rect RectangleOrder defining the rectangle to be drawn
 	 */
 	public void drawRectangleOrder(RectangleOrder rect) {
 		// if(logger.isInfoEnabled()) logger.info("RectangleOrder!");
@@ -950,14 +874,10 @@ public class RdesktopCanvas {
 	/**
 	 * Perform an operation on a pixel in the backstore
 	 * 
-	 * @param opcode
-	 *            ID of operation to perform
-	 * @param x
-	 *            x coordinate of pixel
-	 * @param y
-	 *            y coordinate of pixel
-	 * @param color
-	 *            Colour value to be used in operation
+	 * @param opcode ID of operation to perform
+	 * @param x x coordinate of pixel
+	 * @param y y coordinate of pixel
+	 * @param color Colour value to be used in operation
 	 */
 	public void setPixel(int opcode, int x, int y, int color) {
 		int Bpp = options.Bpp;
@@ -973,23 +893,15 @@ public class RdesktopCanvas {
 	/**
 	 * Draw a single glyph to the screen
 	 * 
-	 * @param mixmode
-	 *            0 for transparent background, specified colour for background
-	 *            otherwide
-	 * @param x
-	 *            x coordinate on screen at which to draw glyph
-	 * @param y
-	 *            y coordinate on screen at which to draw glyph
-	 * @param cx
-	 *            Width of clipping area for glyph
-	 * @param cy
-	 *            Height of clipping area for glyph
-	 * @param data
-	 *            Set of values defining glyph's pattern
-	 * @param bgcolor
-	 *            Background colour for glyph pattern
-	 * @param fgcolor
-	 *            Foreground colour for glyph pattern
+	 * @param mixmode 0 for transparent background, specified colour for
+	 *            background otherwide
+	 * @param x x coordinate on screen at which to draw glyph
+	 * @param y y coordinate on screen at which to draw glyph
+	 * @param cx Width of clipping area for glyph
+	 * @param cy Height of clipping area for glyph
+	 * @param data Set of values defining glyph's pattern
+	 * @param bgcolor Background colour for glyph pattern
+	 * @param fgcolor Foreground colour for glyph pattern
 	 */
 	public void drawGlyph(int mixmode, int x, int y, int cx, int cy, byte[] data, int bgcolor, int fgcolor) {
 		int pdata = 0;
@@ -1077,154 +989,152 @@ public class RdesktopCanvas {
 		backstore.repaint(newx, newy, newcx, newcy);
 	}
 
-//	public Cursor createCursorXXX(int x, int y, int w, int h, byte[] maskBuf, byte[] pixBuf, int cache_idx) {
-//		// Decode pixel data into softCursorPixels[].
-//		int[] softCursorPixels = new int[width * height];
-//		byte maskByte;
-//		int dx, dy, n, result;
-//		int scanline = w / 8;
-//		int i = 0;
-//		for (dy = 0; dy < height; dy++) {
-//			for (dx = 0; dx < width / 8; dx++) {
-//				maskByte = maskBuf[dy * scanline + dx];
-//				for (n = 7; n >= 0; n--) {
-//					if ((maskByte >> n & 1) != 0) {
-//						result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16 | (pixBuf[i * 4 + 2] & 0xFF) << 8
-//								| (pixBuf[i * 4 + 3] & 0xFF);
-//					} else {
-//						result = 0; // Transparent pixel
-//					}
-//					softCursorPixels[i++] = result;
-//				}
-//			}
-//			for (n = 7; n >= 8 - width % 8; n--) {
-//				if ((maskBuf[dy * scanline + dx] >> n & 1) != 0) {
-//					result = 0xFF000000 | (pixBuf[i * 4 + 1] & 0xFF) << 16 | (pixBuf[i * 4 + 2] & 0xFF) << 8
-//							| (pixBuf[i * 4 + 3] & 0xFF);
-//				} else {
-//					result = 0; // Transparent pixel
-//				}
-//				softCursorPixels[i++] = result;
-//			}
-//
-//		}
-//		MemoryImageSource imgSource = new MemoryImageSource(width, height, softCursorPixels, 0, width);
-//		Image wincursor = backstore.createImage(imgSource);
-//		Point p = new Point(x, y);
-//		return createCustomCursor(wincursor, p, "", cache_idx);
-//	}
+	private int getInvertedColor(int x, int y) {
+		return ((x + y) & 1) != 0 ? Color.white.getRGB() : 0;
+	}
 
-	/**
-	 * Create an AWT Cursor object
-	 * 
-	 * @param x
-	 * @param y
-	 * @param w
-	 * @param h
-	 * @param andmask
-	 * @param xormask
-	 * @param cache_idx
-	 * @return Created Cursor
-	 */
-	public RdpCursor createCursor(int x, int y, int w, int h, byte[] andmask, byte[] xormask, int cache_idx) {
-		int pxormask = 0;
-		int pandmask = 0;
-		Point p = new Point(x, y);
-		int size = w * h;
-		int scanline = w / 8;
-		int offset = 0;
-		byte[] mask = new byte[size];
-//		int[] cursor = new int[size];
-		int pcursor = 0, pmask = 0;
-		offset = size;
-		for (int i = 0; i < h; i++) {
-			offset -= w;
-			pmask = offset;
-			for (int j = 0; j < scanline; j++) {
-				for (int bit = 0x80; bit > 0; bit >>= 1) {
-					if ((andmask[pandmask] & bit) != 0) {
-						mask[pmask] = 0;
-					} else {
-						mask[pmask] = 1;
+	public RdpCursor createCursor(int nXDst, int nYDst, int nWidth, int nHeight, byte[] andMask, byte[] xorMask, int cache_idx,
+			int xorBpp, boolean vFlip) {
+		int x, y;
+		int xorStep;
+		int andStep;
+		int xorBit;
+		int andBit;
+		int xorPixel;
+		int andPixel;
+		int dstIdx = 0;
+		BufferedImage bim;
+		andStep = (nWidth + 7) / 8;
+		andStep += (andStep % 2);
+		if (xorMask == null || (xorMask.length == 0))
+			return null;
+		switch (xorBpp) {
+		case 1:
+			if (andMask == null || andMask.length == 0)
+				return null;
+			xorStep = (nWidth + 7) / 8;
+			xorStep += (xorStep % 2);
+			if (xorStep * nHeight > xorMask.length)
+				return null;
+			if (andStep * nHeight > andMask.length)
+				return null;
+			bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_BYTE_INDEXED, new IndexColorModel(2, 3,
+					new byte[] { 0, (byte) (255), 0 }, new byte[] { 0, (byte) 255, 0 }, new byte[] { 0, (byte) 255, 0 }, 2));
+			for (y = 0; y < nHeight; y++) {
+				byte[] andBits = new byte[andStep];
+				byte[] xorBits = new byte[xorStep];
+				xorBit = andBit = 0x80;
+				if (!vFlip) {
+					System.arraycopy(xorMask, xorStep * y, xorBits, 0, xorBits.length);
+					System.arraycopy(andMask, andStep * y, andBits, 0, andBits.length);
+				} else {
+					System.arraycopy(xorMask, xorStep * (nHeight - y - 1), xorBits, 0, xorBits.length);
+					System.arraycopy(andMask, andStep * (nHeight - y - 1), andBits, 0, andBits.length);
+				}
+				int xorBitIdx = 0;
+				int andBitIdx = 0;
+				for (x = 0; x < nWidth; x++) {
+					int color = 0;
+					xorPixel = (xorBits[xorBitIdx] & xorBit) != 0 ? 1 : 0;
+					if ((xorBit >>= 1) == 0) {
+						xorBitIdx++;
+						xorBit = 0x80;
 					}
-					pmask++;
+					andPixel = (andBits[andBitIdx] & andBit) != 0 ? 1 : 0;
+					if ((andBit >>= 1) == 0) {
+						andBitIdx++;
+						andBit = 0x80;
+					}
+					if (andPixel == 0 && xorPixel == 0)
+						color = 0; /* black */
+					else if (andPixel == 0 && xorPixel != 0)
+						color = 1; /* white */
+					else if (andPixel != 0 && xorPixel == 0)
+						color = 2; /* transparent */
+					else if (andPixel != 0 && xorPixel != 0)
+						color = getInvertedColor(x, y) & 0x01; /* inverted */
+					bim.getRaster().getDataBuffer().setElem(dstIdx++, color);
 				}
-				pandmask++;
 			}
-		}
-		
-		BufferedImage bim = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-
-		offset = 0;
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				System.out.print(mask[offset]);
-				offset++;
+			break;
+		case 8:
+		case 16:
+		case 24:
+		case 32:
+			int xorBytesPerPixel = xorBpp >> 3;
+			int elemIdx = 0;
+			xorStep = nWidth * xorBytesPerPixel;
+			if (xorStep * nHeight > xorMask.length)
+				return null;
+			if (andMask != null) {
+				if (andStep * nHeight > andMask.length)
+					return null;
 			}
-			System.out.println();
-		}
-
-		offset = size;
-		pcursor = 0;
-		for (int i = 0; i < h; i++) {
-			offset -= w;
-			pcursor = offset;
-			for (int j = 0; j < w; j++) {
-				bim.getRaster().getDataBuffer().setElem(pcursor, ((xormask[pxormask + 2] << 16) & 0x00ff0000)
-						| ((xormask[pxormask + 1] << 8) & 0x0000ff00) | (xormask[pxormask] & 0x000000ff));
-				pxormask += 3;
-				pcursor++;
+			if (xorBpp == 32) {
+				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_4BYTE_ABGR);
+			} else if (xorBpp == 16) {
+				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_USHORT_555_RGB);
+			} else if (xorBpp == 8) {
+				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_BYTE_INDEXED, colormap);
+			} else {
+				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_3BYTE_BGR);
 			}
-		}
-
-		offset = 0;
-		System.out.println();
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(pcursor) >> 16 & 0xff));
-				offset++;
-			}
-			System.out.println();
-		}
-
-		offset = 0;
-		System.out.println();
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(offset) >> 8 & 0xff));
-				offset++;
-			}
-			System.out.println();
-		}
-
-		offset = 0;
-		System.out.println();
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				System.out.print(String.format("%02x ", bim.getRaster().getDataBuffer().getElem(offset) & 0xff));
-				offset++;
-			}
-			System.out.println();
-		}
-
-		offset = size;
-		pmask = 0;
-		pcursor = 0;
-		pxormask = 0;
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				if ((mask[pmask] == 0) && (bim.getRaster().getDataBuffer().getElem(pcursor) != 0)) {
-					bim.getRaster().getDataBuffer().setElem(pcursor,  ~(bim.getRaster().getDataBuffer().getElem(pcursor)));
-					bim.getRaster().getDataBuffer().setElem(pcursor, bim.getRaster().getDataBuffer().getElem(pcursor) | 0xff000000);
-				} else if ((mask[pmask] == 1) || (bim.getRaster().getDataBuffer().getElem(pcursor) != 0)) {
-					bim.getRaster().getDataBuffer().setElem(pcursor, bim.getRaster().getDataBuffer().getElem(pcursor) | 0xff000000);
+			for (y = 0; y < nHeight; y++) {
+				int xorBitsIdx = 0;
+				int andBitsIdx = 0;
+				byte[] xorBits = new byte[xorStep];
+				byte[] andBits = new byte[andStep];
+				andBit = 0x80;
+				if (!vFlip) {
+					if (andMask != null)
+						System.arraycopy(andMask, andStep * y, andBits, 0, andBits.length);
+					System.arraycopy(xorMask, xorStep * y, xorBits, 0, xorBits.length);
+				} else {
+					if (andMask != null)
+						System.arraycopy(andMask, andStep * (nHeight - y - 1), andBits, 0, andBits.length);
+					System.arraycopy(xorMask, xorStep * (nHeight - y - 1), xorBits, 0, xorBits.length);
 				}
-				pcursor++;
-				pmask++;
+				for (x = 0; x < nWidth; x++) {
+					if (xorBpp == 32) {
+						// TODO
+						xorPixel = bim.getRGB(x, y);
+					} else if (xorBpp == 16) {
+						// TODO
+						xorPixel = bim.getRGB(x, y);
+					} else if (xorBpp == 8) {
+						xorPixel = colormap.getRGB(xorBits[xorBitsIdx]);
+					} else {
+						int b1 = (xorBits[xorBitsIdx] << 16) & 0x00ffffff;
+						int b2 = (xorBits[xorBitsIdx + 1] << 8) & 0x00ffffff;
+						int b3 = xorBits[xorBitsIdx + 2] & 0x000000ff;
+						int val = b1 | b2 | b3;
+						bim.setRGB(x, y, val);
+						xorPixel = bim.getRGB(x, y) & 0x00ffffff;
+					}
+					xorBitsIdx += xorBytesPerPixel;
+					andPixel = 0;
+					if (andMask != null) {
+						andPixel = (andBits[andBitsIdx] & andBit) != 0 ? 1 : 0;
+						if ((andBit >>= 1) == 0) {
+							andBitsIdx++;
+							andBit = 0x80;
+						}
+					}
+					if (andPixel != 0) {
+						if (xorPixel == 0xFF000000) /* black -> transparent */
+							xorPixel = 0x00000000;
+						else if (xorPixel == 0xFFFFFFFF) /* white -> inverted */
+							xorPixel = getInvertedColor(x, y);
+					}
+					bim.setRGB(x, y, xorPixel);
+				}
 			}
+			break;
+		default:
+			logger.error(String.format("Unknown cursor bpp %d", xorBpp));
+			return null;
 		}
-		
-		return createCustomCursor(bim, p, "", cache_idx);
+		return createCustomCursor(bim, new Point(nXDst, nYDst), "", cache_idx);
 	}
 
 	/**
@@ -1237,9 +1147,7 @@ public class RdesktopCanvas {
 	 * @return Generated Cursor object
 	 */
 	protected RdpCursor createCustomCursor(Image wincursor, Point p, String s, int cache_idx) {
-		System.out.println("createCustomCursor CACHE IDX:" + cache_idx + " : " + s + "  " + p);
-		// if (cache_idx == 1)
-		// return Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR);
+		logger.info(String.format("Creating custom cursor at %s (cached %d)", p, cache_idx));
 		return backstore.createCursor("", p, wincursor);
 	}
 

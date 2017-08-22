@@ -399,7 +399,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		this.rdp = rdp;
 	}
 
-	public void screenResized(int width, int height) {
+	public void screenResized(int width, int height, boolean clientInitiated) {
 		setSize(width, height);
 	}
 }

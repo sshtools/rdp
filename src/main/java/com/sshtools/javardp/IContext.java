@@ -35,7 +35,7 @@ public interface IContext {
 	
 	void error(Exception e, boolean sysexit);
 
-	void screenResized(int width, int height);
+	void screenResized(int width, int height, boolean clientInitiated);
 
 	void toggleFullScreen();
 }
