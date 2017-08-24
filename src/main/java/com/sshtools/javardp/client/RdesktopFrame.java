@@ -27,8 +27,8 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.JComponent;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
@@ -42,7 +42,7 @@ import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
 
 //import javax.swing.Box;
 public class RdesktopFrame extends Frame implements IContext {
-	static Log logger = LogFactory.getLog(RdesktopFrame.class);
+	static Logger logger = LoggerFactory.getLogger(RdesktopFrame.class);
 	public RdesktopCanvas canvas = null;
 	public Rdp rdp = null;
 	public RdpMenu menu = null;
@@ -55,7 +55,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	 * @param c ClipChannel object for controlling clipboard mapping
 	 */
 	public void setClip(ClipChannel c) {
-		((JComponent)canvas.getDisplay()).addFocusListener(c);
+		((JComponent) canvas.getDisplay()).addFocusListener(c);
 	}
 
 	public void setLoggedOn() {
@@ -86,7 +86,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		try {
 			String msg1 = e.getClass().getName();
 			String msg2 = e.getMessage();
-			logger.fatal(msg1 + ": " + msg2);
+			logger.error(msg1 + ": " + msg2);
 			String[] msg = { msg1, msg2 };
 			Rdesktop.showErrorDialog(msg);
 			// e.printStackTrace(System.err);
@@ -208,7 +208,7 @@ public class RdesktopFrame extends Frame implements IContext {
 		menu = new RdpMenu(this);
 		setMenuBar(menu);
 		new RdesktopCanvas(this, options, options.width, options.height);
-		add((JComponent)this.canvas.getDisplay());
+		add((JComponent) this.canvas.getDisplay());
 		setTitle(options.windowTitle);
 		if (Constants.OS == Constants.WINDOWS)
 			setResizable(false);
@@ -222,21 +222,21 @@ public class RdesktopFrame extends Frame implements IContext {
 			pack();
 			centreWindow();
 		}
-		logger.info("canvas:" + ((JComponent)this.canvas.getDisplay()).getSize());
+		logger.info("canvas:" + ((JComponent) this.canvas.getDisplay()).getSize());
 		logger.info("frame: " + getSize());
 		logger.info("insets:" + getInsets());
 		if (Constants.OS != Constants.WINDOWS)
 			setResizable(false);
 		// Linux Java 1.3 needs pack() before setResizeable
 		addWindowListener(new RdesktopWindowAdapter());
-		((JComponent)this.canvas.getDisplay()).addFocusListener(new RdesktopFocusListener());
+		((JComponent) this.canvas.getDisplay()).addFocusListener(new RdesktopFocusListener());
 		if (Constants.OS == Constants.WINDOWS) {
 			// redraws screen on window move
 			addComponentListener(new RdesktopComponentAdapter());
 		}
-		((JComponent)this.canvas.getDisplay()).requestFocus();
+		((JComponent) this.canvas.getDisplay()).requestFocus();
 	}
-	
+
 	public void init(RdesktopCanvas canvas) {
 		this.canvas = canvas;
 	}
@@ -364,7 +364,6 @@ public class RdesktopFrame extends Frame implements IContext {
 
 	public void exit() {
 		// TODO Auto-generated method stub
-
 	}
 
 	public Rdp getRdp() {

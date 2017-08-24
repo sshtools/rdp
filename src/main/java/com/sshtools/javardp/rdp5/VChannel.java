@@ -13,24 +13,23 @@ package com.sshtools.javardp.rdp5;
 
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Input;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.Secure;
 import com.sshtools.javardp.crypto.CryptoException;
 
 public abstract class VChannel {
-	protected static Log logger = LogFactory.getLog(Input.class);
+	static Logger logger = LoggerFactory.getLogger(VChannel.class);
+
 	private int mcs_id = 0;
 	protected Options options;
-	private IContext context;
+	protected IContext context;
 
 	/**
 	 * Provide the name of this channel

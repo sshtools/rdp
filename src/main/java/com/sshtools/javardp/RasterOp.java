@@ -7,11 +7,13 @@
 
 package com.sshtools.javardp;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RasterOp {
-	static Log logger = LogFactory.getLog(RdesktopCanvas.class);
+
+	static Logger logger = LoggerFactory.getLogger(RasterOp.class);
+
 	private Options options;
 
 	public RasterOp(Options options) {

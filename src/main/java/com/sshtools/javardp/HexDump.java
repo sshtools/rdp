@@ -12,11 +12,11 @@
  */
 package com.sshtools.javardp;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HexDump {
-	static Log logger = LogFactory.getLog(HexDump.class);
+	static Logger logger = LoggerFactory.getLogger(HexDump.class);
 
 	/**
 	 * , sets logging level to Debug

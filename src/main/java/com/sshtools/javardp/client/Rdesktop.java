@@ -11,6 +11,7 @@
  */
 package com.sshtools.javardp.client;
 
+
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.io.InputStream;
@@ -26,8 +27,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.UnrecognizedOptionException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.ConnectionException;
 import com.sshtools.javardp.Constants;
@@ -44,6 +45,9 @@ import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
 import com.sshtools.javardp.tools.SendEvent;
 
 public class Rdesktop {
+
+	static Logger logger = LoggerFactory.getLogger(Rdesktop.class);
+	
 	/**
 	 * Translate a disconnect code into a textual description of the reason for
 	 * the disconnect
@@ -145,7 +149,6 @@ public class Rdesktop {
 	public static final int exDiscReasonLicenseErrClientEncryption = 0x0108;
 	public static final int exDiscReasonLicenseCantUpgradeLicense = 0x0109;
 	public static final int exDiscReasonLicenseNoRemoteConnections = 0x010a;
-	static Log logger = LogFactory.getLog("com.elusiva.rdp");
 	private static boolean keep_running;
 	private static boolean showTools;
 	private static final String keyMapPath = "keymaps/";
@@ -498,7 +501,7 @@ public class Rdesktop {
 					window.error(e, true);
 				} catch (SocketException s) {
 					if (rdpLayer.isConnected()) {
-						logger.fatal(s.getClass().getName() + " " + s.getMessage());
+						logger.error(s.getClass().getName() + " " + s.getMessage());
 						// s.printStackTrace();
 						window.error(s, true);
 						Rdesktop.exit(0, window, true);
@@ -506,7 +509,7 @@ public class Rdesktop {
 				} catch (RdesktopException e) {
 					String msg1 = e.getClass().getName();
 					String msg2 = e.getMessage();
-					logger.fatal(msg1 + ": " + msg2);
+					logger.error(msg1 + ": " + msg2);
 					e.printStackTrace(System.err);
 					if (!window.isReadyToSend()) {
 						// maybe the licence server was having a comms
@@ -537,7 +540,7 @@ public class Rdesktop {
 					window.error(e, true);
 				}
 			} else { // closing bracket to if(!rdp==null)
-				logger.fatal("The communications layer could not be initiated!");
+				logger.error("The communications layer could not be initiated!");
 			}
 		}
 		Rdesktop.exit(0, window, true);
@@ -588,7 +591,7 @@ public class Rdesktop {
 	 * @param sysexit
 	 */
 	public static void customError(String emsg, IContext window, boolean sysexit) {
-		logger.fatal(emsg);
+		logger.error(emsg);
 		String[] msg = { emsg };
 		showErrorDialog(msg);
 		Rdesktop.exit(0, window, true);

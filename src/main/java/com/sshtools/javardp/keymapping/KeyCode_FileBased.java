@@ -19,17 +19,17 @@ import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.Input;
 import com.sshtools.javardp.Options;
 
 public class KeyCode_FileBased {
+	static Logger logger = LoggerFactory.getLogger(KeyCode_FileBased.class);
+	
 	private Hashtable keysCurrentlyDown = new Hashtable();
 	private KeyEvent lastKeyEvent = null;
 	private boolean lastEventMatched = false;
-	protected static Log logger = LogFactory.getLog(Input.class);
 	public static final int SCANCODE_EXTENDED = 0x80;
 	public static final int DOWN = 1;
 	public static final int UP = 0;

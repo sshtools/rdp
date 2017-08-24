@@ -25,16 +25,17 @@ import java.awt.event.MouseWheelListener;
 import java.util.Collections;
 import java.util.Vector;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.client.RdesktopFrame;
 import com.sshtools.javardp.keymapping.KeyCode;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
 import com.sshtools.javardp.keymapping.KeyMapException;
 
 public class Input {
-	protected static Log logger = LogFactory.getLog(Input.class);
+
+	static Logger logger = LoggerFactory.getLogger(Input.class);
+
 	KeyCode_FileBased newKeyMapper = null;
 	protected Vector pressedKeys;
 	protected  boolean capsLockOn = false;
@@ -691,6 +692,7 @@ public class Input {
 	}
 
 	private class RdesktopMouseWheelAdapter implements MouseWheelListener {
+		@Override
 		public void mouseWheelMoved(MouseWheelEvent e) {
 			int time = getTime();
 			// if(logger.isInfoEnabled()) logger.info("mousePressed at "+time);

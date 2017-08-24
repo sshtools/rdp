@@ -11,6 +11,9 @@
  */
 package com.sshtools.javardp.rdp5;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.OrderException;
@@ -18,8 +21,12 @@ import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Rdp;
 import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.crypto.CryptoException;
+import com.sshtools.javardp.rdp5.cliprdr.DIBHandler;
 
 public class Rdp5 extends Rdp {
+	
+	static Logger logger = LoggerFactory.getLogger(Rdp5.class);
+	
 	private VChannels channels;
 
 	/**

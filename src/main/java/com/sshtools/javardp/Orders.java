@@ -14,8 +14,8 @@ package com.sshtools.javardp;
 import java.awt.image.IndexColorModel;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.orders.BoundsOrder;
 import com.sshtools.javardp.orders.Brush;
@@ -32,7 +32,9 @@ import com.sshtools.javardp.orders.Text2Order;
 import com.sshtools.javardp.orders.TriBltOrder;
 
 public class Orders {
-	static Log logger = LogFactory.getLog(Orders.class);
+
+	static Logger logger = LoggerFactory.getLogger(Orders.class);
+
 	private OrderState os = null;
 	private RdesktopCanvas surface = null;
 	public static Cache cache = null;

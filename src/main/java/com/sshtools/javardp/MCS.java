@@ -14,14 +14,16 @@ package com.sshtools.javardp;
 import java.io.EOFException;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.rdp5.VChannels;
 
 public class MCS {
-	static Log logger = LogFactory.getLog(MCS.class);
+	
+	static Logger logger = LoggerFactory.getLogger(MCS.class);
+
 	private ISO isoLayer = null;
 	private int McsUserID;
 	/* this for the MCS Layer */

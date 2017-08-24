@@ -14,12 +14,12 @@ package com.sshtools.javardp;
 
 import java.awt.image.IndexColorModel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Cache {
 
-	protected static Log logger = LogFactory.getLog(Rdp.class);
+	static Logger logger = LoggerFactory.getLogger(Cache.class);
 
 	private static final int RDPCACHE_COLOURMAPSIZE = 0x06; // unified patch
 

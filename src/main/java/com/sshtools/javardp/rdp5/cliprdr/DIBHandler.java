@@ -19,16 +19,17 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.ImageObserver;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Input;
 import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.Utilities;
 
 public class DIBHandler extends TypeHandler implements ImageObserver {
-	protected static Log logger = LogFactory.getLog(Input.class);
+	
+	static Logger logger = LoggerFactory.getLogger(DIBHandler.class);
+	
 	private IContext context;
 
 	public DIBHandler(IContext context) {

@@ -21,8 +21,8 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.keymapping.KeyCode;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
@@ -39,7 +39,9 @@ import com.sshtools.javardp.orders.TriBltOrder;
 
 // import org.apache.log4j.NDC;
 public class RdesktopCanvas {
-	static Log logger = LogFactory.getLog(RdesktopCanvas.class);
+
+	static Logger logger = LoggerFactory.getLogger(RdesktopCanvas.class);
+
 	private RasterOp rop = null;
 	Display backstore;
 	// Graphics backstore_graphics;

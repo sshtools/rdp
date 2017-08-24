@@ -12,31 +12,29 @@
  *          an individual packet at all relevant levels.
  */
 // Created on 03-Sep-2003
-
 package com.sshtools.javardp;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RdpPacket {
-	static Log logger = LogFactory.getLog(RdpPacket.class);
-
+	
+	static Logger logger = LoggerFactory.getLogger(RdpPacket.class);
+	
 	/* constants for Packet */
 	public static final int MCS_HEADER = 1;
 	public static final int SECURE_HEADER = 2;
 	public static final int RDP_HEADER = 3;
 	public static final int CHANNEL_HEADER = 4;
-
 	protected int mcs = -1;
 	protected int secure = -1;
 	protected int rdp = -1;
 	protected int channel = -1;
 	protected int start = -1;
 	protected int end = -1;
-	
 	private ByteBuffer bb = null;
 	private int size = 0;
 
@@ -161,7 +159,6 @@ public class RdpPacket {
 	 */
 	public void outUnicodeString(String str, int len) {
 		int i = 0, j = 0;
-
 		if (str.length() != 0) {
 			char[] name = str.toCharArray();
 			while (i < len) {
@@ -263,10 +260,8 @@ public class RdpPacket {
 		}
 		// store position
 		int oldpos = getPosition();
-
 		setPosition(mem_offset);
 		bb.put(array, array_offset, len);
-
 		// restore position
 		setPosition(oldpos);
 	}
@@ -286,13 +281,11 @@ public class RdpPacket {
 			throw new ArrayIndexOutOfBoundsException("Not enough bytes in array to copy!");
 		if (mem_offset + len > bb.capacity())
 			throw new ArrayIndexOutOfBoundsException("Memory accessed out of Range!");
-
 		int oldpos = getPosition();
 		setPosition(mem_offset);
 		bb.get(array, array_offset, len);
 		setPosition(oldpos);
 	}
-
 
 	/**
 	 * Copy data from this packet to another packet
@@ -383,7 +376,6 @@ public class RdpPacket {
 		return bb.getShort();
 	}
 
-
 	/**
 	 * Read a 2-byte, big-endian integer value from a specified offset in the
 	 * packet
@@ -396,7 +388,6 @@ public class RdpPacket {
 		return bb.getShort(where);
 	}
 
-
 	/**
 	 * Read a 2-byte, big-endian integer value from the packet (at current
 	 * read/write position)
@@ -408,7 +399,6 @@ public class RdpPacket {
 		return bb.getShort();
 	}
 
-
 	/**
 	 * Write a 2-byte, little-endian integer value to packet at specified offset
 	 * 
@@ -419,7 +409,6 @@ public class RdpPacket {
 		bb.order(ByteOrder.LITTLE_ENDIAN);
 		bb.putShort(where, (short) what);
 	}
-
 
 	/**
 	 * Write a 2-byte, little-endian integer value to packet at current
@@ -442,7 +431,6 @@ public class RdpPacket {
 		bb.order(ByteOrder.BIG_ENDIAN);
 		bb.putShort(where, (short) what);
 	}
-
 
 	/**
 	 * Write a 2-byte, big-endian integer value to packet at current read/write
@@ -467,7 +455,6 @@ public class RdpPacket {
 		return bb.getInt(where);
 	}
 
-
 	/**
 	 * Read a 3-byte, little-endian integer value from the packet (at current
 	 * read position)
@@ -478,7 +465,6 @@ public class RdpPacket {
 		bb.order(ByteOrder.LITTLE_ENDIAN);
 		return bb.getInt();
 	}
-
 
 	/**
 	 * Read a 3-byte, big-endian integer value from a specified offset in the
@@ -492,7 +478,6 @@ public class RdpPacket {
 		return bb.getInt(where);
 	}
 
-
 	/**
 	 * Read a 3-byte, big-endian integer value from the packet (at current
 	 * read/write position)
@@ -503,7 +488,6 @@ public class RdpPacket {
 		bb.order(ByteOrder.BIG_ENDIAN);
 		return bb.getInt();
 	}
-
 
 	/**
 	 * Write a 3-byte, little-endian integer value to packet at specified offset
@@ -526,7 +510,6 @@ public class RdpPacket {
 		bb.order(ByteOrder.LITTLE_ENDIAN);
 		bb.putInt(what);
 	}
-
 
 	/**
 	 * Write a 3-byte, big-endian integer value to packet at specified offset
@@ -556,13 +539,11 @@ public class RdpPacket {
 	 * @param length Number of bytes to advance read position by
 	 */
 	public void incrementPosition(int length) {
-
 		if (length > bb.capacity() || length + bb.position() > bb.capacity() || length < 0) {
 			throw new ArrayIndexOutOfBoundsException();
 		}
 		bb.position(bb.position() + length);
 	}
-
 
 	/**
 	 * Set current read/write position

@@ -1,6 +1,5 @@
 package com.sshtools.javardp;
 
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Image;
@@ -11,7 +10,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.ImageProducer;
 import java.awt.image.IndexColorModel;
 
 public interface Display {

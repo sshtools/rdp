@@ -21,14 +21,11 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import com.sshtools.javardp.Input;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClipBMP extends Component {
-
-	protected static Log logger = LogFactory.getLog(Input.class);
+	static Logger logger = LoggerFactory.getLogger(ClipBMP.class);
 
 	// --- Private constants
 	private final static int BITMAPFILEHEADER_SIZE = 14;

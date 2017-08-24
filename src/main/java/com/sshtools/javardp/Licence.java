@@ -16,13 +16,16 @@ package com.sshtools.javardp;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.crypto.RC4;
 
 public class Licence {
+
+	static Logger logger = LoggerFactory.getLogger(Licence.class);
+	
 	private Secure secure = null;
 	private Options options;
 
@@ -36,7 +39,7 @@ public class Licence {
 	private byte[] licence_key = null;
 	private byte[] licence_sign_key = null;
 	private byte[] in_token = null, in_sig = null;
-	static Log logger = LogFactory.getLog(Licence.class);
+
 	/* constants for the licence negotiation */
 	private static final int LICENCE_TOKEN_SIZE = 10;
 	private static final int LICENCE_HWID_SIZE = 20;

@@ -23,13 +23,16 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.rdp5.VChannels;
 
 public class Rdp {
+	
+	static Logger logger = LoggerFactory.getLogger(Rdp.class);
+	
 	public static int RDP5_DISABLE_NOTHING = 0x00;
 	public static int RDP5_NO_WALLPAPER = 0x01;
 	public static int RDP5_NO_FULLWINDOWDRAG = 0x02;
@@ -40,7 +43,6 @@ public class Rdp {
 														 * disables cursor
 														 * blinking
 														 */
-	protected static Log logger = LogFactory.getLog(Rdp.class);
 	/* constants for RDP Layer */
 	public static final int RDP_LOGON_NORMAL = 0x33;
 	public static final int RDP_LOGON_AUTO = 0x8;

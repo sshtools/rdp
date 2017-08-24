@@ -14,10 +14,9 @@ package com.sshtools.javardp.rdp5;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.Input;
 import com.sshtools.javardp.MCS;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdesktopException;
@@ -26,8 +25,8 @@ import com.sshtools.javardp.crypto.CryptoException;
 
 public class VChannels {
 
-	protected static Log logger = LogFactory.getLog(Input.class);
-
+	static Logger logger = LoggerFactory.getLogger(VChannels.class);
+	
 	/* Sound format constants */
 	public static final int WAVE_FORMAT_PCM = 1;
 

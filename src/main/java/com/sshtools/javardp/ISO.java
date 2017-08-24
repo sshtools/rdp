@@ -11,14 +11,16 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.rdp5.Rdp5;
 
 public class ISO {
-	static Log logger = LogFactory.getLog(ISO.class);
+
+	static Logger logger = LoggerFactory.getLogger(ISO.class);
+
 	private HexDump dump = null;
 	private DataInputStream in = null;
 	private DataOutputStream out = null;

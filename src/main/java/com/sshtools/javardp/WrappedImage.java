@@ -28,13 +28,14 @@ import javax.swing.JComponent;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WrappedImage extends JComponent implements Display, Scrollable {
-	static Log logger = LogFactory.getLog(RdesktopCanvas.class);
-	IndexColorModel cm = null;
-	BufferedImage bi = null;
+	static Logger logger = LoggerFactory.getLogger(WrappedImage.class);
+	private static final long serialVersionUID = 1L;
+	private IndexColorModel cm = null;
+	private BufferedImage bi = null;
 	private Dimension dimension;
 	private RdesktopCanvas canvas;
 
@@ -74,7 +75,7 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 
 	@Override
 	public void setCursor(RdpCursor cursor) {
-		setCursor(cursor == null ? null : ((AWTRdpCursor)cursor).cursor);		
+		setCursor(cursor == null ? null : ((AWTRdpCursor) cursor).getCursor());
 	}
 
 	@Override
@@ -134,8 +135,7 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	/**
 	 * Set the colour model for this Image
 	 * 
-	 * @param cm
-	 *            Colour model for use with this image
+	 * @param cm Colour model for use with this image
 	 */
 	@Override
 	public void setIndexColorModel(IndexColorModel cm) {
@@ -144,9 +144,6 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 
 	@Override
 	public void setRGB(int x, int y, int color) {
-		// if(x >= bi.getWidth() || x < 0 || y >= bi.getHeight() || y < 0)
-		// return;
-
 		if (cm != null)
 			color = cm.getRGB(color);
 		bi.setRGB(x, y, color);
@@ -156,20 +153,13 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	 * Apply a given array of colour values to an area of pixels in the image,
 	 * do not convert for colour model
 	 * 
-	 * @param x
-	 *            x-coordinate for left of area to set
-	 * @param y
-	 *            y-coordinate for top of area to set
-	 * @param cx
-	 *            width of area to set
-	 * @param cy
-	 *            height of area to set
-	 * @param data
-	 *            array of pixel colour values to apply to area
-	 * @param offset
-	 *            offset to pixel data in data
-	 * @param w
-	 *            width of a line in data (measured in pixels)
+	 * @param x x-coordinate for left of area to set
+	 * @param y y-coordinate for top of area to set
+	 * @param cx width of area to set
+	 * @param cy height of area to set
+	 * @param data array of pixel colour values to apply to area
+	 * @param offset offset to pixel data in data
+	 * @param w width of a line in data (measured in pixels)
 	 */
 	@Override
 	public void setRGBNoConversion(int x, int y, int cx, int cy, int[] data, int offset, int w) {
@@ -192,9 +182,6 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 
 	@Override
 	public int getRGB(int x, int y) {
-		// if(x >= this.getWidth() || x < 0 || y >= this.getHeight() || y < 0)
-		// return 0;
-
 		if (cm == null)
 			return bi.getRGB(x, y);
 		else {
@@ -202,8 +189,8 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 			int[] vals = { (pix >> 16) & 0xFF, (pix >> 8) & 0xFF, (pix) & 0xFF };
 			int out = cm.getDataElement(vals, 0);
 			if (cm.getRGB(out) != bi.getRGB(x, y))
-				logger.info("Did not get correct colour value for color (" + Integer.toHexString(pix) + "), got ("
-						+ cm.getRGB(out) + ") instead");
+				logger.info("Did not get correct colour value for color (" + Integer.toHexString(pix) + "), got (" + cm.getRGB(out)
+						+ ") instead");
 			return out;
 		}
 	}
@@ -240,23 +227,21 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	public void init(RdesktopCanvas canvas) {
 		this.canvas = canvas;
 		enableEvents(AWTEvent.FOCUS_EVENT_MASK | AWTEvent.ACTION_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK
-				| AWTEvent.MOUSE_EVENT_MASK);
+				| AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_WHEEL_EVENT_MASK);
 		enableEvents(AWTEvent.KEY_EVENT_MASK);
 		setFocusable(true);
 		setFocusTraversalKeysEnabled(false);
 	}
-	
-	class AWTRdpCursor extends RdpCursor {
 
+	class AWTRdpCursor extends RdpCursor {
 		private Cursor cursor;
 
 		public AWTRdpCursor(Point hotspot, String name, Image data) {
 			super(hotspot, name, data);
-			// TODO Auto-generated constructor stub
 		}
-		
+
 		Cursor getCursor() {
-			if(cursor == null) {
+			if (cursor == null) {
 				cursor = Toolkit.getDefaultToolkit().createCustomCursor(getData(), getHotspot(), getName());
 			}
 			return cursor;

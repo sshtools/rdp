@@ -21,16 +21,14 @@ import java.awt.event.FocusListener;
 import java.io.IOException;
 import java.util.Iterator;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.CommunicationMonitor;
 import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Input;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.Secure;
 import com.sshtools.javardp.crypto.CryptoException;
@@ -38,9 +36,12 @@ import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
 
 public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwner, FocusListener {
+
+	static Logger logger = LoggerFactory.getLogger(ClipChannel.class);
+	
 	String[] types = { "unused", "CF_TEXT", "CF_BITMAP", "CF_METAFILEPICT", "CF_SYLK", "CF_DIF", "CF_TIFF", "CF_OEMTEXT", "CF_DIB",
 		"CF_PALETTE", "CF_PENDATA", "CF_RIFF", "CF_WAVE", "CF_UNICODETEXT", "CF_ENHMETAFILE", "CF_HDROP", "CF_LOCALE", "CF_MAX" };
-	protected static Log logger = LogFactory.getLog(Input.class);
+	
 	// Message types
 	public static final int CLIPRDR_CONNECT = 1;
 	public static final int CLIPRDR_FORMAT_ANNOUNCE = 2;

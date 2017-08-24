@@ -16,17 +16,19 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.IndexColorModel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Bitmap {
+	
+	static Logger logger = LoggerFactory.getLogger(Bitmap.class);
+	
 	public int usage;
 	private int[] highdata = null;
 	private int width = 0;
 	private int height = 0;
 	private int x = 0;
 	private int y = 0;
-	protected static Log logger = LogFactory.getLog(Rdp.class);
 
 	public static int convertTo24(Options options, int colour) {
 		if (options.server_bpp == 15)
@@ -253,8 +255,8 @@ public class Bitmap {
 	 *         specified coordinates
 	 * @throws RdesktopException
 	 */
-	public static Display decompressImgDirect(Options options, int width, int height, int size, RdpPacket data,
-			int Bpp, IndexColorModel cm, int left, int top, Display w) throws RdesktopException {
+	public static Display decompressImgDirect(Options options, int width, int height, int size, RdpPacket data, int Bpp,
+			IndexColorModel cm, int left, int top, Display w) throws RdesktopException {
 		// WrappedImage w = null;
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);
@@ -632,8 +634,8 @@ public class Bitmap {
 	 * @return Decompressed bitmap as Image object
 	 * @throws RdesktopException
 	 */
-	public static Image decompressImg(Options options, int width, int height, int size, RdpPacket data, int Bpp,
-			IndexColorModel cm) throws RdesktopException {
+	public static Image decompressImg(Options options, int width, int height, int size, RdpPacket data, int Bpp, IndexColorModel cm)
+			throws RdesktopException {
 		Display w = null;
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);

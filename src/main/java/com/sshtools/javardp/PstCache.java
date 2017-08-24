@@ -16,11 +16,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PstCache {
-	protected static Log logger = LogFactory.getLog(Rdp.class);
+
+	static Logger logger = LoggerFactory.getLogger(PstCache.class);
+
 	public static final int MAX_CELL_SIZE = 0x1000; /* pixels */
 
 	protected static boolean IS_PERSISTENT(int id) {
