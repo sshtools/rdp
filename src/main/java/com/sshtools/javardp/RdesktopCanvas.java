@@ -634,8 +634,8 @@ public class RdesktopCanvas {
 		cy = clipbottom - y + 1;
 		srcx += x - memblt.getX();
 		srcy += y - memblt.getY();
-		if (logger.isInfoEnabled())
-			logger.info("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy + " opcode="
+		if (logger.isDebugEnabled())
+			logger.debug("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy + " opcode="
 					+ memblt.getOpcode());
 		try {
 			Bitmap bitmap = cache.getBitmap(memblt.getCacheID(), memblt.getCacheIDX());
@@ -690,8 +690,9 @@ public class RdesktopCanvas {
 			src = new int[cx * cy];
 			for (i = 0; i < src.length; i++)
 				src[i] = fgcolor;
-			logger.info("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " width=" + this.width + " height=" + this.height
-					+ " imgwidth=" + backstore.getDisplayWidth() + " imgheight=" + backstore.getDisplayHeight());
+			if(logger.isDebugEnabled())
+				logger.debug("x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " width=" + this.width + " height=" + this.height
+						+ " imgwidth=" + backstore.getDisplayWidth() + " imgheight=" + backstore.getDisplayHeight());
 			rop.do_array(opcode, backstore, this.width, x, y, cx, cy, src, cx, 0, 0);
 			backstore.repaint(x, y, cx, cy);
 			break;
@@ -1149,7 +1150,8 @@ public class RdesktopCanvas {
 	 * @return Generated Cursor object
 	 */
 	protected RdpCursor createCustomCursor(Image wincursor, Point p, String s, int cache_idx) {
-		logger.info(String.format("Creating custom cursor at %s (cached %d)", p, cache_idx));
+		if(logger.isDebugEnabled())
+			logger.debug(String.format("Creating custom cursor at %s (cached %d)", p, cache_idx));
 		return backstore.createCursor("", p, wincursor);
 	}
 

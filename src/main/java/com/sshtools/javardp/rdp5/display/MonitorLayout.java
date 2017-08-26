@@ -18,6 +18,15 @@ public class MonitorLayout {
 	private int desktopScale = 100;
 	private int deviceScale = 100;
 
+	public MonitorLayout(boolean primary, int left, int top, int width, int height) {
+		super();
+		this.primary = primary;
+		this.left = left;
+		this.top = top;
+		this.width = width;
+		this.height = height;
+	}
+
 	public boolean isPrimary() {
 		return primary;
 	}
