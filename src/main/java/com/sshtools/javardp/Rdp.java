@@ -30,9 +30,7 @@ import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.rdp5.VChannels;
 
 public class Rdp {
-	
 	static Logger logger = LoggerFactory.getLogger(Rdp.class);
-	
 	public static int RDP5_DISABLE_NOTHING = 0x00;
 	public static int RDP5_NO_WALLPAPER = 0x01;
 	public static int RDP5_NO_FULLWINDOWDRAG = 0x02;
@@ -122,6 +120,25 @@ public class Rdp {
 	public static final int BMPCACHE2_C1_CELLS = 0x78;
 	public static final int BMPCACHE2_C2_CELLS = 0x150;
 	public static final int BMPCACHE2_NUM_PSTCELLS = 0x9f6;
+	
+	/* Keyboard types  */
+	public final static int KEYBOARD_TYPE_IBM_PC_XT = 0x00000001; 
+	public final static int KEYBOARD_TYPE_OLIVETTI_ICO = 0x00000002;
+	public final static int KEYBOARD_TYPE_IBM_PC_AT = 0x00000003;
+	public final static int KEYBOARD_TYPE_IBM_102_OR_102 = 0x00000004;
+	public final static int KEYBOARD_TYPE_NOKIA_1050 = 0x00000005;
+	public final static int KEYBOARD_TYPE_NOKIA_9140 = 0x00000006;
+	public final static int KEYBOARD_TYPE_JAPANESE = 0x00000007;
+	
+	/* Connection types */
+	public final static byte CONNECTION_TYPE_MODEM = 0x01;
+	public final static byte CONNECTION_TYPE_BROADBAND_LOW = 0x02;
+	public final static byte CONNECTION_TYPE_SATELLITE = 0x03;
+	public final static byte CONNECTION_TYPE_BROADBAND_HIGH = 0x0;
+	public final static byte CONNECTION_TYPE_WAN = 0x05;
+	public final static byte CONNECTION_TYPE_LAN = 0x06;
+	public final static byte CONNECTION_TYPE_AUTODETECT = 0x08;
+	
 	private static final int RDP5_FLAG = 0x0030;
 	private static final byte[] RDP_SOURCE = { (byte) 0x4D, (byte) 0x53, (byte) 0x54, (byte) 0x53, (byte) 0x43, (byte) 0x00 }; // string
 	// MSTSC
@@ -383,6 +400,7 @@ public class Rdp {
 			return stream;
 		}
 		type[0] = this.stream.getLittleEndian16() & 0xf;
+		logger.info("receive " + type[0]);
 		if (stream.getPosition() != stream.getEnd()) {
 			stream.incrementPosition(2);
 		}
@@ -500,7 +518,7 @@ public class Rdp {
 				this.processDemandActive(data);
 				// can use this to trigger things that have to be done before
 				// 1st order
-				logger.debug("ready to send (got past licence negotiation)");
+				logger.info("Past license negotiation");
 				context.setReadyToSend();
 				context.triggerReadyToSend();
 				deactivated[0] = false;
@@ -725,13 +743,13 @@ public class Rdp {
 		this.sendSynchronize();
 		this.sendControl(RDP_CTL_COOPERATE);
 		this.sendControl(RDP_CTL_REQUEST_CONTROL);
+		this.sendFonts(1);
+		this.sendFonts(2);
 		this.receive(type); // Receive RDP_PDU_SYNCHRONIZE
 		this.receive(type); // Receive RDP_CTL_COOPERATE
 		this.receive(type); // Receive RDP_CTL_GRANT_CONTROL
-		this.sendInput(0, RDP_INPUT_SYNCHRONIZE, 0, 0, 0);
-		this.sendFonts(1);
-		this.sendFonts(2);
-		this.receive(type); // Receive an unknown PDU Code = 0x28
+		this.receive(type); // Receive TS_FONT_MAP_PDU (0x28)
+		logger.info("reset order state");
 		this.orders.resetOrderState();
 	}
 
@@ -1099,7 +1117,7 @@ public class Rdp {
 		data.setLittleEndian16(param1);
 		data.setLittleEndian16(param2);
 		data.markEnd();
-		// logger.info("input");
+		 logger.info("input");
 		// if(logger.isInfoEnabled()) logger.info(data);
 		try {
 			this.sendData(data, RDP_DATA_PDU_INPUT);
@@ -1348,9 +1366,11 @@ public class Rdp {
 	}
 
 	protected void process_cached_pointer_pdu(RdpPacket data) throws RdesktopException {
-		logger.debug("Rdp.RDP_POINTER_CACHED");
+		if (logger.isDebugEnabled())
+			logger.debug("Rdp.RDP_POINTER_CACHED");
 		int cache_idx = data.getLittleEndian16();
-		logger.info(String.format("Setting cache cursor %d", cache_idx));
+		if (logger.isDebugEnabled())
+			logger.debug(String.format("Setting cache cursor %d", cache_idx));
 		surface.getDisplay().setCursor(cache.getCursor(cache_idx));
 	}
 

@@ -36,6 +36,11 @@ public class Options {
 	public boolean remap_hash = true;
 	public boolean useLockingKeyState = true;
 	public boolean use_rdp5 = true;
+	public int keyboardType = Rdp.KEYBOARD_TYPE_IBM_102_OR_102;
+	public int keyboardSubtype = 0;
+	public int functionKeys = 12;
+	public int connectionType = Rdp.CONNECTION_TYPE_WAN;
+	public String imeFileName = "";
 	public int server_bpp = 24; // Bits per pixel
 	public int Bpp = (server_bpp + 7) / 8; // Bytes per pixel
 	public int bpp_mask = 0xFFFFFF >> 8 * (3 - Bpp); // Correction value to
@@ -78,7 +83,7 @@ public class Options {
 	public boolean hide_decorations = false;
 	public boolean console_session = false;
 	public boolean owncolmap;
-	public boolean use_ssl = false;
+	public boolean use_ssl = true;
 	public boolean map_clipboard = true;
 	public boolean color_pointer = true;
 	public int pointer_cache_size = 20;

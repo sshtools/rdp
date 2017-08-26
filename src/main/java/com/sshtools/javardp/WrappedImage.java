@@ -36,12 +36,10 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	private static final long serialVersionUID = 1L;
 	private IndexColorModel cm = null;
 	private BufferedImage bi = null;
-	private Dimension dimension;
 	private RdesktopCanvas canvas;
 
 	public WrappedImage(int width, int height, int imgType) {
 		bi = new BufferedImage(width, height, imgType);
-		dimension = new Dimension(width, height);
 	}
 
 	public WrappedImage(int width, int height, int imgType, IndexColorModel cm) {
@@ -52,7 +50,8 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	@Override
 	public void update(Graphics g) {
 		Rectangle r = g.getClipBounds();
-		logger.info("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
+		if (logger.isDebugEnabled())
+			logger.info("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
 		int w = r.width;
 		int h = r.height;
 		if (r.x + w > getDisplayWidth()) {
@@ -85,7 +84,7 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 
 	@Override
 	public Dimension getPreferredSize() {
-		return (dimension);
+		return bi == null ? new Dimension(0, 0) : new Dimension(bi.getWidth(), bi.getHeight());
 	}
 
 	@Override
@@ -197,9 +196,8 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 
 	@Override
 	public void resizeDisplay(Dimension dimension) {
-		this.dimension = new Dimension(dimension);
 		BufferedImage bim = bi;
-		bi = new BufferedImage(dimension.width, dimension.height, bi.getType());
+		bi = new BufferedImage(Math.max(dimension.width, 1), Math.max(dimension.height, 1), bi.getType());
 		bi.getGraphics().drawImage(bim, 0, 0, null);
 	}
 

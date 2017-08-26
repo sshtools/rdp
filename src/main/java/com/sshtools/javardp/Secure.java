@@ -153,31 +153,36 @@ public class Secure {
 			hostlen = 30;
 		}
 		int length = 158;
-		if (options.use_rdp5)
-			length += 76 + 12 + 4;
-		if (options.use_rdp5 && (channels.num_channels() > 0))
-			length += channels.num_channels() * 12 + 8;
+		if (options.use_rdp5) {
+			length += 94 +  4;
+			if (channels.num_channels() > 0)
+				length += channels.num_channels() * 12 + 8;
+		}
 		buffer.setBigEndian16(5); /* unknown */
 		buffer.setBigEndian16(0x14);
 		buffer.set8(0x7c);
 		buffer.setBigEndian16(1);
+		
 		buffer.setBigEndian16(length | 0x8000); // remaining length
 		buffer.setBigEndian16(8); // length?
 		buffer.setBigEndian16(16);
 		buffer.set8(0);
+		
+		/// Clinet Core Data CS_CORE 0xc001
 		buffer.setLittleEndian16(0xc001);
 		buffer.set8(0);
 		buffer.setLittleEndian32(0x61637544); // "Duca" ?!
 		buffer.setBigEndian16(length - 14 | 0x8000); // remaining length
+		
 		// Client information
 		buffer.setLittleEndian16(SEC_TAG_CLI_INFO);
-		buffer.setLittleEndian16(options.use_rdp5 ? 212 : 136); // length
-		buffer.setLittleEndian16(options.use_rdp5 ? 4 : 1);
-		buffer.setLittleEndian16(8);
+		buffer.setLittleEndian16(options.use_rdp5 ? 218 : 136); // length
+		buffer.setLittleEndian16(options.use_rdp5 ? 4 : 1); // minor
+		buffer.setLittleEndian16(8); // major
 		buffer.setLittleEndian16(options.width);
 		buffer.setLittleEndian16(options.height);
-		buffer.setLittleEndian16(0xca01);
-		buffer.setLittleEndian16(0xaa03);
+		buffer.setLittleEndian16(0xca01); // 8bpp
+		buffer.setLittleEndian16(0xaa03); // SASSequence
 		buffer.setLittleEndian32(options.keylayout);
 		buffer.setLittleEndian32(options.use_rdp5 ? 2600 : 419); // or 0ece //
 		// client
@@ -188,21 +193,51 @@ public class Secure {
 		/* Unicode name of client, padded to 32 bytes */
 		buffer.outUnicodeString(options.hostname.toUpperCase(), hostlen);
 		buffer.incrementPosition(30 - hostlen);
-		buffer.setLittleEndian32(4);
-		buffer.setLittleEndian32(0);
-		buffer.setLittleEndian32(12);
-		buffer.incrementPosition(64); /* reserved? 4 + 12 doublewords */
-		buffer.setLittleEndian16(0xca01); // out_uint16_le(s, 0xca01);
-		buffer.setLittleEndian16(options.use_rdp5 ? 1 : 0);
+		buffer.setLittleEndian32(options.keyboardType);
+		buffer.setLittleEndian32(options.keyboardSubtype);
+		buffer.setLittleEndian32(options.functionKeys); // number of function keys
+
+//		int imelen = 2 * (options.imeFileName == null ? 0 : options.imeFileName.length());
+//		if (imelen > 62) {
+//			hostlen = 62;
+//		}
+//		buffer.outUnicodeString(options.imeFileName, imelen);
+//		buffer.incrementPosition(62 - imelen);
+		buffer.incrementPosition(64);
+		
+		
+		buffer.setLittleEndian16(0xca01); // 8bpp (postBeta2ColorDepth)
+		buffer.setLittleEndian16(options.use_rdp5 ? 1 : 0); // clientProductID
 		if (options.use_rdp5) {
-			buffer.setLittleEndian32(0); // out_uint32(s, 0);
-			buffer.set8(options.server_bpp); // out_uint8(s, g_server_bpp);
-			buffer.setLittleEndian16(0x0700); // out_uint16_le(s, 0x0700);
-			buffer.set8(0); // out_uint8(s, 0);
-			buffer.setLittleEndian32(1); // out_uint32_le(s, 1);
-			buffer.incrementPosition(64);
-			buffer.setLittleEndian16(SEC_TAG_CLI_4); // out_uint16_le(s,
-			// SEC_TAG_CLI_4);
+			buffer.setLittleEndian32(0); // serialNumber
+			boolean thirtyTwoBitColor = false;
+			if(options.server_bpp >= 32) {
+				options.server_bpp = 24;
+				thirtyTwoBitColor = true;
+			}
+			buffer.setLittleEndian16(options.server_bpp); // highColorDepth
+			buffer.setLittleEndian16(options.server_bpp); // supportedColorDepths
+
+			// early caps
+			// RNS_UD_CS_SUPPORT_MONITOR_LAYOUT_PDU	0x0040 - TODO
+			// RNS_UD_CS_VALID_CONNECTION_TYPE 0x0020
+			// RNS_UD_CS_SUPPORT_NETCHAR_AUTODETECT 0x0080 - TODO 
+			// RNS_UD_CS_WANT_32BPP_SESSION  0x0002
+			//int earlyCaps = 0x0040 | 0x0020 | 0x0080 TODO need to support autodetect PDUs;
+			// int earlyCaps = 0x0040 | 0x0020 | 0x0080;
+			// int earlyCaps = 0x0020;
+			 int earlyCaps = 0x0000;
+			if(thirtyTwoBitColor)
+				earlyCaps = earlyCaps | 0x0002;
+			buffer.setLittleEndian16(earlyCaps); // supportedColorDepths
+			buffer.incrementPosition(64); // clientDigProductID
+			if(options.connectionType == Rdp.CONNECTION_TYPE_AUTODETECT && (earlyCaps & 0x0080 ) == 0)
+				throw new IllegalStateException("TODO Cannot use autodetect with support for detection PDUs.");
+			buffer.set8(options.connectionType);
+			buffer.incrementPosition(1); // pad
+			buffer.setLittleEndian32(options.use_ssl ? 0x00000001 : 0);
+			
+			buffer.setLittleEndian16(SEC_TAG_CLI_4); // out_uint16_le(s,// SEC_TAG_CLI_4);
 			buffer.setLittleEndian16(12); // out_uint16_le(s, 12);
 			buffer.setLittleEndian32(options.console_session ? 0xb : 0xd); // out_uint32_le(s,
 			// g_console_session
@@ -297,7 +332,7 @@ public class Secure {
 	private void processSrvInfo(RdpPacket mcs_data) {
 		options.server_rdp_version = mcs_data.getLittleEndian16(); // in_uint16_le(s,
 		// g_server_rdp_version);
-		logger.debug(("Server RDP version is " + options.server_rdp_version));
+		logger.info(("Server RDP version is " + options.server_rdp_version));
 		if (1 == options.server_rdp_version)
 			options.use_rdp5 = false;
 	}

@@ -85,11 +85,19 @@ public class ISO {
 		this.out = new DataOutputStream(new BufferedOutputStream(
 				io.getOutputStream()));
 		send_connection_request();
-		receiveMessage(code);
+		RdpPacket neg = receiveMessage(code);
 		if (code[0] != CONNECTION_CONFIRM) {
 			throw new RdesktopException("Expected CC got:"
 					+ Integer.toHexString(code[0]).toUpperCase());
 		}
+		if(neg.get8() != 0x02)
+			throw new RdesktopException("Was expecting negotiation response");
+		
+		neg.incrementPosition(1); // negotation flags
+		neg.incrementPosition(2); // length, always 8
+		int selectedProtocol = neg.getLittleEndian32();
+		logger.info("Selected protocol " + selectedProtocol); 
+		options.use_ssl = ( selectedProtocol & 0x00000001 ) != 0;
 		/*
 		 * if(Options.use_ssl){ try { rdpsock = this.negotiateSSL(rdpsock);
 		 * this.in = new DataInputStream(rdpsock.getInputStream()); this.out=
@@ -317,7 +325,7 @@ public class ISO {
 		if (uname.length() > 9)
 			uname = uname.substring(0, 9);
 		int length = 11 + (options.username.length() > 0 ? ("Cookie: mstshash="
-				.length() + uname.length() + 2) : 0) + 8;
+				.length() + uname.length() + 2) : 0) + 8 + 8;
 		RdpPacket buffer = new RdpPacket(length);
 		byte[] packet = new byte[length];
 		buffer.set8(PROTOCOL_VERSION); // send Version Info
@@ -333,9 +341,16 @@ public class ISO {
 			logger.debug("Including username");
 			buffer.out_uint8p("Cookie: mstshash=", "Cookie: mstshash=".length());
 			buffer.out_uint8p(uname, uname.length());
-			buffer.set8(0x0d); // unknown
-			buffer.set8(0x0a); // unknown
+			buffer.set8(0x0d); // terminator for cookie 1
+			buffer.set8(0x0a); // terminator for cookie 2
 		}
+		
+		/* Negotiation request */
+		buffer.set8(0x01);
+		buffer.set8(0); // 0x01 for admin mode, 0x02 for redirected auth, 0x08 for correlation info present
+		buffer.setLittleEndian16(8);
+		buffer.setLittleEndian32(options.use_ssl ? 0x01 : 0); // Standard + SSL - TODO there are others that could be supported here
+		
 		/*
 		 * // Authentication request? buffer.setLittleEndian16(0x01);
 		 * buffer.setLittleEndian16(0x08); // Do we try to use SSL?
