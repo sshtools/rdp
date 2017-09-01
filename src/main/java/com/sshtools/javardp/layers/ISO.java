@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.net.Socket;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -28,6 +30,7 @@ import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.OrderException;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.io.DefaultIO;
@@ -92,22 +95,41 @@ public class ISO {
 			int flags = neg.get8(); // negotiation flags
 			neg.incrementPosition(2); // length, always 8
 			int selectedProtocol = neg.getLittleEndian32();
-			logger.info("Selected protocol " + selectedProtocol + ", flags = " + flags);
 			state.setNegotiated();
-			if ((selectedProtocol & 0x00000001) != 0)
-				state.setSsl(true);
+			SecurityType[] supportedTypes = SecurityType.fromMasks(selectedProtocol);
+			List<SecurityType> t = Arrays.asList(supportedTypes);
+			logger.info(String.format("Server supports: %s", t));
+			SecurityType wanted = state.getSecurityType();
+			if(!t.contains(wanted)) {
+				int ord = wanted.ordinal();
+				ord--;
+				SecurityType alt = null;
+				if(ord > 0) {
+					alt = SecurityType.values()[ord];
+				}
+				else {
+					ord += 2;
+					if(ord < SecurityType.values().length)
+						alt = SecurityType.values()[ord];
+					else 
+						alt = SecurityType.STANDARD;
+				}
+				logger.warn(String.format("Server does not support requested security type %s, downgrading to %s.", wanted, alt));
+				state.setSecurityType(alt);
+			}
 		} else {
 			if(state.isRDP5()) {
 				logger.info("Downgrading to RDP4 because no negotiation.");
 				state.setRDP5(false);
 				state.setServerBpp(8);
 			}
-			if (state.isSsl()) {
-				logger.info("Disabling SSL as server did not negotiate.");
-				state.setSsl(false);
+			if (state.getSecurityType().ordinal() > SecurityType.STANDARD.ordinal()) {
+				logger.info("Downgrading security type to %s from %s because no negotiation.");
+				state.setSecurityType(SecurityType.STANDARD);
 			}
 		}
-		if (state.isSsl()) {
+		if (state.getSecurityType().isSSL()) {
+			logger.info("Protocol requires SSL, instantiating.");
 			try {
 				this.io = this.negotiateSSL(this.io);
 				this.in = new DataInputStream(this.io.getInputStream());
@@ -115,6 +137,11 @@ public class ISO {
 				logger.info("SSL handshake completed.");
 			} catch (Exception e) {
 				throw new RdesktopException("SSL negotiation failed: " + e.getMessage(), e);
+			}
+			
+			if(state.getSecurityType() == SecurityType.HYBRID) {
+				/* Start CredSSP! */
+				
 			}
 		}
 	}
@@ -285,15 +312,7 @@ public class ISO {
 			buffer.set8(0); // 0x01 for admin mode, 0x02 for redirected auth,
 							// 0x08 for correlation info present
 			buffer.setLittleEndian16(8);
-			buffer.setLittleEndian32(state.isSsl() ? 0x01 : 0); // Standard +
-																// SSL -
-																// TODO
-																// there are
-																// others
-																// that
-																// could be
-																// supported
-																// here
+			buffer.setLittleEndian32(state.getSecurityType().getMask());
 		}
 		/*
 		 * // Authentication request? buffer.setLittleEndian16(0x01);

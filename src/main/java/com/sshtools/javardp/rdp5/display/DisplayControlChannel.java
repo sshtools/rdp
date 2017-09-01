@@ -6,6 +6,7 @@ import java.util.Collection;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.Secure;
@@ -94,6 +95,6 @@ public class DisplayControlChannel extends VChannel {
 			l.writer(p);
 		}
 		p.markEnd();
-		context.getSecure().send_to_channel(p, state.isEncryption() ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+		context.getSecure().send_to_channel(p, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 	}
 }

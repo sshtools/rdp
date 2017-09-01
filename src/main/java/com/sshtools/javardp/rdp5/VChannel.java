@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.Secure;
@@ -50,7 +51,7 @@ public abstract class VChannel {
 	 */
 	public RdpPacket init(int length) throws RdesktopException {
 		RdpPacket s;
-		s = context.getSecure().init(state.isEncryption() ? Secure.SEC_ENCRYPT : 0, length + 8);
+		s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, length + 8);
 		s.setHeader(RdpPacket.CHANNEL_HEADER);
 		s.incrementPosition(8);
 		return s;
@@ -94,7 +95,7 @@ public abstract class VChannel {
 		num_packets += length - (VChannels.CHANNEL_CHUNK_LENGTH) * num_packets;
 		while (data_offset < length) {
 			int thisLength = Math.min(VChannels.CHANNEL_CHUNK_LENGTH, length - data_offset);
-			RdpPacket s = context.getSecure().init(state.isEncryption() ? Secure.SEC_ENCRYPT : 0, 8 + thisLength);
+			RdpPacket s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 8 + thisLength);
 			s.setLittleEndian32(length);
 			int flags = ((data_offset == 0) ? VChannels.CHANNEL_FLAG_FIRST : 0);
 			if (data_offset + thisLength >= length)
@@ -107,7 +108,7 @@ public abstract class VChannel {
 			s.markEnd();
 			data_offset += thisLength;
 			if (context.getSecure() != null)
-				context.getSecure().send_to_channel(s, state.isEncryption() ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+				context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 		}
 	}
 

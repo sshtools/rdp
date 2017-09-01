@@ -28,6 +28,7 @@ import com.sshtools.javardp.CommunicationMonitor;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.Secure;
@@ -248,7 +249,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	}
 
 	void request_clipboard_data(int formatcode) throws RdesktopException, IOException, CryptoException {
-		RdpPacket s = context.getSecure().init(state.isEncryption() ? Secure.SEC_ENCRYPT : 0, 24);
+		RdpPacket s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 24);
 		s.setLittleEndian32(16); // length
 		int flags = VChannels.CHANNEL_FLAG_FIRST | VChannels.CHANNEL_FLAG_LAST;
 		if ((this.flags() & VChannels.CHANNEL_OPTION_SHOW_PROTOCOL) != 0)
@@ -260,7 +261,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		s.setLittleEndian32(formatcode);
 		s.setLittleEndian32(0); // Unknown. Garbage pad?
 		s.markEnd();
-		context.getSecure().send_to_channel(s, state.isEncryption() ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+		context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 	}
 
 	void send_format_announce() throws RdesktopException, IOException, CryptoException {

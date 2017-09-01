@@ -17,7 +17,7 @@ public class State {
 	private ColorModel colorModel = new DirectColorModel(24, 0xFF0000, 0x00FF00, 0x0000FF);
 	private boolean colorPointer = true;
 	private int colorPointerCacheSize = 20;
-	private boolean encryption = true;
+	private SecurityType securityType = SecurityType.STANDARD;
 	private int height;
 	private boolean negotiated;
 	private Options options;
@@ -25,7 +25,6 @@ public class State {
 	private boolean rdp5;
 	private int serverBpp = 24;
 	private int serverRdpVersion;
-	private boolean ssl;
 	private int width;
 	private boolean licenceIssued = false;
 	private boolean readCert = false;
@@ -82,7 +81,10 @@ public class State {
 		width = options.getWidth();
 		height = options.getHeight();
 		serverBpp = options.getBpp();
-		this.ssl = options.isSsl();
+		if(options.isSsl()) {
+			//securityType = SecurityType.HYBRID;
+			securityType = SecurityType.SSL;
+		}
 		this.rdp5 = options.isRdp5();
 	}
 
@@ -193,8 +195,8 @@ public class State {
 		return colorPointer;
 	}
 
-	public boolean isEncryption() {
-		return encryption;
+	public SecurityType getSecurityType() {
+		return securityType;
 	}
 
 	public boolean isNegotiated() {
@@ -205,10 +207,6 @@ public class State {
 		return rdp5;
 	}
 
-	public boolean isSsl() {
-		return ssl;
-	}
-
 	public void setColorPointer(boolean colorPointer) {
 		this.colorPointer = colorPointer;
 	}
@@ -217,8 +215,8 @@ public class State {
 		this.colorPointerCacheSize = colorPointerCacheSize;
 	}
 
-	public void setEncryption(boolean encryption) {
-		this.encryption = encryption;
+	public void setSecurityType(SecurityType securityType) {
+		this.securityType = securityType;
 	}
 
 	public void setHeight(int height) {
@@ -248,10 +246,6 @@ public class State {
 			LOG.info("Switching to RDP4 because of server version.");
 			rdp5 = false;
 		}
-	}
-
-	public void setSsl(boolean ssl) {
-		this.ssl = ssl;
 	}
 
 	public void setWidth(int width) {

@@ -19,6 +19,7 @@ import com.sshtools.javardp.OrderException;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Rdp;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.BlockMessageDigest;
 import com.sshtools.javardp.crypto.CryptoException;
@@ -131,7 +132,7 @@ public class Secure {
 		RdpPacket mcs_data = this.sendMcsData();
 		mcsLayer.connect(io, mcs_data);
 		this.processMcsData(mcs_data);
-		if (state.isEncryption()) {
+		if (state.getSecurityType() == SecurityType.STANDARD) {
 			this.establishKey();
 		}
 		else {
@@ -520,9 +521,10 @@ public class Secure {
 		int rc4_key_size = 0;
 		rc4_key_size = this.parseCryptInfo(data);
 		if (rc4_key_size == 0) {
-			logger.info("Disabling encryption, server is not using it.");
-			state.setEncryption(false);
-			;
+			if(state.getSecurityType() == SecurityType.STANDARD) {
+				logger.info("Disabling encryption, server is not using it.");
+				state.setSecurityType(SecurityType.NONE);
+			}
 			return;
 		}
 		// this.client_random = this.generateRandom(SEC_RANDOM_SIZE);
@@ -631,13 +633,13 @@ public class Secure {
 			if (buffer == null)
 				return null;
 			buffer.setHeader(RdpPacket.SECURE_HEADER);
-			if (state.isEncryption() || (!state.isLicenceIssued())) {
+			if (state.getSecurityType() == SecurityType.STANDARD || (!state.isLicenceIssued())) {
 				sec_flags = buffer.getLittleEndian32();
 				if (!state.isLicenceIssued() && (sec_flags & SEC_LICENCE_NEG) != 0) {
 					licence.process(buffer);
 					continue;
 				}
-				if (state.isEncryption() && ( sec_flags & SEC_ENCRYPT) != 0) {
+				if (state.getSecurityType() == SecurityType.STANDARD && ( sec_flags & SEC_ENCRYPT) != 0) {
 						buffer.incrementPosition(8); // signature
 						byte[] data = new byte[buffer.size() - buffer.getPosition()];
 						buffer.copyToByteArray(data, 0, buffer.getPosition(), data.length);
@@ -878,7 +880,7 @@ public class Secure {
 				throw new IllegalStateException("TODO Cannot use autodetect with support for detection PDUs.");
 			buffer.set8(state.getOptions().getConnectionType());
 			buffer.incrementPosition(1); // pad
-			buffer.setLittleEndian32(state.isSsl() ? 0x00000001 : 0);
+			buffer.setLittleEndian32(state.getSecurityType().getMask());
 			buffer.setLittleEndian16(SEC_TAG_CLI_4); // out_uint16_le(s,
 			// SEC_TAG_CLI_4);
 			buffer.setLittleEndian16(12); // out_uint16_le(s, 12);
@@ -1030,12 +1032,9 @@ public class Secure {
 		logger.debug(("Server RDP version is " + state.getServerRdpVersion()));
 		if (state.isNegotiated()) {
 			int protocol = mcs_data.getLittleEndian32();
-			if (protocol != Rdp.SECURITY_TYPE_SSL && state.isSsl()) {
-				throw new IllegalStateException("Client want SSL but server did not agree.");
-			}
-			if (protocol != Rdp.SECURITY_TYPE_STANDARD && !state.isSsl()) {
-				throw new IllegalStateException("Client wants standard RDP security but server did not agree.");
-			}
+			SecurityType serverType = SecurityType.fromMask(protocol);
+			if(serverType != state.getSecurityType())
+				throw new IllegalStateException(String.format("Client wants %s but server did not agree and wants %s.", state.getSecurityType(), serverType));
 			// TODO windows 2012 seems to be returning rubbish here?
 			earlyCaps = mcs_data.getLittleEndian32();
 			logger.info("Early server capabilities is " + earlyCaps);

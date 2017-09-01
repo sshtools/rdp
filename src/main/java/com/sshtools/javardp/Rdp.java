@@ -234,9 +234,9 @@ public class Rdp {
 		this.sendLogonInfo(domain, username, password, command, directory);
 		// TODO should this be here any more as it should all now be negotiated
 		// properly
-		if (state.isEncryption() && !state.getOptions().isPacketEncryption()) {
+		if (state.getSecurityType() == SecurityType.STANDARD && !state.getOptions().isPacketEncryption()) {
 			logger.info("Disabling encryption because packet encryption turned off.");
-			state.setEncryption(false);
+			state.setSecurityType(SecurityType.NONE);
 		}
 	}
 
@@ -735,7 +735,7 @@ public class Rdp {
 	 */
 	private RdpPacket initData(int size) throws RdesktopException {
 		RdpPacket buffer = null;
-		buffer = secureLayer.init(state.isEncryption() ? Secure.SEC_ENCRYPT : 0, size + 18);
+		buffer = secureLayer.init(state.getSecurityType() == SecurityType.STANDARD  ? Secure.SEC_ENCRYPT : 0, size + 18);
 		buffer.pushLayer(RdpPacket.RDP_HEADER, 18);
 		// buffer.setHeader(RdpPacket.RDP_HEADER);
 		// buffer.incrementPosition(18);
@@ -1029,7 +1029,7 @@ public class Rdp {
 		// for W2k.
 		// Purpose
 		// unknown
-		int sec_flags = state.isEncryption() ? RDP5_FLAG | Secure.SEC_ENCRYPT : RDP5_FLAG;
+		int sec_flags = state.getSecurityType() == SecurityType.STANDARD ? RDP5_FLAG | Secure.SEC_ENCRYPT : RDP5_FLAG;
 		RdpPacket data = secureLayer.init(sec_flags, 6 + 14 + caplen + RDP_SOURCE.length);
 		// RdpPacket data = this.init(14 + caplen +
 		// RDP_SOURCE.length);
@@ -1113,7 +1113,7 @@ public class Rdp {
 		data.set8(data_pdu_type);
 		data.set8(0); // compression type
 		data.setLittleEndian16(0); // compression length
-		secureLayer.send(data, state.isEncryption() ? Secure.SEC_ENCRYPT : 0);
+		secureLayer.send(data, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0);
 		CommunicationMonitor.unlock(this);
 	}
 
@@ -1235,7 +1235,7 @@ public class Rdp {
 			flags |= INFO_LOGON_AUTO;
 		int len_ip = 2 * state.getClientIp().length();
 		int len_dll = 2 * state.getClientDir().length();
-		int sec_flags = state.isEncryption() ? Secure.SEC_LOGON_INFO | Secure.SEC_ENCRYPT : Secure.SEC_LOGON_INFO;
+		int sec_flags = state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_LOGON_INFO | Secure.SEC_ENCRYPT : Secure.SEC_LOGON_INFO;
 		int domainlen = 2 * domain.length();
 		int userlen = 2 * username.length();
 		int passlen = 2 * password.length;
