@@ -11,7 +11,6 @@
  */
 package com.sshtools.javardp.client;
 
-
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.io.InputStream;
@@ -35,137 +34,74 @@ import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.OrderException;
+import com.sshtools.javardp.RdesktopDisconnectException;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Rdp;
-import com.sshtools.javardp.Version;
+import com.sshtools.javardp.State;
+import com.sshtools.javardp.io.DefaultIO;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
-import com.sshtools.javardp.rdp5.Rdp5;
 import com.sshtools.javardp.rdp5.VChannels;
 import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
-import com.sshtools.javardp.tools.SendEvent;
 
 public class Rdesktop {
-
 	static Logger logger = LoggerFactory.getLogger(Rdesktop.class);
-	
-	/**
-	 * Translate a disconnect code into a textual description of the reason for
-	 * the disconnect
-	 * 
-	 * @param reason Integer disconnect code received from server
-	 * @return Text description of the reason for disconnection
-	 */
-	public static String textDisconnectReason(int reason) {
-		String text;
-		switch (reason) {
-		case exDiscReasonNoInfo:
-			text = "No information available";
-			break;
-		case exDiscReasonAPIInitiatedDisconnect:
-			text = "Server initiated disconnect";
-			break;
-		case exDiscReasonAPIInitiatedLogoff:
-			text = "Server initiated logoff";
-			break;
-		case exDiscReasonServerIdleTimeout:
-			text = "Server idle timeout reached";
-			break;
-		case exDiscReasonServerLogonTimeout:
-			text = "Server logon timeout reached";
-			break;
-		case exDiscReasonReplacedByOtherConnection:
-			text = "Another user connected to the session";
-			break;
-		case exDiscReasonOutOfMemory:
-			text = "The server is out of memory";
-			break;
-		case exDiscReasonServerDeniedConnection:
-			text = "The server denied the connection";
-			break;
-		case exDiscReasonServerDeniedConnectionFips:
-			text = "The server denied the connection for security reason";
-			break;
-		case exDiscReasonLicenseInternal:
-			text = "Internal licensing error";
-			break;
-		case exDiscReasonLicenseNoLicenseServer:
-			text = "No license server available";
-			break;
-		case exDiscReasonLicenseNoLicense:
-			text = "No valid license available";
-			break;
-		case exDiscReasonLicenseErrClientMsg:
-			text = "Invalid licensing message";
-			break;
-		case exDiscReasonLicenseHwidDoesntMatchLicense:
-			text = "Hardware id doesn't match software license";
-			break;
-		case exDiscReasonLicenseErrClientLicense:
-			text = "Client license error";
-			break;
-		case exDiscReasonLicenseCantFinishProtocol:
-			text = "Network error during licensing protocol";
-			break;
-		case exDiscReasonLicenseClientEndedProtocol:
-			text = "Licensing protocol was not completed";
-			break;
-		case exDiscReasonLicenseErrClientEncryption:
-			text = "Incorrect client license enryption";
-			break;
-		case exDiscReasonLicenseCantUpgradeLicense:
-			text = "Can't upgrade license";
-			break;
-		case exDiscReasonLicenseNoRemoteConnections:
-			text = "The server is not licensed to accept remote connections";
-			break;
-		default:
-			if (reason > 0x1000 && reason < 0x7fff) {
-				text = "Internal protocol error";
-			} else {
-				text = "Unknown reason";
-			}
-		}
-		return text;
-	}
-
-	/* RDP5 disconnect PDU */
-	public static final int exDiscReasonNoInfo = 0x0000;
-	public static final int exDiscReasonAPIInitiatedDisconnect = 0x0001;
-	public static final int exDiscReasonAPIInitiatedLogoff = 0x0002;
-	public static final int exDiscReasonServerIdleTimeout = 0x0003;
-	public static final int exDiscReasonServerLogonTimeout = 0x0004;
-	public static final int exDiscReasonReplacedByOtherConnection = 0x0005;
-	public static final int exDiscReasonOutOfMemory = 0x0006;
-	public static final int exDiscReasonServerDeniedConnection = 0x0007;
-	public static final int exDiscReasonServerDeniedConnectionFips = 0x0008;
-	public static final int exDiscReasonLicenseInternal = 0x0100;
-	public static final int exDiscReasonLicenseNoLicenseServer = 0x0101;
-	public static final int exDiscReasonLicenseNoLicense = 0x0102;
-	public static final int exDiscReasonLicenseErrClientMsg = 0x0103;
-	public static final int exDiscReasonLicenseHwidDoesntMatchLicense = 0x0104;
-	public static final int exDiscReasonLicenseErrClientLicense = 0x0105;
-	public static final int exDiscReasonLicenseCantFinishProtocol = 0x0106;
-	public static final int exDiscReasonLicenseClientEndedProtocol = 0x0107;
-	public static final int exDiscReasonLicenseErrClientEncryption = 0x0108;
-	public static final int exDiscReasonLicenseCantUpgradeLicense = 0x0109;
-	public static final int exDiscReasonLicenseNoRemoteConnections = 0x010a;
+	private static boolean enable_menu;
 	private static boolean keep_running;
-	private static boolean showTools;
+	private static String keyMapLocation = "";
 	private static final String keyMapPath = "keymaps/";
 	private static String mapFile = "en-gb";
-	private static String keyMapLocation = "";
+	private static boolean showTools;
 	private static SendEvent toolFrame = null;
-	private static boolean enable_menu;
 
 	/**
-	 * Outputs version and usage information via System.err
+	 * Displays an error dialog via the RdesktopFrame window containing the
+	 * customised message emsg, and reports this through the logging system.
+	 * <p>
+	 * The application then exits iff sysexit == true
 	 * 
+	 * @param emsg
+	 * @param RdpLayer
+	 * @param window
+	 * @param sysexit
 	 */
-	public static void usage(org.apache.commons.cli.Options options) {
-		System.err.println("Elusiva Everywhere version " + Version.version);
-		HelpFormatter fmt = new HelpFormatter();
-		fmt.printHelp(Rdesktop.class.getName(), options, true);
-		Rdesktop.exit(0, null, true);
+	public static void customError(String emsg, IContext window, boolean sysexit) {
+		logger.error(emsg);
+		String[] msg = { emsg };
+		showErrorDialog(msg);
+		Rdesktop.exit(0, window, true);
+	}
+
+	/**
+	 * Disconnects from the server connected to through rdp and destroys the
+	 * RdesktopFrame window.
+	 * <p>
+	 * Exits the application iff sysexit == true, providing return value n to
+	 * the operating system.
+	 * 
+	 * @param n
+	 * @param rdp
+	 * @param window
+	 * @param sysexit
+	 */
+	public static void exit(int n, IContext context, boolean sysexit) {
+		keep_running = false;
+		// Remove to get rid of tool window
+		if ((showTools) && (toolFrame != null))
+			toolFrame.dispose();
+		// End
+		if (context != null && context.getRdp() != null && context.getRdp().isConnected()) {
+			logger.info("Disconnecting ...");
+			context.getRdp().disconnect();
+			logger.info("Disconnected");
+		}
+		if (context != null) {
+			context.dispose();
+		}
+		System.gc();
+		if (sysexit && Constants.SystemExit) {
+			if (!context.isUnderApplet())
+				System.exit(n);
+		}
 	}
 
 	/**
@@ -177,6 +113,7 @@ public class Rdesktop {
 	public static void main(String[] args) throws Exception, RdesktopException {
 		// Ensure that static variables are properly initialised
 		Options options = new Options();
+		int port = 3389;
 		keep_running = true;
 		showTools = false;
 		mapFile = "en-gb";
@@ -184,7 +121,6 @@ public class Rdesktop {
 		toolFrame = null;
 		// Failed to run native client, drop back to Java client instead.
 		// parse arguments
-		int logonflags = Rdp.RDP_LOGON_NORMAL;
 		boolean fKdeHack = false;
 		int c;
 		String arg = null;
@@ -222,64 +158,62 @@ public class Rdesktop {
 		try {
 			CommandLine cli = parser.parse(cliOptions, args);
 			if (cli.hasOption("debugHex")) {
-				options.debug_hexdump = true;
+				options.setDebugHexdump(true);
 			}
 			if (cli.hasOption("packetTools")) {
 				showTools = true;
 			}
 			if (cli.hasOption("noRemapHash")) {
-				options.remap_hash = false;
+				options.setRemapHash(false);
 			}
 			if (cli.hasOption("quietAlt")) {
-				options.altkey_quiet = true;
+				options.setAltkeyQuiet(true);
 			}
 			if (cli.hasOption("noEncryption")) {
-				options.packet_encryption = false;
+				options.setPacketEncryption(false);
 			}
 			if (cli.hasOption("4")) {
-				options.use_rdp5 = false;
-				// Options.server_bpp = 8;
-				options.set_bpp(8);
+				options.setRdp5(false);
 			}
 			if (cli.hasOption("ssl")) {
-				options.use_ssl = true;
+				options.setSsl(true);
 			}
 			if (cli.hasOption("enableMenu")) {
 				enable_menu = true;
 			}
 			if (cli.hasOption("console")) {
-				options.console_session = true;
+				options.setConsoleSession(true);
 			}
 			if (cli.hasOption("loadLicense")) {
-				options.load_licence = true;
+				options.setLoadLicence(true);
 			}
 			if (cli.hasOption("saveLicense")) {
-				options.save_licence = true;
+				options.setSaveLicence(true);
 			}
 			if (cli.hasOption("persistantCache")) {
-				options.persistent_bitmap_caching = true;
+				options.setPersistentBitmapCaching(true);
 			}
 			if (cli.hasOption('o')) {
-				options.set_bpp(Integer.parseInt(cli.getOptionValue('o')));
+				options.setBpp(Integer.parseInt(cli.getOptionValue('o')));
 			}
 			if (cli.hasOption('b')) {
-				options.low_latency = false;
+				options.setLowLatency(false);
 			}
 			if (cli.hasOption('m')) {
 				mapFile = cli.getOptionValue('m');
 			}
 			if (cli.hasOption('c')) {
-				options.directory = cli.getOptionValue('c');
+				options.setDirectory(cli.getOptionValue('c'));
 			}
 			if (cli.hasOption('d')) {
-				options.domain = cli.getOptionValue('d');
+				options.setDomain(cli.getOptionValue('d'));
 			}
 			if (cli.hasOption('f')) {
 				Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
 				// ensure width a multiple of 4
-				options.width = screen_size.width & ~3;
-				options.height = screen_size.height;
-				options.fullscreen = true;
+				options.setWidth(screen_size.width);
+				options.setHeight(screen_size.height);
+				options.setFullscreen(true);
 				String optVal = cli.getOptionValue('f');
 				if (optVal != null) {
 					if (optVal.equals("l"))
@@ -297,34 +231,33 @@ public class Rdesktop {
 					System.err.println(progname + ": Invalid geometry: " + arg);
 					usage(cliOptions);
 				}
-				options.width = Integer.parseInt(arg.substring(0, cut)) & ~3;
-				options.height = Integer.parseInt(arg.substring(cut + 1));
+				options.setWidth(Integer.parseInt(arg.substring(0, cut)));
+				options.setHeight(Integer.parseInt(arg.substring(cut + 1)));
 			}
 			if (cli.hasOption('k')) {
 				arg = cli.getOptionValue('k');
 				// Options.keylayout = KeyLayout.strToCode(arg);
-				if (options.keylayout == -1) {
+				if (options.getKeylayout() == -1) {
 					System.err.println(progname + ": Invalid key layout: " + arg);
 					usage(cliOptions);
 				}
 			}
 			if (cli.hasOption('n')) {
-				options.hostname = cli.getOptionValue('n');
+				options.setClientName(cli.getOptionValue('n'));
 			}
 			if (cli.hasOption('p')) {
-				options.password = cli.getOptionValue('p');
-				logonflags |= Rdp.RDP_LOGON_AUTO;
+				options.setPassword(cli.getOptionValue('p').toCharArray());
 			}
 			if (cli.hasOption('s')) {
-				options.command = cli.getOptionValue('s');
+				options.setCommand(cli.getOptionValue('s'));
 			}
 			if (cli.hasOption('u')) {
-				options.username = cli.getOptionValue('u');
+				options.setUsername(cli.getOptionValue('u'));
 			}
 			if (cli.hasOption('t')) {
 				arg = cli.getOptionValue('t');
 				try {
-					options.port = Integer.parseInt(arg);
+					port = Integer.parseInt(arg);
 				} catch (NumberFormatException nex) {
 					System.err.println(progname + ": Invalid port number: " + arg);
 					usage(cliOptions);
@@ -332,18 +265,14 @@ public class Rdesktop {
 			}
 			if (cli.hasOption('T')) {
 				arg = cli.getOptionValue('T').replace('_', ' ');
-				options.windowTitle = arg;
-			}
-			if (cli.hasOption('r')) {
-				arg = cli.getOptionValue('r');
-				options.licence_path = arg;
+				options.setWindowTitle(arg);
 			}
 			if (cli.hasOption('?')) {
 				HelpFormatter fmt = new HelpFormatter();
 				fmt.printHelp(Rdesktop.class.getName(), cliOptions);
 			}
 			if (fKdeHack) {
-				options.height -= 46;
+				options.setHeight(options.getHeight() - 46);
 			}
 			List remainingArgs = cli.getArgList();
 			if (remainingArgs.size() == 1) {
@@ -353,7 +282,7 @@ public class Rdesktop {
 					server = arg;
 				} else {
 					server = arg.substring(0, colonat);
-					options.port = Integer.parseInt(arg.substring(colonat + 1));
+					port = Integer.parseInt(arg.substring(colonat + 1));
 				}
 			} else {
 				System.err.println(progname + ": A server name is required!");
@@ -363,17 +292,8 @@ public class Rdesktop {
 			System.err.println(uoe.getMessage());
 			usage(cliOptions);
 		}
-		VChannels channels = new VChannels(options);
-		RdesktopFrame window = new RdesktopFrame(options);
-		ClipChannel clipChannel = new ClipChannel(window, options);
-		// Initialise all RDP5 channels
-		if (options.use_rdp5) {
-			// TODO: implement all relevant channels
-			if (options.map_clipboard)
-				channels.register(clipChannel);
-		}
 		// Now do the startup...
-		logger.info("Elusiva Everywhere version " + Version.version);
+		System.err.println("SSHTools RDP");
 		if (args.length == 0)
 			usage(cliOptions);
 		String java = System.getProperty("java.specification.version");
@@ -381,7 +301,7 @@ public class Rdesktop {
 		String os = System.getProperty("os.name");
 		String osvers = System.getProperty("os.version");
 		if (os.equals("Windows 2000") || os.equals("Windows XP"))
-			options.built_in_licence = true;
+			options.setBuiltInLicence(true);
 		logger.info("Operating System is " + os + " version " + osvers);
 		if (os.startsWith("Linux"))
 			Constants.OS = Constants.LINUX;
@@ -390,9 +310,7 @@ public class Rdesktop {
 		else if (os.startsWith("Mac"))
 			Constants.OS = Constants.MAC;
 		if (Constants.OS == Constants.MAC)
-			options.caps_sends_up_and_down = false;
-		Rdp5 rdpLayer = null;
-		window.setClip(clipChannel);
+			options.setCapsSendsUpAndDown(false);
 		// Configure a keyboard layout
 		KeyCode_FileBased keyMap = null;
 		try {
@@ -409,35 +327,45 @@ public class Rdesktop {
 			}
 			if (istr != null)
 				istr.close();
-			options.keylayout = keyMap.getMapCode();
+			options.setKeylayout(keyMap.getMapCode());
 		} catch (Exception kmEx) {
 			String[] msg = { (kmEx.getClass() + ": " + kmEx.getMessage()) };
 			showErrorDialog(msg);
 			kmEx.printStackTrace();
 			Rdesktop.exit(0, null, true);
 		}
+		Rdp rdpLayer = null;
+		State state = new State(options);
+		VChannels channels = new VChannels(state);
+		RdesktopFrame window = new RdesktopFrame(state);
+		ClipChannel clipChannel = new ClipChannel(window, state);
+		// Initialise all RDP5 channels
+		if (state.isRDP5()) {
+			// TODO: implement all relevant channels
+			if (options.isMapClipboard())
+				channels.register(clipChannel);
+		}
+		window.setClip(clipChannel);
 		logger.debug("Registering keyboard...");
 		if (keyMap != null)
 			window.registerKeyboard(keyMap);
-		boolean[] deactivated = new boolean[1];
-		int[] ext_disc_reason = new int[1];
 		logger.debug("keep_running = " + keep_running);
 		while (keep_running) {
 			logger.debug("Initialising RDP layer...");
-			rdpLayer = new Rdp5(window, options, channels);
+			rdpLayer = new Rdp(window, state, channels);
 			window.setRdp(rdpLayer);
 			logger.debug("Registering drawing surface...");
 			window.registerDrawingSurface();
 			logger.debug("Registering comms layer...");
 			window.registerCommLayer(rdpLayer);
-			logger.info("Connecting to " + server + ":" + options.port + " ...");
+			logger.info("Connecting to " + server + ":" + port + " ...");
 			if (server.equalsIgnoreCase("localhost"))
 				server = "127.0.0.1";
 			if (rdpLayer != null) {
 				// Attempt to connect to server on port Options.port
 				try {
-					rdpLayer.connect(options.username, InetAddress.getByName(server), logonflags, options.domain, options.password,
-						options.command, options.directory);
+					rdpLayer.connect(options.getUsername(), new DefaultIO(InetAddress.getByName(server), port), options.getDomain(),
+							options.getPassword(), options.getCommand(), options.getDirectory());
 					// Remove to get rid of sendEvent tool
 					if (showTools) {
 						toolFrame = new SendEvent(rdpLayer);
@@ -445,37 +373,15 @@ public class Rdesktop {
 					}
 					// End
 					if (keep_running) {
-						/*
-						 * By setting encryption to False here, we have an
-						 * encrypted login packet but unencrypted transfer of
-						 * other packets
-						 */
-						if (!options.packet_encryption)
-							options.encryption = false;
 						logger.info("Connection successful");
 						// now show window after licence negotiation
-						rdpLayer.mainLoop(deactivated, ext_disc_reason);
-						if (deactivated[0]) {
-							/* clean disconnect */
+						try {
+							rdpLayer.mainLoop();
+						} catch (RdesktopDisconnectException rde) {
+							String msg[] = { "Connection terminated", rde.getMessage() };
+							showErrorDialog(msg);
+							logger.warn("Connection terminated: " + rde.getMessage(), rde);
 							Rdesktop.exit(0, window, true);
-							// return 0;
-						} else {
-							if (ext_disc_reason[0] == exDiscReasonAPIInitiatedDisconnect
-								|| ext_disc_reason[0] == exDiscReasonAPIInitiatedLogoff) {
-								/*
-								 * not so clean disconnect, but nothing to worry
-								 * about
-								 */
-								Rdesktop.exit(0, window, true);
-								// return 0;
-							}
-							if (ext_disc_reason[0] >= 2) {
-								String reason = textDisconnectReason(ext_disc_reason[0]);
-								String msg[] = { "Connection terminated", reason };
-								showErrorDialog(msg);
-								logger.warn("Connection terminated: " + reason);
-								Rdesktop.exit(0, window, true);
-							}
 						}
 						keep_running = false; // exited main loop
 						if (!window.isReadyToSend()) {
@@ -515,20 +421,20 @@ public class Rdesktop {
 						// maybe the licence server was having a comms
 						// problem, retry?
 						String msg[] = { "The terminal server reset connection before licence negotiation completed.",
-							"Possible cause: terminal server could not connect to licence server.", "Retry?" };
-//						if (!retry) {
-							logger.info("Selected not to retry.");
-							Rdesktop.exit(0, window, true);
-//						} else {
-//							if (rdpLayer != null && rdpLayer.isConnected()) {
-//								logger.info("Disconnecting ...");
-//								rdpLayer.disconnect();
-//								logger.info("Disconnected");
-//							}
-//							logger.info("Retrying connection...");
-//							keep_running = true; // retry
-//							continue;
-//						}
+								"Possible cause: terminal server could not connect to licence server.", "Retry?" };
+						// if (!retry) {
+						logger.info("Selected not to retry.");
+						Rdesktop.exit(0, window, true);
+						// } else {
+						// if (rdpLayer != null && rdpLayer.isConnected()) {
+						// logger.info("Disconnecting ...");
+						// rdpLayer.disconnect();
+						// logger.info("Disconnected");
+						// }
+						// logger.info("Retrying connection...");
+						// keep_running = true; // retry
+						// continue;
+						// }
 					} else {
 						String msg[] = { e.getMessage() };
 						showErrorDialog(msg);
@@ -547,69 +453,29 @@ public class Rdesktop {
 	}
 
 	/**
-	 * Disconnects from the server connected to through rdp and destroys the
-	 * RdesktopFrame window.
-	 * <p>
-	 * Exits the application iff sysexit == true, providing return value n to
-	 * the operating system.
-	 * 
-	 * @param n
-	 * @param rdp
-	 * @param window
-	 * @param sysexit
-	 */
-	public static void exit(int n, IContext context, boolean sysexit) {
-		keep_running = false;
-		// Remove to get rid of tool window
-		if ((showTools) && (toolFrame != null))
-			toolFrame.dispose();
-		// End
-		if (context != null && context.getRdp() != null && context.getRdp().isConnected()) {
-			logger.info("Disconnecting ...");
-			context.getRdp().disconnect();
-			logger.info("Disconnected");
-		}
-		if (context != null) {
-			context.dispose();
-		}
-		System.gc();
-		if (sysexit && Constants.SystemExit) {
-			if (!context.isUnderApplet())
-				System.exit(n);
-		}
-	}
-
-	/**
-	 * Displays an error dialog via the RdesktopFrame window containing the
-	 * customised message emsg, and reports this through the logging system.
-	 * <p>
-	 * The application then exits iff sysexit == true
-	 * 
-	 * @param emsg
-	 * @param RdpLayer
-	 * @param window
-	 * @param sysexit
-	 */
-	public static void customError(String emsg, IContext window, boolean sysexit) {
-		logger.error(emsg);
-		String[] msg = { emsg };
-		showErrorDialog(msg);
-		Rdesktop.exit(0, window, true);
-	}
-
-	/**
 	 * Display an error dialog with the title "properJavaRDP error"
 	 * 
 	 * @param msg Array of message lines to display in dialog box
 	 */
 	public static void showErrorDialog(String[] msg) {
 		StringBuilder bui = new StringBuilder();
-		for(String m : msg) {
-			if(bui.length() > 0) {
+		for (String m : msg) {
+			if (bui.length() > 0) {
 				bui.append("\n\n");
 			}
 			bui.append(m);
 		}
 		JOptionPane.showMessageDialog(null, bui.toString());
+	}
+
+	/**
+	 * Outputs version and usage information via System.err
+	 * 
+	 */
+	public static void usage(org.apache.commons.cli.Options options) {
+		System.err.println("SSHTools RDP");
+		HelpFormatter fmt = new HelpFormatter();
+		fmt.printHelp(Rdesktop.class.getName(), options, true);
+		Rdesktop.exit(0, null, true);
 	}
 }

@@ -4,8 +4,9 @@ package com.sshtools.javardp.crypto;
  * This class is for any unexpected exception in the crypto library.
  * <p>
  * <b>Copyright</b> &copy; 1997 <a href="http://www.systemics.com/">Systemics
- * Ltd</a> on behalf of the <a
- * href="http://www.systemics.com/docs/cryptix/">Cryptix Development Team</a>. <br>
+ * Ltd</a> on behalf of the
+ * <a href="http://www.systemics.com/docs/cryptix/">Cryptix Development
+ * Team</a>. <br>
  * All rights reserved.
  * <p>
  * <b>$Revision: 1.1 $</b>
@@ -14,6 +15,8 @@ package com.sshtools.javardp.crypto;
  * @since Cryptix 2.2.2
  */
 public class CryptoException extends Exception {
+	private static final long serialVersionUID = 1044684268824964897L;
+
 	public CryptoException() {
 		super();
 	}

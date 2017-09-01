@@ -20,22 +20,22 @@ import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.Options;
 
 public class MapDef {
+	private boolean altDown;
+	private boolean capslockDown;
+	private boolean characterDef;
+	private boolean ctrlDown;
+	private final int FLAG_ALT = 0x04; // flag mask for an alt modifier
+	private final int FLAG_CAPSLOCK = 0x08; // flag mask for a capslock modifier
+	private final int FLAG_CTRL = 0x02; // flag mask for a control modifier
 	// Flag masks for use in generating an integer modifiers value (for text
 	// definition output)
 	private final int FLAG_SHIFT = 0x01; // flag mask for a shift modifier
-	private final int FLAG_CTRL = 0x02; // flag mask for a control modifier
-	private final int FLAG_ALT = 0x04; // flag mask for an alt modifier
-	private final int FLAG_CAPSLOCK = 0x08; // flag mask for a capslock modifier
-	private int scancode;
-	private boolean ctrlDown;
-	private boolean shiftDown;
-	private boolean altDown;
-	private boolean capslockDown;
 	private char keyChar;
 	private int keyCode;
-	private boolean characterDef;
 	private int keyLocation;
 	private Options options;
+	private int scancode;
+	private boolean shiftDown;
 
 	/**
 	 * Constructor for a character-defined mapping definition
@@ -85,146 +85,6 @@ public class MapDef {
 		this.capslockDown = capslockDown;
 	}
 
-	public int getKeyCode() {
-		return keyCode;
-	}
-
-	public char getKeyChar() {
-		return keyChar;
-	}
-
-	/**
-	 * Return the scancode associated with this mapping
-	 * 
-	 * @return
-	 */
-	public int getScancode() {
-		return scancode;
-	}
-
-	/**
-	 * Return true if this mapping is defined by a character, false otherwise
-	 * 
-	 * @return
-	 */
-	public boolean isCharacterDef() {
-		return characterDef;
-	}
-
-	/**
-	 * Return true if the keystroke defined in this mapping requires that the
-	 * Control key be down
-	 * 
-	 * @return
-	 */
-	public boolean isCtrlDown() {
-		return ctrlDown;
-	}
-
-	/**
-	 * Return true if the keystroke defined in this mapping requires that the
-	 * Alt key be down
-	 * 
-	 * @return
-	 */
-	public boolean isAltDown() {
-		return altDown;
-	}
-
-	/**
-	 * Return true if the keystroke defined in this mapping requires that the
-	 * Shift key be down
-	 * 
-	 * @return
-	 */
-	public boolean isShiftDown() {
-		return shiftDown;
-	}
-
-	/**
-	 * Return true if the keystroke defined in this mapping requires that Caps
-	 * Lock is on
-	 * 
-	 * @return
-	 */
-	public boolean isCapslockOn() {
-		return capslockDown;
-	}
-
-	/**
-	 * Return the number of modifiers that would need to be changed to send the
-	 * specified character/key using this particular mapping.
-	 * 
-	 * @param e Key event which was received by Java
-	 * @param capslock Is the Caps Lock key down?
-	 * @return The number of modifier changes to make
-	 */
-	public int modifierDistance(KeyEvent e, boolean capslock) {
-		// boolean capslock = e.getComponent().getToolkit().getLockingKeyState(
-		// KeyEvent.VK_CAPS_LOCK);
-		if (!characterDef)
-			return 0;
-		int dist = 0;
-		if (ctrlDown != e.isControlDown())
-			dist += 1;
-		if (altDown != e.isAltDown())
-			dist += 1;
-		if (shiftDown != e.isShiftDown())
-			dist += 1;
-		if (capslockDown != capslock)
-			dist += 1;
-		return dist;
-	}
-
-	public boolean appliesTo(char c) {
-		return ((characterDef) && (this.keyChar == c) && !(capslockDown));
-	}
-
-	/**
-	 * 
-	 * Return true if this map definition applies to the supplied key event
-	 * 
-	 * @param e KeyEvent to check definition against
-	 * @return
-	 */
-	protected boolean appliesToTyped(KeyEvent e) {
-		return ((characterDef) && (this.keyChar == e.getKeyChar()));
-	}
-
-	protected boolean appliesToTyped(KeyEvent e, boolean capslock) {
-		if (Constants.OS == Constants.MAC) {
-			// Remap the hash key to �
-			// TODO not sure what this should actually be
-			// if (options.remap_hash && (e.getKeyChar() == '')) {
-			// return ((characterDef) && (this.keyChar == '#'));
-			// }
-			// Handle unreported shifted capitals (with capslock) on a Mac
-			if (capslock && Character.isLetter(e.getKeyChar()) && Character.isUpperCase(e.getKeyChar()) && e.isShiftDown()) {
-				char c = Character.toLowerCase(e.getKeyChar());
-				return ((characterDef) && (this.keyChar == c));
-			}
-		}
-		return ((characterDef) && (this.keyChar == e.getKeyChar()));
-	}
-
-	/**
-	 * 
-	 * Return true if this map definition applies to the supplied key event
-	 * 
-	 * @param e KeyEvent to check definition against
-	 * @return
-	 */
-	protected boolean appliesToPressed(KeyEvent e) {
-		// only match special characters if the modifiers are consistent
-		if (!characterDef) {
-			if (!((ctrlDown && e.isControlDown()) || !ctrlDown))
-				return false;
-			if (!((altDown && e.isAltDown()) || !altDown))
-				return false;
-		}
-		return ((!characterDef) && (this.keyCode == e.getKeyCode()));
-	}
-
 	/**
 	 * Constructor for a mapping definition based on a given string
 	 * representation (as would be output to a stream by the writeToStream
@@ -261,6 +121,101 @@ public class MapDef {
 		}
 	}
 
+	public boolean appliesTo(char c) {
+		return ((characterDef) && (this.keyChar == c) && !(capslockDown));
+	}
+
+	public char getKeyChar() {
+		return keyChar;
+	}
+
+	public int getKeyCode() {
+		return keyCode;
+	}
+
+	/**
+	 * Return the scancode associated with this mapping
+	 * 
+	 * @return
+	 */
+	public int getScancode() {
+		return scancode;
+	}
+
+	/**
+	 * Return true if the keystroke defined in this mapping requires that the
+	 * Alt key be down
+	 * 
+	 * @return
+	 */
+	public boolean isAltDown() {
+		return altDown;
+	}
+
+	/**
+	 * Return true if the keystroke defined in this mapping requires that Caps
+	 * Lock is on
+	 * 
+	 * @return
+	 */
+	public boolean isCapslockOn() {
+		return capslockDown;
+	}
+
+	/**
+	 * Return true if this mapping is defined by a character, false otherwise
+	 * 
+	 * @return
+	 */
+	public boolean isCharacterDef() {
+		return characterDef;
+	}
+
+	/**
+	 * Return true if the keystroke defined in this mapping requires that the
+	 * Control key be down
+	 * 
+	 * @return
+	 */
+	public boolean isCtrlDown() {
+		return ctrlDown;
+	}
+
+	/**
+	 * Return true if the keystroke defined in this mapping requires that the
+	 * Shift key be down
+	 * 
+	 * @return
+	 */
+	public boolean isShiftDown() {
+		return shiftDown;
+	}
+
+	/**
+	 * Return the number of modifiers that would need to be changed to send the
+	 * specified character/key using this particular mapping.
+	 * 
+	 * @param e Key event which was received by Java
+	 * @param capslock Is the Caps Lock key down?
+	 * @return The number of modifier changes to make
+	 */
+	public int modifierDistance(KeyEvent e, boolean capslock) {
+		// boolean capslock = e.getComponent().getToolkit().getLockingKeyState(
+		// KeyEvent.VK_CAPS_LOCK);
+		if (!characterDef)
+			return 0;
+		int dist = 0;
+		if (ctrlDown != e.isControlDown())
+			dist += 1;
+		if (altDown != e.isAltDown())
+			dist += 1;
+		if (shiftDown != e.isShiftDown())
+			dist += 1;
+		if (capslockDown != capslock)
+			dist += 1;
+		return dist;
+	}
+
 	/**
 	 * Output this mapping definition to a stream, formatted as a single line
 	 * (characterDef character/keycode location scancode modifiers
@@ -293,5 +248,50 @@ public class MapDef {
 			definition += "\t" + KeyEvent.getKeyText(this.keyCode);
 		// output the definition to the specified stream
 		p.println(definition);
+	}
+
+	/**
+	 * 
+	 * Return true if this map definition applies to the supplied key event
+	 * 
+	 * @param e KeyEvent to check definition against
+	 * @return
+	 */
+	protected boolean appliesToPressed(KeyEvent e) {
+		// only match special characters if the modifiers are consistent
+		if (!characterDef) {
+			if (!((ctrlDown && e.isControlDown()) || !ctrlDown))
+				return false;
+			if (!((altDown && e.isAltDown()) || !altDown))
+				return false;
+		}
+		return ((!characterDef) && (this.keyCode == e.getKeyCode()));
+	}
+
+	/**
+	 * 
+	 * Return true if this map definition applies to the supplied key event
+	 * 
+	 * @param e KeyEvent to check definition against
+	 * @return
+	 */
+	protected boolean appliesToTyped(KeyEvent e) {
+		return ((characterDef) && (this.keyChar == e.getKeyChar()));
+	}
+
+	protected boolean appliesToTyped(KeyEvent e, boolean capslock) {
+		if (Constants.OS == Constants.MAC) {
+			// Remap the hash key to �
+			// TODO not sure what this should actually be
+			// if (options.remap_hash && (e.getKeyChar() == '')) {
+			// return ((characterDef) && (this.keyChar == '#'));
+			// }
+			// Handle unreported shifted capitals (with capslock) on a Mac
+			if (capslock && Character.isLetter(e.getKeyChar()) && Character.isUpperCase(e.getKeyChar()) && e.isShiftDown()) {
+				char c = Character.toLowerCase(e.getKeyChar());
+				return ((characterDef) && (this.keyChar == c));
+			}
+		}
+		return ((characterDef) && (this.keyChar == e.getKeyChar()));
 	}
 }

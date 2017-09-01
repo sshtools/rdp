@@ -31,20 +31,20 @@ public class DataBlob {
 	}
 
 	/**
-	 * Retrieve size of data stored in this DataBlob
-	 * 
-	 * @return Size of stored data
-	 */
-	public int getSize() {
-		return this.size;
-	}
-
-	/**
 	 * Retrieve data stored in this DataBlob
 	 * 
 	 * @return Stored data
 	 */
 	public byte[] getData() {
 		return this.data;
+	}
+
+	/**
+	 * Retrieve size of data stored in this DataBlob
+	 * 
+	 * @return Size of stored data
+	 */
+	public int getSize() {
+		return this.size;
 	}
 }

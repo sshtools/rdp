@@ -13,9 +13,9 @@ package com.sshtools.javardp.orders;
 
 public class TriBltOrder extends PatBltOrder {
 
-	private int color_table = 0;
 	private int cache_id = 0;
 	private int cache_idx = 0;
+	private int color_table = 0;
 	private int srcx = 0;
 	private int srcy = 0;
 	private int unknown = 0;
@@ -24,16 +24,16 @@ public class TriBltOrder extends PatBltOrder {
 		super();
 	}
 
-	public int getColorTable() {
-		return this.color_table;
-	}
-
 	public int getCacheID() {
 		return this.cache_id;
 	}
 
 	public int getCacheIDX() {
 		return this.cache_idx;
+	}
+
+	public int getColorTable() {
+		return this.color_table;
 	}
 
 	public int getSrcX() {
@@ -48,8 +48,15 @@ public class TriBltOrder extends PatBltOrder {
 		return this.unknown;
 	}
 
-	public void setColorTable(int color_table) {
-		this.color_table = color_table;
+	@Override
+	public void reset() {
+		super.reset();
+		color_table = 0;
+		cache_id = 0;
+		cache_idx = 0;
+		srcx = 0;
+		srcy = 0;
+		unknown = 0;
 	}
 
 	public void setCacheID(int cache_id) {
@@ -58,6 +65,10 @@ public class TriBltOrder extends PatBltOrder {
 
 	public void setCacheIDX(int cache_idx) {
 		this.cache_idx = cache_idx;
+	}
+
+	public void setColorTable(int color_table) {
+		this.color_table = color_table;
 	}
 
 	public void setSrcX(int srcx) {
@@ -70,15 +81,5 @@ public class TriBltOrder extends PatBltOrder {
 
 	public void setUnknown(int unknown) {
 		this.unknown = unknown;
-	}
-
-	public void reset() {
-		super.reset();
-		color_table = 0;
-		cache_id = 0;
-		cache_idx = 0;
-		srcx = 0;
-		srcy = 0;
-		unknown = 0;
 	}
 }

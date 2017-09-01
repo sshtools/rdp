@@ -13,12 +13,20 @@ package com.sshtools.javardp.orders;
 
 public class Brush {
 
+	private byte[] pattern = new byte[8];
+	private int style = 0;
 	private int xorigin = 0;
 	private int yorigin = 0;
-	private int style = 0;
-	private byte[] pattern = new byte[8];
 
 	public Brush() {
+	}
+
+	public byte[] getPattern() {
+		return this.pattern;
+	}
+
+	public int getStyle() {
+		return this.style;
 	}
 
 	public int getXOrigin() {
@@ -29,12 +37,19 @@ public class Brush {
 		return this.yorigin;
 	}
 
-	public int getStyle() {
-		return this.style;
+	public void reset() {
+		xorigin = 0;
+		yorigin = 0;
+		style = 0;
+		pattern = new byte[8];
 	}
 
-	public byte[] getPattern() {
-		return this.pattern;
+	public void setPattern(byte[] pattern) {
+		this.pattern = pattern;
+	}
+
+	public void setStyle(int style) {
+		this.style = style;
 	}
 
 	public void setXOrigin(int xorigin) {
@@ -43,20 +58,5 @@ public class Brush {
 
 	public void setYOrigin(int yorigin) {
 		this.yorigin = yorigin;
-	}
-
-	public void setStyle(int style) {
-		this.style = style;
-	}
-
-	public void setPattern(byte[] pattern) {
-		this.pattern = pattern;
-	}
-
-	public void reset() {
-		xorigin = 0;
-		yorigin = 0;
-		style = 0;
-		pattern = new byte[8];
 	}
 }

@@ -1,23 +1,29 @@
-/* RdesktopException.java
- * Component: ProperJavaRDP
- * 
- * Revision: $Revision: 1.1 $
- * Author: $Author: brett $
- * Date: $Date: 2011/11/28 14:13:42 $
+/* 
+ * General RDP related exception.
  *
  * Copyright (c) 2005 Propero Limited
- *
- * Purpose: General exception class for ProperJavaRDP
+ * Copyright (c) 2017 SSHTools Limited
  */
 package com.sshtools.javardp;
 
 public class RdesktopException extends Exception {
 
+	private static final long serialVersionUID = 6735403404532243398L;
+
 	public RdesktopException() {
 		super();
 	}
 
-	public RdesktopException(String s) {
-		super(s);
+	public RdesktopException(String message) {
+		super(message);
 	}
+
+	public RdesktopException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public RdesktopException(Throwable cause) {
+		super(cause);
+	}
+
 }

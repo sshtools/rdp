@@ -10,13 +10,11 @@
 
 package com.sshtools.javardp.crypto;
 
-import java.security.Identity;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signer;
 
 /**
  * The Key interface is the top-level interface for all keys. It defines the
@@ -90,7 +88,15 @@ public interface Key extends java.io.Serializable {
 	 * 
 	 * @return the name of the algorithm associated with this key.
 	 */
-	public String getAlgorithm();
+	String getAlgorithm();
+
+	/**
+	 * Returns the key in its primary encoding format, or null if this key does
+	 * not support encoding.
+	 * 
+	 * @return the encoded key, or null if the key does not support encoding.
+	 */
+	byte[] getEncoded();
 
 	/**
 	 * Returns the name of the primary encoding format of this key, or null if
@@ -105,13 +111,5 @@ public interface Key extends java.io.Serializable {
 	 * 
 	 * @return the primary encoding format of the key.
 	 */
-	public String getFormat();
-
-	/**
-	 * Returns the key in its primary encoding format, or null if this key does
-	 * not support encoding.
-	 * 
-	 * @return the encoded key, or null if the key does not support encoding.
-	 */
-	public byte[] getEncoded();
+	String getFormat();
 }

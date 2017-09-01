@@ -33,33 +33,19 @@ public final class SHA1 extends BlockMessageDigest implements Cloneable {
 	// ...........................................................................
 
 	/**
-	 * Length of the final hash (in bytes).
-	 */
-	private static final int HASH_LENGTH = 20;
-
-	/**
 	 * Length of a block (i.e. the number of bytes hashed in every transform).
 	 */
 	private static final int DATA_LENGTH = 64;
+
+	/**
+	 * Length of the final hash (in bytes).
+	 */
+	private static final int HASH_LENGTH = 20;
 
 	private int[] data;
 	private int[] digest;
 	private byte[] tmp;
 	private int[] w;
-
-	/**
-	 * Returns the length of the hash (in bytes).
-	 */
-	protected int engineGetDigestLength() {
-		return HASH_LENGTH;
-	}
-
-	/**
-	 * Returns the length of the data (in bytes) hashed in every transform.
-	 */
-	protected int engineGetDataLength() {
-		return DATA_LENGTH;
-	}
 
 	/**
 	 * Constructs a SHA-1 message digest.
@@ -70,45 +56,60 @@ public final class SHA1 extends BlockMessageDigest implements Cloneable {
 		engineReset();
 	}
 
-	private void java_init() {
-		digest = new int[HASH_LENGTH / 4];
-		data = new int[DATA_LENGTH / 4];
-		tmp = new byte[DATA_LENGTH];
-		w = new int[80];
-	}
-
 	/**
 	 * This constructor is here to implement cloneability of this class.
 	 */
 	private SHA1(SHA1 md) {
 		this();
-		data = (int[]) md.data.clone();
-		digest = (int[]) md.digest.clone();
-		tmp = (byte[]) md.tmp.clone();
-		w = (int[]) md.w.clone();
+		data = md.data.clone();
+		digest = md.digest.clone();
+		tmp = md.tmp.clone();
+		w = md.w.clone();
 	}
 
 	/**
 	 * Returns a copy of this MD object.
 	 */
+	@Override
 	public Object clone() {
 		return new SHA1(this);
 	}
 
 	/**
+	 * Returns the digest of the data added and resets the digest.
+	 * 
+	 * @return the digest of all the data added to the message digest as a byte
+	 *         array.
+	 */
+	@Override
+	public byte[] engineDigest(byte[] in, int length) {
+		byte b[] = java_digest(in, length);
+		engineReset();
+		return b;
+	}
+
+	/**
 	 * Initializes (resets) the message digest.
 	 */
+	@Override
 	public void engineReset() {
 		super.engineReset();
 		java_reset();
 	}
 
-	private void java_reset() {
-		digest[0] = 0x67452301;
-		digest[1] = 0xefcdab89;
-		digest[2] = 0x98badcfe;
-		digest[3] = 0x10325476;
-		digest[4] = 0xc3d2e1f0;
+	/**
+	 * Returns the length of the data (in bytes) hashed in every transform.
+	 */
+	@Override
+	protected int engineGetDataLength() {
+		return DATA_LENGTH;
+	}
+
+	/**
+	 * Returns the length of the hash (in bytes).
+	 */
+	protected int engineGetDigestLength() {
+		return HASH_LENGTH;
 	}
 
 	/**
@@ -118,25 +119,9 @@ public final class SHA1 extends BlockMessageDigest implements Cloneable {
 	 * @param offset The start of the data in the array.
 	 * @param length The amount of data to add.
 	 */
+	@Override
 	protected void engineTransform(byte[] in) {
 		java_transform(in);
-	}
-
-	private void java_transform(byte[] in) {
-		byte2int(in, 0, data, 0, DATA_LENGTH / 4);
-		transform(data);
-	}
-
-	/**
-	 * Returns the digest of the data added and resets the digest.
-	 * 
-	 * @return the digest of all the data added to the message digest as a byte
-	 *         array.
-	 */
-	public byte[] engineDigest(byte[] in, int length) {
-		byte b[] = java_digest(in, length);
-		engineReset();
-		return b;
 	}
 
 	private byte[] java_digest(byte[] in, int pos) {
@@ -182,24 +167,28 @@ public final class SHA1 extends BlockMessageDigest implements Cloneable {
 		return buf;
 	}
 
+	private void java_init() {
+		digest = new int[HASH_LENGTH / 4];
+		data = new int[DATA_LENGTH / 4];
+		tmp = new byte[DATA_LENGTH];
+		w = new int[80];
+	}
+
+	private void java_reset() {
+		digest[0] = 0x67452301;
+		digest[1] = 0xefcdab89;
+		digest[2] = 0x98badcfe;
+		digest[3] = 0x10325476;
+		digest[4] = 0xc3d2e1f0;
+	}
+
+	private void java_transform(byte[] in) {
+		byte2int(in, 0, data, 0, DATA_LENGTH / 4);
+		transform(data);
+	}
+
 	// SHA-1 transform routines
 	// ...........................................................................
-
-	private static int f1(int a, int b, int c) {
-		return (c ^ (a & (b ^ c))) + 0x5A827999;
-	}
-
-	private static int f2(int a, int b, int c) {
-		return (a ^ b ^ c) + 0x6ED9EBA1;
-	}
-
-	private static int f3(int a, int b, int c) {
-		return ((a & b) | (c & (a | b))) + 0x8F1BBCDC;
-	}
-
-	private static int f4(int a, int b, int c) {
-		return (a ^ b ^ c) + 0xCA62C1D6;
-	}
 
 	private void transform(int[] X) {
 		int A = digest[0];
@@ -394,5 +383,21 @@ public final class SHA1 extends BlockMessageDigest implements Cloneable {
 			dst[dstOffset++] = (src[srcOffset++] << 24) | ((src[srcOffset++] & 0xFF) << 16) | ((src[srcOffset++] & 0xFF) << 8)
 				| (src[srcOffset++] & 0xFF);
 		}
+	}
+
+	private static int f1(int a, int b, int c) {
+		return (c ^ (a & (b ^ c))) + 0x5A827999;
+	}
+
+	private static int f2(int a, int b, int c) {
+		return (a ^ b ^ c) + 0x6ED9EBA1;
+	}
+
+	private static int f3(int a, int b, int c) {
+		return ((a & b) | (c & (a | b))) + 0x8F1BBCDC;
+	}
+
+	private static int f4(int a, int b, int c) {
+		return (a ^ b ^ c) + 0xCA62C1D6;
 	}
 }

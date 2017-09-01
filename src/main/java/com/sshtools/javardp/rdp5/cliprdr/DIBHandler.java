@@ -36,28 +36,39 @@ public class DIBHandler extends TypeHandler implements ImageObserver {
 		this.context = context;
 	}
 
+	@Override
 	public boolean formatValid(int format) {
 		return (format == CF_DIB);
 	}
 
-	public boolean mimeTypeValid(String mimeType) {
-		return mimeType.equals("image");
-	}
-
-	public int preferredFormat() {
-		return CF_DIB;
-	}
-
-	public String name() {
-		return "CF_DIB";
-	}
-
+	@Override
 	public void handleData(RdpPacket data, int length, ClipInterface c) {
 		// System.out.println("DIBHandler.handleData");
 		BMPToImageThread t = new BMPToImageThread(data, length, c);
 		t.start();
 	}
 
+	@Override
+	public boolean imageUpdate(Image arg0, int arg1, int arg2, int arg3, int arg4, int arg5) {
+		return false;
+	}
+
+	@Override
+	public boolean mimeTypeValid(String mimeType) {
+		return mimeType.equals("image");
+	}
+
+	@Override
+	public String name() {
+		return "CF_DIB";
+	}
+
+	@Override
+	public int preferredFormat() {
+		return CF_DIB;
+	}
+
+	@Override
 	public void send_data(Transferable in, ClipInterface c) {
 		byte[] out = null;
 		try {
@@ -85,9 +96,5 @@ public class DIBHandler extends TypeHandler implements ImageObserver {
 		} catch (IOException e) {
 			System.err.println("Failed to send DIB: IOException");
 		}
-	}
-
-	public boolean imageUpdate(Image arg0, int arg1, int arg2, int arg3, int arg4, int arg5) {
-		return false;
 	}
 }

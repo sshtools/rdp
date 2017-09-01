@@ -33,6 +33,17 @@ public class TypeHandlerList {
 		}
 	}
 
+	public int count() {
+		return count;
+	}
+
+	public TypeHandler getFirst() {
+		if (count > 0)
+			return (TypeHandler) handlers.get(0);
+		else
+			return null;
+	}
+
 	public TypeHandler getHandlerForFormat(int format) {
 		TypeHandler handler = null;
 		for (Iterator i = handlers.iterator(); i.hasNext();) {
@@ -41,18 +52,6 @@ public class TypeHandlerList {
 				return handler;
 		}
 		return null;
-	}
-
-	public TypeHandlerList getHandlersForMimeType(String mimeType) {
-		TypeHandlerList outList = new TypeHandlerList();
-
-		TypeHandler handler = null;
-		for (Iterator i = handlers.iterator(); i.hasNext();) {
-			handler = (TypeHandler) i.next();
-			if (handler.mimeTypeValid(mimeType))
-				outList.add(handler);
-		}
-		return outList;
 	}
 
 	public TypeHandlerList getHandlersForClipboard(DataFlavor[] dataTypes) {
@@ -67,6 +66,22 @@ public class TypeHandlerList {
 		return outList;
 	}
 
+	public TypeHandlerList getHandlersForMimeType(String mimeType) {
+		TypeHandlerList outList = new TypeHandlerList();
+
+		TypeHandler handler = null;
+		for (Iterator i = handlers.iterator(); i.hasNext();) {
+			handler = (TypeHandler) i.next();
+			if (handler.mimeTypeValid(mimeType))
+				outList.add(handler);
+		}
+		return outList;
+	}
+
+	public Iterator iterator() {
+		return handlers.iterator();
+	}
+
 	public void writeTypeDefinitions(RdpPacket data) {
 		TypeHandler handler = null;
 		for (Iterator i = handlers.iterator(); i.hasNext();) {
@@ -74,20 +89,5 @@ public class TypeHandlerList {
 			data.setLittleEndian32(handler.preferredFormat());
 			data.incrementPosition(32);
 		}
-	}
-
-	public int count() {
-		return count;
-	}
-
-	public TypeHandler getFirst() {
-		if (count > 0)
-			return (TypeHandler) handlers.get(0);
-		else
-			return null;
-	}
-
-	public Iterator iterator() {
-		return handlers.iterator();
 	}
 }

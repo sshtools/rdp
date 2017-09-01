@@ -13,16 +13,12 @@ package com.sshtools.javardp.orders;
 
 public class MemBltOrder extends ScreenBltOrder {
 
-	private int color_table = 0;
 	private int cache_id = 0;
 	private int cache_idx = 0;
+	private int color_table = 0;
 
 	public MemBltOrder() {
 		super();
-	}
-
-	public int getColorTable() {
-		return this.color_table;
 	}
 
 	public int getCacheID() {
@@ -33,8 +29,16 @@ public class MemBltOrder extends ScreenBltOrder {
 		return this.cache_idx;
 	}
 
-	public void setColorTable(int color_table) {
-		this.color_table = color_table;
+	public int getColorTable() {
+		return this.color_table;
+	}
+
+	@Override
+	public void reset() {
+		super.reset();
+		color_table = 0;
+		cache_id = 0;
+		cache_idx = 0;
 	}
 
 	public void setCacheID(int cache_id) {
@@ -45,10 +49,7 @@ public class MemBltOrder extends ScreenBltOrder {
 		this.cache_idx = cache_idx;
 	}
 
-	public void reset() {
-		super.reset();
-		color_table = 0;
-		cache_id = 0;
-		cache_idx = 0;
+	public void setColorTable(int color_table) {
+		this.color_table = color_table;
 	}
 }

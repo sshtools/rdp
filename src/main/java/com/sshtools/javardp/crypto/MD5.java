@@ -30,25 +30,15 @@ public final class MD5 extends BlockMessageDigest implements Cloneable {
 	// MD5 constants and variables
 	// ...........................................................................
 
-	/** Length of the final hash (in bytes). */
-	private static final int HASH_LENGTH = 16;
-
 	/** Length of a block (the number of bytes hashed in every transform). */
 	private static final int DATA_LENGTH = 64;
+
+	/** Length of the final hash (in bytes). */
+	private static final int HASH_LENGTH = 16;
 
 	private int[] data;
 	private int[] digest;
 	private byte[] tmp;
-
-	/** Returns the length of the hash (in bytes). */
-	protected int engineGetDigestLength() {
-		return HASH_LENGTH;
-	}
-
-	/** Returns the length of the data (in bytes) hashed in every transform. */
-	protected int engineGetDataLength() {
-		return DATA_LENGTH;
-	}
 
 	/**
 	 * The public constructor.
@@ -59,42 +49,55 @@ public final class MD5 extends BlockMessageDigest implements Cloneable {
 		engineReset();
 	}
 
-	private void java_init() {
-		digest = new int[HASH_LENGTH / 4];
-		data = new int[DATA_LENGTH / 4];
-		tmp = new byte[DATA_LENGTH];
-	}
-
 	/**
 	 * This constructor is here to implement cloneability of this class.
 	 */
 	private MD5(MD5 md) {
 		this();
-		data = (int[]) md.data.clone();
-		digest = (int[]) md.digest.clone();
-		tmp = (byte[]) md.tmp.clone();
+		data = md.data.clone();
+		digest = md.digest.clone();
+		tmp = md.tmp.clone();
 	}
 
 	/**
 	 * Returns a copy of this MD object.
 	 */
+	@Override
 	public Object clone() {
 		return new MD5(this);
 	}
 
 	/**
+	 * Returns the digest of the data added and resets the digest.
+	 * 
+	 * @return the digest of all the data added to the message digest as a byte
+	 *         array.
+	 */
+	@Override
+	public byte[] engineDigest(byte[] in, int length) {
+		byte b[] = java_digest(in, length);
+		engineReset();
+		return b;
+	}
+
+	/**
 	 * Initializes (resets) the message digest.
 	 */
+	@Override
 	public void engineReset() {
 		super.engineReset();
 		java_reset();
 	}
 
-	private void java_reset() {
-		digest[0] = 0x67452301;
-		digest[1] = 0xEFCDAB89;
-		digest[2] = 0x98BADCFE;
-		digest[3] = 0x10325476;
+	/** Returns the length of the data (in bytes) hashed in every transform. */
+	@Override
+	protected int engineGetDataLength() {
+		return DATA_LENGTH;
+	}
+
+	/** Returns the length of the hash (in bytes). */
+	protected int engineGetDigestLength() {
+		return HASH_LENGTH;
 	}
 
 	/**
@@ -104,108 +107,9 @@ public final class MD5 extends BlockMessageDigest implements Cloneable {
 	 * @param offset The start of the data in the array.
 	 * @param length The amount of data to add.
 	 */
+	@Override
 	protected void engineTransform(byte[] in) {
 		java_transform(in);
-	}
-
-	private void java_transform(byte[] in) {
-		byte2int(in, 0, data, 0, DATA_LENGTH / 4);
-		transform(data);
-	}
-
-	/**
-	 * Returns the digest of the data added and resets the digest.
-	 * 
-	 * @return the digest of all the data added to the message digest as a byte
-	 *         array.
-	 */
-	public byte[] engineDigest(byte[] in, int length) {
-		byte b[] = java_digest(in, length);
-		engineReset();
-		return b;
-	}
-
-	private byte[] java_digest(byte[] in, int pos) {
-		if (pos != 0)
-			System.arraycopy(in, 0, tmp, 0, pos);
-
-		tmp[pos++] = -128; // (byte)0x80;
-
-		if (pos > DATA_LENGTH - 8) {
-			while (pos < DATA_LENGTH)
-				tmp[pos++] = 0;
-
-			byte2int(tmp, 0, data, 0, DATA_LENGTH / 4);
-			transform(data);
-			pos = 0;
-		}
-
-		while (pos < DATA_LENGTH - 8)
-			tmp[pos++] = 0;
-
-		byte2int(tmp, 0, data, 0, (DATA_LENGTH / 4) - 2);
-
-		int bc = bitcount();
-		data[14] = bc;
-		data[15] = 0;
-
-		transform(data);
-
-		byte buf[] = new byte[HASH_LENGTH];
-
-		// Little endian
-		int off = 0;
-		for (int i = 0; i < HASH_LENGTH / 4; ++i) {
-			int d = digest[i];
-			buf[off++] = (byte) d;
-			buf[off++] = (byte) (d >>> 8);
-			buf[off++] = (byte) (d >>> 16);
-			buf[off++] = (byte) (d >>> 24);
-		}
-		return buf;
-	}
-
-	// MD5 transform routines
-	// ...........................................................................
-
-	static protected int F(int x, int y, int z) {
-		return (z ^ (x & (y ^ z)));
-	}
-
-	static protected int G(int x, int y, int z) {
-		return (y ^ (z & (x ^ y)));
-	}
-
-	static protected int H(int x, int y, int z) {
-		return (x ^ y ^ z);
-	}
-
-	static protected int I(int x, int y, int z) {
-		return (y ^ (x | ~z));
-	}
-
-	static protected int FF(int a, int b, int c, int d, int k, int s, int t) {
-		a += k + t + F(b, c, d);
-		a = (a << s | a >>> -s);
-		return a + b;
-	}
-
-	static protected int GG(int a, int b, int c, int d, int k, int s, int t) {
-		a += k + t + G(b, c, d);
-		a = (a << s | a >>> -s);
-		return a + b;
-	}
-
-	static protected int HH(int a, int b, int c, int d, int k, int s, int t) {
-		a += k + t + H(b, c, d);
-		a = (a << s | a >>> -s);
-		return a + b;
-	}
-
-	static protected int II(int a, int b, int c, int d, int k, int s, int t) {
-		a += k + t + I(b, c, d);
-		a = (a << s | a >>> -s);
-		return a + b;
 	}
 
 	protected void transform(int M[]) {
@@ -288,6 +192,107 @@ public final class MD5 extends BlockMessageDigest implements Cloneable {
 		digest[1] += b;
 		digest[2] += c;
 		digest[3] += d;
+	}
+
+	private byte[] java_digest(byte[] in, int pos) {
+		if (pos != 0)
+			System.arraycopy(in, 0, tmp, 0, pos);
+
+		tmp[pos++] = -128; // (byte)0x80;
+
+		if (pos > DATA_LENGTH - 8) {
+			while (pos < DATA_LENGTH)
+				tmp[pos++] = 0;
+
+			byte2int(tmp, 0, data, 0, DATA_LENGTH / 4);
+			transform(data);
+			pos = 0;
+		}
+
+		while (pos < DATA_LENGTH - 8)
+			tmp[pos++] = 0;
+
+		byte2int(tmp, 0, data, 0, (DATA_LENGTH / 4) - 2);
+
+		int bc = bitcount();
+		data[14] = bc;
+		data[15] = 0;
+
+		transform(data);
+
+		byte buf[] = new byte[HASH_LENGTH];
+
+		// Little endian
+		int off = 0;
+		for (int i = 0; i < HASH_LENGTH / 4; ++i) {
+			int d = digest[i];
+			buf[off++] = (byte) d;
+			buf[off++] = (byte) (d >>> 8);
+			buf[off++] = (byte) (d >>> 16);
+			buf[off++] = (byte) (d >>> 24);
+		}
+		return buf;
+	}
+
+	private void java_init() {
+		digest = new int[HASH_LENGTH / 4];
+		data = new int[DATA_LENGTH / 4];
+		tmp = new byte[DATA_LENGTH];
+	}
+
+	private void java_reset() {
+		digest[0] = 0x67452301;
+		digest[1] = 0xEFCDAB89;
+		digest[2] = 0x98BADCFE;
+		digest[3] = 0x10325476;
+	}
+
+	// MD5 transform routines
+	// ...........................................................................
+
+	private void java_transform(byte[] in) {
+		byte2int(in, 0, data, 0, DATA_LENGTH / 4);
+		transform(data);
+	}
+
+	static protected int F(int x, int y, int z) {
+		return (z ^ (x & (y ^ z)));
+	}
+
+	static protected int FF(int a, int b, int c, int d, int k, int s, int t) {
+		a += k + t + F(b, c, d);
+		a = (a << s | a >>> -s);
+		return a + b;
+	}
+
+	static protected int G(int x, int y, int z) {
+		return (y ^ (z & (x ^ y)));
+	}
+
+	static protected int GG(int a, int b, int c, int d, int k, int s, int t) {
+		a += k + t + G(b, c, d);
+		a = (a << s | a >>> -s);
+		return a + b;
+	}
+
+	static protected int H(int x, int y, int z) {
+		return (x ^ y ^ z);
+	}
+
+	static protected int HH(int a, int b, int c, int d, int k, int s, int t) {
+		a += k + t + H(b, c, d);
+		a = (a << s | a >>> -s);
+		return a + b;
+	}
+
+	static protected int I(int x, int y, int z) {
+		return (y ^ (x | ~z));
+	}
+
+	static protected int II(int a, int b, int c, int d, int k, int s, int t) {
+		a += k + t + I(b, c, d);
+		a = (a << s | a >>> -s);
+		return a + b;
 	}
 
 	// why was this public?

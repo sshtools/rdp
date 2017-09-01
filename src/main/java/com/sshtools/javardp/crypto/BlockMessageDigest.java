@@ -15,23 +15,23 @@ package com.sshtools.javardp.crypto;
  * @since Cryptix 2.2.2
  */
 public abstract class BlockMessageDigest {
+	private static final int MAX_COUNT = (1 << 28) - 1;
+
+	private String algorithm;
+
 	/**
 	 * The buffer used to store the last incomplete block.
 	 */
 	private byte[] buffer;
-
 	/**
 	 * The number of bytes currently stored in <code>buffer</code>.
 	 */
 	private int buffered;
 
-	private String algorithm;
 	/**
 	 * The number of bytes that have been input to the digest.
 	 */
 	private int count;
-
-	private static final int MAX_COUNT = (1 << 28) - 1;
 
 	/**
 	 * The length of a data block for this algorithm.
@@ -50,11 +50,25 @@ public abstract class BlockMessageDigest {
 	}
 
 	/**
-	 * @return number of bits hashed so far?
+	 * <b>SPI</b>: Calculates the final digest. BlockMessageDigest subclasses
+	 * should not usually override this method.
+	 * 
+	 * @return the digest as a byte array.
 	 */
-	protected int bitcount() {
-		return count * 8;
+	public byte[] engineDigest() {
+		return engineDigest(buffer, buffered);
 	}
+
+	/**
+	 * <b>SPI</b> (for BlockMessageDigests only): Calculates the final digest.
+	 * <code>data[0..length-1]</code> contains the last incomplete input block.
+	 * <i>length</i> will be less than <code>engineDataLength()</code>.
+	 * 
+	 * @param data the last incomplete block.
+	 * @param length the length in bytes of the last block.
+	 * @return the digest as a byte array.
+	 */
+	public abstract byte[] engineDigest(byte[] data, int length);
 
 	/**
 	 * <b>SPI</b>: Resets the digest. Subclasses that override
@@ -105,16 +119,6 @@ public abstract class BlockMessageDigest {
 		}
 	}
 
-	/**
-	 * <b>SPI</b>: Calculates the final digest. BlockMessageDigest subclasses
-	 * should not usually override this method.
-	 * 
-	 * @return the digest as a byte array.
-	 */
-	public byte[] engineDigest() {
-		return engineDigest(buffer, buffered);
-	}
-
 	//
 	// Override int engineDigest(byte[] buf, int offset, int len)
 	// from Java 1.2 preview docs? For the time being no - it should work
@@ -122,27 +126,23 @@ public abstract class BlockMessageDigest {
 	//
 
 	/**
-	 * <b>SPI</b> (for BlockMessageDigests only): Calculates the final digest.
-	 * <code>data[0..length-1]</code> contains the last incomplete input block.
-	 * <i>length</i> will be less than <code>engineDataLength()</code>.
-	 * 
-	 * @param data the last incomplete block.
-	 * @param length the length in bytes of the last block.
-	 * @return the digest as a byte array.
+	 * @return number of bits hashed so far?
 	 */
-	public abstract byte[] engineDigest(byte[] data, int length);
-
-	/**
-	 * <b>SPI</b> (for BlockMessageDigests only): Performs a transformation on
-	 * the given data, which is always one block long.
-	 */
-	protected abstract void engineTransform(byte[] data);
+	protected int bitcount() {
+		return count * 8;
+	}
 
 	/**
 	 * <b>SPI</b>: Returns the length of the block that this hash function
 	 * operates on.
 	 */
 	protected abstract int engineGetDataLength();
+
+	/**
+	 * <b>SPI</b> (for BlockMessageDigests only): Performs a transformation on
+	 * the given data, which is always one block long.
+	 */
+	protected abstract void engineTransform(byte[] data);
 
 	protected String getAlgorithm() {
 		return this.algorithm;

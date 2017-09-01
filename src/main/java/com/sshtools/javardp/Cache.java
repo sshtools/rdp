@@ -17,6 +17,10 @@ import java.awt.image.IndexColorModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.graphics.Bitmap;
+import com.sshtools.javardp.graphics.Glyph;
+import com.sshtools.javardp.graphics.RdpCursor;
+
 public class Cache {
 
 	static Logger logger = LoggerFactory.getLogger(Cache.class);
@@ -25,45 +29,19 @@ public class Cache {
 
 	private Bitmap[][] bitmapcache = new Bitmap[3][600];
 
+	private IndexColorModel[] colourcache = new IndexColorModel[RDPCACHE_COLOURMAPSIZE];
+
 	private RdpCursor[] cursorcache = new RdpCursor[32];
 
 	private Glyph[][] fontcache = new Glyph[12][256];
-
-	private DataBlob[] textcache = new DataBlob[256];
 
 	private int[] highdeskcache = new int[921600];
 
 	private int num_bitmaps_in_memory[] = new int[3];
 
-	private IndexColorModel[] colourcache = new IndexColorModel[RDPCACHE_COLOURMAPSIZE];
+	private DataBlob[] textcache = new DataBlob[256];
 
 	public Cache() {
-	}
-
-	void TOUCH(int id, int idx) {
-		bitmapcache[id][idx].usage = ++PstCache.g_stamp;
-	}
-
-	/**
-	 * Remove the least-recently-used bitmap from the specified cache
-	 * 
-	 * @param cache_id Number of cache from which to remove bitmap
-	 */
-	void removeLRUBitmap(int cache_id) {
-		int i;
-		int cache_idx = 0;
-		int m = 0xffffffff;
-
-		for (i = 0; i < bitmapcache[cache_id].length; i++) {
-			if ((bitmapcache[cache_id][i] != null) && (bitmapcache[cache_id][i].getBitmapData() != null)
-				&& (bitmapcache[cache_id][i].usage < m)) {
-				cache_idx = i;
-				m = bitmapcache[cache_id][i].usage;
-			}
-		}
-
-		bitmapcache[cache_id][cache_idx] = null;
-		--num_bitmaps_in_memory[cache_id];
 	}
 
 	/**
@@ -81,20 +59,6 @@ public class Cache {
 				return map;
 		}
 		throw new RdesktopException("Could not get colourmap with cache_id=" + cache_id);
-	}
-
-	/**
-	 * Assign a colour model to a specified cache
-	 * 
-	 * @param cache_id ID of cache to which the colour map should be added
-	 * @param map Indexed colour model to assign to the cache
-	 * @throws RdesktopException
-	 */
-	public void put_colourmap(int cache_id, IndexColorModel map) throws RdesktopException {
-		if (cache_id < colourcache.length)
-			colourcache[cache_id] = map;
-		else
-			throw new RdesktopException("Could not put colourmap with cache_id=" + cache_id);
 	}
 
 	/**
@@ -126,34 +90,6 @@ public class Cache {
 	}
 
 	/**
-	 * Add a bitmap to the cache
-	 * 
-	 * @param cache_id ID of cache to which the Bitmap should be added
-	 * @param cache_idx ID of location in specified cache in which to store the
-	 *            Bitmap
-	 * @param bitmap Bitmap object to store in cache
-	 * @param stamp Timestamp for storage of bitmap
-	 * @throws RdesktopException
-	 */
-	public void putBitmap(int cache_id, int cache_idx, Bitmap bitmap, int stamp) throws RdesktopException {
-
-		// Bitmap old;
-
-		if ((cache_id < bitmapcache.length) && (cache_idx < bitmapcache[0].length)) {
-			bitmapcache[cache_id][cache_idx] = bitmap;
-			/*
-			 * if (Options.use_rdp5) { if (++num_bitmaps_in_memory[cache_id] >
-			 * Rdp.BMPCACHE2_C2_CELLS) removeLRUBitmap(cache_id); }
-			 * 
-			 * bitmapcache[cache_id][cache_idx] = bitmap;
-			 * bitmapcache[cache_id][cache_idx].usage = stamp;
-			 */
-		} else {
-			throw new RdesktopException("Could not put Bitmap!");
-		}
-	}
-
-	/**
 	 * Retrieve a Cursor object from the cache
 	 * 
 	 * @param cache_idx ID of cache in which the Cursor is stored
@@ -173,45 +109,31 @@ public class Cache {
 	}
 
 	/**
-	 * Assign a Cursor object to a specific cache
+	 * Retrieve an image from the desktop cache
 	 * 
-	 * @param cache_idx ID of cache to store Cursor in
-	 * @param cursor Cursor object to assign to cache
+	 * @param offset Offset of image data within desktop cache
+	 * @param cx Width of image
+	 * @param cy Height of image
+	 * @return Integer pixel data for image requested
 	 * @throws RdesktopException
 	 */
-	public void putCursor(int cache_idx, RdpCursor cursor) throws RdesktopException {
+	public int[] getDesktopInt(int offset, int cx, int cy) throws RdesktopException {
+		int length = cx * cy;
+		int pdata = 0;
+		int[] data = new int[length];
 
-		if (cache_idx < cursorcache.length) {
-			cursorcache[cache_idx] = cursor;
-		} else {
-			throw new RdesktopException("Could not put Cursor!");
+		if (offset > highdeskcache.length)
+			offset = 0;
+
+		if (offset + length <= highdeskcache.length) {
+			for (int i = 0; i < cy; i++) {
+				System.arraycopy(highdeskcache, offset, data, pdata, cx);
+				offset += cx;
+				pdata += cx;
+			}
+			return data;
 		}
-	}
-
-	/**
-	 * Add a font to the cache
-	 * 
-	 * @param glyph Glyph containing references to relevant font
-	 * @throws RdesktopException
-	 */
-	public void putFont(Glyph glyph) throws RdesktopException {
-		if ((glyph.getFont() < fontcache.length) && (glyph.getCharacter() < fontcache[0].length)) {
-			fontcache[glyph.getFont()][glyph.getCharacter()] = glyph;
-		} else {
-			throw new RdesktopException("Could not put font");
-		}
-	}
-
-	/**
-	 * Update the persistent bitmap cache MRU information on exit
-	 */
-	public void saveState() {
-		int id, idx;
-
-		for (id = 0; id < bitmapcache.length; id++)
-			if (PstCache.IS_PERSISTENT(id))
-				for (idx = 0; idx < bitmapcache[id].length; idx++)
-					PstCache.touchBitmap(id, idx, bitmapcache[id][idx].usage);
+		throw new RdesktopException("Could not get Bitmap");
 	}
 
 	/**
@@ -255,17 +177,60 @@ public class Cache {
 	}
 
 	/**
-	 * Store text in the cache
+	 * Assign a colour model to a specified cache
 	 * 
-	 * @param cache_id ID of cache in which to store the text
-	 * @param entry DataBlob representing the text to be stored
+	 * @param cache_id ID of cache to which the colour map should be added
+	 * @param map Indexed colour model to assign to the cache
 	 * @throws RdesktopException
 	 */
-	public void putText(int cache_id, DataBlob entry) throws RdesktopException {
-		if (cache_id < textcache.length) {
-			textcache[cache_id] = entry;
+	public void put_colourmap(int cache_id, IndexColorModel map) throws RdesktopException {
+		if (cache_id < colourcache.length)
+			colourcache[cache_id] = map;
+		else
+			throw new RdesktopException("Could not put colourmap with cache_id=" + cache_id);
+	}
+
+	/**
+	 * Add a bitmap to the cache
+	 * 
+	 * @param cache_id ID of cache to which the Bitmap should be added
+	 * @param cache_idx ID of location in specified cache in which to store the
+	 *            Bitmap
+	 * @param bitmap Bitmap object to store in cache
+	 * @param stamp Timestamp for storage of bitmap
+	 * @throws RdesktopException
+	 */
+	public void putBitmap(int cache_id, int cache_idx, Bitmap bitmap, int stamp) throws RdesktopException {
+
+		// Bitmap old;
+
+		if ((cache_id < bitmapcache.length) && (cache_idx < bitmapcache[0].length)) {
+			bitmapcache[cache_id][cache_idx] = bitmap;
+			/*
+			 * if (Options.use_rdp5) { if (++num_bitmaps_in_memory[cache_id] >
+			 * Rdp.BMPCACHE2_C2_CELLS) removeLRUBitmap(cache_id); }
+			 * 
+			 * bitmapcache[cache_id][cache_idx] = bitmap;
+			 * bitmapcache[cache_id][cache_idx].usage = stamp;
+			 */
 		} else {
-			throw new RdesktopException("Could not put Text");
+			throw new RdesktopException("Could not put Bitmap!");
+		}
+	}
+
+	/**
+	 * Assign a Cursor object to a specific cache
+	 * 
+	 * @param cache_idx ID of cache to store Cursor in
+	 * @param cursor Cursor object to assign to cache
+	 * @throws RdesktopException
+	 */
+	public void putCursor(int cache_idx, RdpCursor cursor) throws RdesktopException {
+
+		if (cache_idx < cursorcache.length) {
+			cursorcache[cache_idx] = cursor;
+		} else {
+			throw new RdesktopException("Could not put Cursor!");
 		}
 	}
 
@@ -286,7 +251,7 @@ public class Cache {
 		if (offset > highdeskcache.length)
 			offset = 0;
 
-		if ((int) offset + length <= highdeskcache.length) {
+		if (offset + length <= highdeskcache.length) {
 			for (int i = 0; i < cy; i++) {
 				System.arraycopy(data, pdata, highdeskcache, offset, cx);
 				offset += cx;
@@ -298,31 +263,70 @@ public class Cache {
 	}
 
 	/**
-	 * Retrieve an image from the desktop cache
+	 * Add a font to the cache
 	 * 
-	 * @param offset Offset of image data within desktop cache
-	 * @param cx Width of image
-	 * @param cy Height of image
-	 * @return Integer pixel data for image requested
+	 * @param glyph Glyph containing references to relevant font
 	 * @throws RdesktopException
 	 */
-	public int[] getDesktopInt(int offset, int cx, int cy) throws RdesktopException {
-		int length = cx * cy;
-		int pdata = 0;
-		int[] data = new int[length];
-
-		if (offset > highdeskcache.length)
-			offset = 0;
-
-		if ((int) offset + length <= highdeskcache.length) {
-			for (int i = 0; i < cy; i++) {
-				System.arraycopy(highdeskcache, offset, data, pdata, cx);
-				offset += cx;
-				pdata += cx;
-			}
-			return data;
+	public void putFont(Glyph glyph) throws RdesktopException {
+		if ((glyph.getFont() < fontcache.length) && (glyph.getCharacter() < fontcache[0].length)) {
+			fontcache[glyph.getFont()][glyph.getCharacter()] = glyph;
+		} else {
+			throw new RdesktopException("Could not put font");
 		}
-		throw new RdesktopException("Could not get Bitmap");
+	}
+
+	/**
+	 * Store text in the cache
+	 * 
+	 * @param cache_id ID of cache in which to store the text
+	 * @param entry DataBlob representing the text to be stored
+	 * @throws RdesktopException
+	 */
+	public void putText(int cache_id, DataBlob entry) throws RdesktopException {
+		if (cache_id < textcache.length) {
+			textcache[cache_id] = entry;
+		} else {
+			throw new RdesktopException("Could not put Text");
+		}
+	}
+
+	/**
+	 * Update the persistent bitmap cache MRU information on exit
+	 */
+	public void saveState() {
+		int id, idx;
+
+		for (id = 0; id < bitmapcache.length; id++)
+			if (PstCache.IS_PERSISTENT(id))
+				for (idx = 0; idx < bitmapcache[id].length; idx++)
+					PstCache.touchBitmap(id, idx, bitmapcache[id][idx].usage);
+	}
+
+	/**
+	 * Remove the least-recently-used bitmap from the specified cache
+	 * 
+	 * @param cache_id Number of cache from which to remove bitmap
+	 */
+	void removeLRUBitmap(int cache_id) {
+		int i;
+		int cache_idx = 0;
+		int m = 0xffffffff;
+
+		for (i = 0; i < bitmapcache[cache_id].length; i++) {
+			if ((bitmapcache[cache_id][i] != null) && (bitmapcache[cache_id][i].getBitmapData() != null)
+				&& (bitmapcache[cache_id][i].usage < m)) {
+				cache_idx = i;
+				m = bitmapcache[cache_id][i].usage;
+			}
+		}
+
+		bitmapcache[cache_id][cache_idx] = null;
+		--num_bitmaps_in_memory[cache_id];
+	}
+
+	void TOUCH(int id, int idx) {
+		bitmapcache[id][idx].usage = ++PstCache.g_stamp;
 	}
 
 }

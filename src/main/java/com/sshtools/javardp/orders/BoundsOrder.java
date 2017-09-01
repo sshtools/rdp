@@ -13,12 +13,16 @@ package com.sshtools.javardp.orders;
 
 public class BoundsOrder implements Order {
 
+	private int bottom = 0;
 	private int left = 0;
 	private int right = 0;
 	private int top = 0;
-	private int bottom = 0;
 
 	public BoundsOrder() {
+	}
+
+	public int getBottom() {
+		return this.bottom;
 	}
 
 	public int getLeft() {
@@ -33,8 +37,15 @@ public class BoundsOrder implements Order {
 		return this.top;
 	}
 
-	public int getBottom() {
-		return this.bottom;
+	public void reset() {
+		left = 0;
+		right = 0;
+		top = 0;
+		bottom = 0;
+	}
+
+	public void setBottom(int bottom) {
+		this.bottom = bottom;
 	}
 
 	public void setLeft(int left) {
@@ -47,16 +58,5 @@ public class BoundsOrder implements Order {
 
 	public void setTop(int top) {
 		this.top = top;
-	}
-
-	public void setBottom(int bottom) {
-		this.bottom = bottom;
-	}
-
-	public void reset() {
-		left = 0;
-		right = 0;
-		top = 0;
-		bottom = 0;
 	}
 }

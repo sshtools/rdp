@@ -24,6 +24,8 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
 
@@ -32,70 +34,20 @@ import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.MCS;
-import com.sshtools.javardp.Options;
-import com.sshtools.javardp.RdesktopCanvas;
 import com.sshtools.javardp.Rdp;
-import com.sshtools.javardp.Secure;
+import com.sshtools.javardp.State;
+import com.sshtools.javardp.graphics.RdesktopCanvas;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
+import com.sshtools.javardp.layers.MCS;
+import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
 
 //import javax.swing.Box;
 public class RdesktopFrame extends Frame implements IContext {
 	static Logger logger = LoggerFactory.getLogger(RdesktopFrame.class);
 	public RdesktopCanvas canvas = null;
-	public Rdp rdp = null;
 	public RdpMenu menu = null;
-	private boolean readyToSend;
-	private boolean loggedOn;
-
-	/**
-	 * Register the clipboard channel
-	 * 
-	 * @param c ClipChannel object for controlling clipboard mapping
-	 */
-	public void setClip(ClipChannel c) {
-		((JComponent) canvas.getDisplay()).addFocusListener(c);
-	}
-
-	public void setLoggedOn() {
-		loggedOn = true;
-	}
-
-	public boolean isReadyToSend() {
-		return readyToSend;
-	}
-
-	public void setReadyToSend() {
-		readyToSend = true;
-	}
-
-	/**
-	 * Displays details of the Exception e in an error dialog via the
-	 * RdesktopFrame window and reports this through the logger, then prints a
-	 * stack trace.
-	 * <p>
-	 * The application then exits iff sysexit == true
-	 * 
-	 * @param e
-	 * @param sysexit
-	 * @param RdpLayer
-	 * @param window
-	 */
-	public void error(Exception e, boolean sysexit) {
-		try {
-			String msg1 = e.getClass().getName();
-			String msg2 = e.getMessage();
-			logger.error(msg1 + ": " + msg2);
-			String[] msg = { msg1, msg2 };
-			Rdesktop.showErrorDialog(msg);
-			// e.printStackTrace(System.err);
-		} catch (Exception ex) {
-			logger.warn("Exception in Rdesktop.error: " + ex.getClass().getName() + ": " + ex.getMessage());
-		}
-		Rdesktop.exit(0, this, sysexit);
-	}
-
+	public Rdp rdp = null;
 	/**
 	 * @deprecated ActionListener should be used instead.
 	 */
@@ -103,118 +55,39 @@ public class RdesktopFrame extends Frame implements IContext {
 	 * public boolean action(Event event, Object arg) { if (menu != null) return
 	 * menu.action(event, arg); return false; }
 	 */
+	@Deprecated
 	protected boolean inFullscreen = false;
+	private boolean loggedOn;
 
-	/**
-	 * Switch in/out of fullscreen mode
-	 */
-	public void toggleFullScreen() {
-		if (inFullscreen)
-			leaveFullScreen();
-		else
-			goFullScreen();
-	}
-
-	private boolean menuVisible = false;
-	protected Options options;
-	private Secure secure;
-	private boolean underApplet;
 	private MCS mcs;
 
-	/**
-	 * Display the menu bar
-	 */
-	public void showMenu() {
-		if (menu == null)
-			menu = new RdpMenu(this);
-		if (!menuVisible)
-			this.setMenuBar(menu);
-		canvas.getDisplay().repaint();
-		menuVisible = true;
-	}
+	private boolean menuVisible = false;
 
-	protected void fullscreen() {
-		setUndecorated(true);
-		setExtendedState(Frame.MAXIMIZED_BOTH);
-		inFullscreen = false;
-	}
+	private boolean readyToSend;
 
-	public void goFullScreen() {
-		if (!options.fullscreen)
-			return;
-		inFullscreen = true;
-		if (this.isDisplayable())
-			this.dispose();
-		this.setVisible(false);
-		this.setLocation(0, 0);
-		this.setUndecorated(true);
-		this.setVisible(true);
-		// setExtendedState (Frame.MAXIMIZED_BOTH);
-		// GraphicsEnvironment env =
-		// GraphicsEnvironment.getLocalGraphicsEnvironment();
-		// GraphicsDevice myDevice = env.getDefaultScreenDevice();
-		// if (myDevice.isFullScreenSupported())
-		// myDevice.setFullScreenWindow(this);
-		this.pack();
-	}
+	private Secure secure;
 
-	public void leaveFullScreen() {
-		if (!options.fullscreen)
-			return;
-		inFullscreen = false;
-		if (this.isDisplayable())
-			this.dispose();
-		GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-		GraphicsDevice myDevice = env.getDefaultScreenDevice();
-		if (myDevice.isFullScreenSupported())
-			myDevice.setFullScreenWindow(null);
-		this.setLocation(10, 10);
-		this.setUndecorated(false);
-		this.setVisible(true);
-		// setExtendedState (Frame.NORMAL);
-		this.pack();
-	}
+	private State state;
 
-	/**
-	 * Hide the menu bar
-	 */
-	public void hideMenu() {
-		if (menuVisible)
-			this.setMenuBar(null);
-		// canvas.setSize(this.WIDTH, this.HEIGHT);
-		canvas.getDisplay().repaint();
-		menuVisible = false;
-	}
-
-	/**
-	 * Toggle the menu on/off (show if hidden, hide if visible)
-	 * 
-	 */
-	public void toggleMenu() {
-		if (!menuVisible)
-			showMenu();
-		else
-			hideMenu();
-	}
+	private boolean underApplet;
 
 	/**
 	 * Create a new RdesktopFrame. Size defined by Options.width and
 	 * Options.height Creates RdesktopCanvas occupying entire frame
 	 */
-	public RdesktopFrame(Options options) {
+	public RdesktopFrame(State state) {
 		super();
-		this.options = options;
 		setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
 		menu = new RdpMenu(this);
 		setMenuBar(menu);
-		new RdesktopCanvas(this, options, options.width, options.height);
+		new RdesktopCanvas(this, state);
 		add((JComponent) this.canvas.getDisplay());
-		setTitle(options.windowTitle);
+		setTitle(state.getOptions().getWindowTitle());
 		if (Constants.OS == Constants.WINDOWS)
 			setResizable(false);
 		// Windows has to setResizable(false) before pack,
 		// else draws on the frame
-		if (options.fullscreen) {
+		if (state.getOptions().isFullscreen()) {
 			goFullScreen();
 			pack();
 			setLocation(0, 0);
@@ -237,10 +110,42 @@ public class RdesktopFrame extends Frame implements IContext {
 		((JComponent) this.canvas.getDisplay()).requestFocus();
 	}
 
-	public void init(RdesktopCanvas canvas) {
-		this.canvas = canvas;
+	/**
+	 * Centre this window
+	 */
+	public void centreWindow() {
+		centreWindow(this);
 	}
-
+	/**
+	 * Displays details of the Exception e in an error dialog via the
+	 * RdesktopFrame window and reports this through the logger, then prints a
+	 * stack trace.
+	 * <p>
+	 * The application then exits iff sysexit == true
+	 * 
+	 * @param e
+	 * @param sysexit
+	 * @param RdpLayer
+	 * @param window
+	 */
+	@Override
+	public void error(Exception e, boolean sysexit) {
+		try {
+			String msg1 = e.getClass().getName();
+			String msg2 = e.getMessage();
+			logger.error(msg1 + ": " + msg2);
+			String[] msg = { msg1, msg2 };
+			Rdesktop.showErrorDialog(msg);
+			// e.printStackTrace(System.err);
+		} catch (Exception ex) {
+			logger.warn("Exception in Rdesktop.error: " + ex.getClass().getName() + ": " + ex.getMessage());
+		}
+		Rdesktop.exit(0, this, sysexit);
+	}
+	@Override
+	public void exit() {
+		// TODO Auto-generated method stub
+	}
 	/**
 	 * Retrieve the canvas contained within this frame
 	 * 
@@ -248,6 +153,94 @@ public class RdesktopFrame extends Frame implements IContext {
 	 */
 	public RdesktopCanvas getCanvas() {
 		return this.canvas;
+	}
+	@Override
+	public boolean getLockingKeyState(int vk) {
+		return Toolkit.getDefaultToolkit().getLockingKeyState(vk);
+	}
+
+	@Override
+	public MCS getMcs() {
+		return mcs;
+	}
+
+	@Override
+	public Rdp getRdp() {
+		return rdp;
+	}
+
+	@Override
+	public Secure getSecure() {
+		return secure;
+	}
+
+	public void goFullScreen() {
+		if (!state.getOptions().isFullscreen())
+			return;
+		inFullscreen = true;
+		if (this.isDisplayable())
+			this.dispose();
+		this.setVisible(false);
+		this.setLocation(0, 0);
+		this.setUndecorated(true);
+		this.setVisible(true);
+		// setExtendedState (Frame.MAXIMIZED_BOTH);
+		// GraphicsEnvironment env =
+		// GraphicsEnvironment.getLocalGraphicsEnvironment();
+		// GraphicsDevice myDevice = env.getDefaultScreenDevice();
+		// if (myDevice.isFullScreenSupported())
+		// myDevice.setFullScreenWindow(this);
+		this.pack();
+	}
+
+	/**
+	 * Hide the menu bar
+	 */
+	@Override
+	public void hideMenu() {
+		if (menuVisible)
+			this.setMenuBar(null);
+		// canvas.setSize(this.WIDTH, this.HEIGHT);
+		canvas.getDisplay().repaint();
+		menuVisible = false;
+	}
+
+	@Override
+	public void init(RdesktopCanvas canvas) {
+		this.canvas = canvas;
+	}
+
+	@Override
+	public boolean isReadyToSend() {
+		return readyToSend;
+	}
+
+	@Override
+	public boolean isUnderApplet() {
+		return underApplet;
+	}
+
+	public void leaveFullScreen() {
+		if (!state.getOptions().isFullscreen())
+			return;
+		inFullscreen = false;
+		if (this.isDisplayable())
+			this.dispose();
+		GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+		GraphicsDevice myDevice = env.getDefaultScreenDevice();
+		if (myDevice.isFullScreenSupported())
+			myDevice.setFullScreenWindow(null);
+		this.setLocation(10, 10);
+		this.setUndecorated(false);
+		this.setVisible(true);
+		// setExtendedState (Frame.NORMAL);
+		this.pack();
+	}
+
+	@Override
+	public byte[] loadLicense() throws IOException {
+		Preferences prefs = Preferences.userNodeForPackage(this.getClass());
+		return prefs.getByteArray("licence." + state.getClientName(), null);
 	}
 
 	/**
@@ -260,6 +253,11 @@ public class RdesktopFrame extends Frame implements IContext {
 		canvas.registerCommLayer(rdp);
 	}
 
+	@Override
+	public void registerDrawingSurface() {
+		rdp.registerDrawingSurface(canvas);
+	}
+
 	/**
 	 * Register keymap
 	 * 
@@ -269,73 +267,98 @@ public class RdesktopFrame extends Frame implements IContext {
 		canvas.registerKeyboard(keys);
 	}
 
-	class RdesktopFocusListener implements FocusListener {
-		public void focusGained(FocusEvent arg0) {
-			if (Constants.OS == Constants.WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, options.width, options.height);
-			}
-			// gained focus..need to check state of locking keys
-			canvas.gainedFocus();
-		}
-
-		public void focusLost(FocusEvent arg0) {
-			// lost focus - need clear keys that are down
-			canvas.lostFocus();
-		}
+	@Override
+	public void saveLicense(byte[] license) throws IOException {
+		Preferences prefs = Preferences.userNodeForPackage(this.getClass());
+		prefs.putByteArray("licence." + state.getClientName(), license);
 	}
 
-	class RdesktopWindowAdapter extends WindowAdapter {
-		public void windowClosing(WindowEvent e) {
-			hide();
-			Rdesktop.exit(0, RdesktopFrame.this, true);
-		}
-
-		public void windowLostFocus(WindowEvent e) {
-			logger.info("windowLostFocus");
-			// lost focus - need clear keys that are down
-			canvas.lostFocus();
-		}
-
-		public void windowDeiconified(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, options.width, options.height);
-			}
-			canvas.gainedFocus();
-		}
-
-		public void windowActivated(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, options.width, options.height);
-			}
-			// gained focus..need to check state of locking keys
-			canvas.gainedFocus();
-		}
-
-		public void windowGainedFocus(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, options.width, options.height);
-			}
-			// gained focus..need to check state of locking keys
-			canvas.gainedFocus();
-		}
+	@Override
+	public void screenResized(int width, int height, boolean clientInitiated) {
+		setSize(width, height);
 	}
 
-	class RdesktopComponentAdapter extends ComponentAdapter {
-		public void componentMoved(ComponentEvent e) {
-			canvas.getDisplay().repaint(0, 0, options.width, options.height);
-		}
+	/**
+	 * Register the clipboard channel
+	 * 
+	 * @param c ClipChannel object for controlling clipboard mapping
+	 */
+	public void setClip(ClipChannel c) {
+		((JComponent) canvas.getDisplay()).addFocusListener(c);
+	}
+
+	@Override
+	public void setLoggedOn() {
+		loggedOn = true;
+	}
+
+	@Override
+	public void setMcs(MCS mcs) {
+		this.mcs = mcs;
+	}
+
+	@Override
+	public void setRdp(Rdp rdp) {
+		this.rdp = rdp;
+	}
+
+	@Override
+	public void setReadyToSend() {
+		readyToSend = true;
+	}
+
+	@Override
+	public void setSecure(Secure secure) {
+		this.secure = secure;
+	}
+
+	/**
+	 * Display the menu bar
+	 */
+	public void showMenu() {
+		if (menu == null)
+			menu = new RdpMenu(this);
+		if (!menuVisible)
+			this.setMenuBar(menu);
+		canvas.getDisplay().repaint();
+		menuVisible = true;
+	}
+
+	/**
+	 * Switch in/out of fullscreen mode
+	 */
+	@Override
+	public void toggleFullScreen() {
+		if (inFullscreen)
+			leaveFullScreen();
+		else
+			goFullScreen();
+	}
+
+	/**
+	 * Toggle the menu on/off (show if hidden, hide if visible)
+	 * 
+	 */
+	public void toggleMenu() {
+		if (!menuVisible)
+			showMenu();
+		else
+			hideMenu();
 	}
 
 	/**
 	 * Notify the canvas that the connection is ready for sending messages
 	 */
+	@Override
 	public void triggerReadyToSend() {
 		this.show();
 		canvas.triggerReadyToSend();
+	}
+
+	protected void fullscreen() {
+		setUndecorated(true);
+		setExtendedState(Frame.MAXIMIZED_BOTH);
+		inFullscreen = false;
 	}
 
 	/**
@@ -355,50 +378,72 @@ public class RdesktopFrame extends Frame implements IContext {
 		f.setLocation(x, y);
 	}
 
-	/**
-	 * Centre this window
-	 */
-	public void centreWindow() {
-		centreWindow(this);
+	class RdesktopComponentAdapter extends ComponentAdapter {
+		@Override
+		public void componentMoved(ComponentEvent e) {
+			canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+		}
 	}
 
-	public void exit() {
-		// TODO Auto-generated method stub
+	class RdesktopFocusListener implements FocusListener {
+		@Override
+		public void focusGained(FocusEvent arg0) {
+			if (Constants.OS == Constants.WINDOWS) {
+				// canvas.repaint();
+				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+			}
+			// gained focus..need to check state of locking keys
+			canvas.gainedFocus();
+		}
+
+		@Override
+		public void focusLost(FocusEvent arg0) {
+			// lost focus - need clear keys that are down
+			canvas.lostFocus();
+		}
 	}
 
-	public Rdp getRdp() {
-		return rdp;
-	}
+	class RdesktopWindowAdapter extends WindowAdapter {
+		@Override
+		public void windowActivated(WindowEvent e) {
+			if (Constants.OS == Constants.WINDOWS) {
+				// canvas.repaint();
+				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+			}
+			// gained focus..need to check state of locking keys
+			canvas.gainedFocus();
+		}
 
-	public Secure getSecure() {
-		return secure;
-	}
+		@Override
+		public void windowClosing(WindowEvent e) {
+			hide();
+			Rdesktop.exit(0, RdesktopFrame.this, true);
+		}
 
-	public boolean isUnderApplet() {
-		return underApplet;
-	}
+		@Override
+		public void windowDeiconified(WindowEvent e) {
+			if (Constants.OS == Constants.WINDOWS) {
+				// canvas.repaint();
+				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+			}
+			canvas.gainedFocus();
+		}
 
-	public MCS getMcs() {
-		return mcs;
-	}
+		@Override
+		public void windowGainedFocus(WindowEvent e) {
+			if (Constants.OS == Constants.WINDOWS) {
+				// canvas.repaint();
+				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+			}
+			// gained focus..need to check state of locking keys
+			canvas.gainedFocus();
+		}
 
-	public void setMcs(MCS mcs) {
-		this.mcs = mcs;
-	}
-
-	public void setSecure(Secure secure) {
-		this.secure = secure;
-	}
-
-	public void registerDrawingSurface() {
-		rdp.registerDrawingSurface(canvas);
-	}
-
-	public void setRdp(Rdp rdp) {
-		this.rdp = rdp;
-	}
-
-	public void screenResized(int width, int height, boolean clientInitiated) {
-		setSize(width, height);
+		@Override
+		public void windowLostFocus(WindowEvent e) {
+			logger.info("windowLostFocus");
+			// lost focus - need clear keys that are down
+			canvas.lostFocus();
+		}
 	}
 }

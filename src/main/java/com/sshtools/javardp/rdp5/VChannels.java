@@ -17,18 +17,41 @@ import java.lang.reflect.Array;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.MCS;
-import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
+import com.sshtools.javardp.layers.MCS;
 
 public class VChannels {
 
-	static Logger logger = LoggerFactory.getLogger(VChannels.class);
+	public static final int CHANNEL_CHUNK_LENGTH = 1600;
 	
-	/* Sound format constants */
-	public static final int WAVE_FORMAT_PCM = 1;
+	public static final int CHANNEL_FLAG_FIRST = 0x01;
+
+	public static final int CHANNEL_FLAG_LAST = 0x02;
+
+	public static final int CHANNEL_FLAG_SHOW_PROTOCOL = 0x10;
+
+	public static final int CHANNEL_OPTION_COMPRESS_RDP = 0x00800000;
+
+	public static final int CHANNEL_OPTION_ENCRYPT_RDP = 0x40000000;
+
+	/* Virtual channel options */
+	public static final int CHANNEL_OPTION_INITIALIZED = 0x80000000;
+
+	public static final int CHANNEL_OPTION_SHOW_PROTOCOL = 0x00200000;
+
+	public static final int MAX_CHANNELS = 4;
+
+	public static final int STATUS_ACCESS_DENIED = 0xc0000022;
+
+	public static final int STATUS_INVALID_DEVICE_REQUEST = 0xc0000010;
+
+	public static final int STATUS_INVALID_PARAMETER = 0xc000000d;
+
+	/* NT status codes for RDPDR */
+	public static final int STATUS_SUCCESS = 0x00000000;
 
 	public static final int WAVE_FORMAT_ADPCM = 2;
 
@@ -36,61 +59,24 @@ public class VChannels {
 
 	public static final int WAVE_FORMAT_MULAW = 7;
 
-	/* Virtual channel options */
-	public static final int CHANNEL_OPTION_INITIALIZED = 0x80000000;
+	/* Sound format constants */
+	public static final int WAVE_FORMAT_PCM = 1;
 
-	public static final int CHANNEL_OPTION_ENCRYPT_RDP = 0x40000000;
-
-	public static final int CHANNEL_OPTION_COMPRESS_RDP = 0x00800000;
-
-	public static final int CHANNEL_OPTION_SHOW_PROTOCOL = 0x00200000;
-
-	/* NT status codes for RDPDR */
-	public static final int STATUS_SUCCESS = 0x00000000;
-
-	public static final int STATUS_INVALID_PARAMETER = 0xc000000d;
-
-	public static final int STATUS_INVALID_DEVICE_REQUEST = 0xc0000010;
-
-	public static final int STATUS_ACCESS_DENIED = 0xc0000022;
-
-	public static final int MAX_CHANNELS = 4;
-
-	public static final int CHANNEL_CHUNK_LENGTH = 1600;
-
-	public static final int CHANNEL_FLAG_FIRST = 0x01;
-
-	public static final int CHANNEL_FLAG_LAST = 0x02;
-
-	public static final int CHANNEL_FLAG_SHOW_PROTOCOL = 0x10;
+	static Logger logger = LoggerFactory.getLogger(VChannels.class);
 
 	private VChannel channels[] = new VChannel[MAX_CHANNELS];
 
-	private int num_channels;
-
-	public int num_channels() {
-		return num_channels;
-	}
-
 	private byte[] fragment_buffer = null;
 
-	private Options options;
+	private int num_channels;
 
-	/**
-	 * Obtain the MCS ID for a specific numbered channel
-	 * 
-	 * @param c Channel number for which to obtain MCS ID
-	 * @return MCS ID associated with the supplied channel number
-	 */
-	public int mcs_id(int c) {
-		return MCS.MCS_GLOBAL_CHANNEL + 1 + c;
-	}
+	private State state;
 
 	/**
 	 * Initialise the maximum number of Virtual Channels
 	 */
-	public VChannels(Options options) {
-		this.options = options;
+	public VChannels(State state) {
+		this.state = state;
 		channels = new VChannel[MAX_CHANNELS];
 	}
 
@@ -108,51 +94,6 @@ public class VChannels {
 	}
 
 	/**
-	 * Retrieve the VChannel object for the specified MCS channel ID
-	 * 
-	 * @param channelno MCS ID for the required channel
-	 * @return Virtual Channel associated with the supplied MCS ID
-	 */
-	public VChannel find_channel_by_channelno(int channelno) {
-		if (channelno > MCS.MCS_GLOBAL_CHANNEL + num_channels) {
-			logger.warn("Channel " + channelno + " not defined. Highest channel defined is " + MCS.MCS_GLOBAL_CHANNEL
-				+ num_channels);
-			return null;
-		} else
-			return channels[channelno - MCS.MCS_GLOBAL_CHANNEL - 1];
-	}
-
-	/**
-	 * Remove all registered virtual channels
-	 */
-	public void clear() {
-		channels = new VChannel[MAX_CHANNELS];
-		num_channels = 0;
-	}
-
-	/**
-	 * Register a new virtual channel
-	 * 
-	 * @param v Virtual channel to be registered
-	 * @return True if successful
-	 * @throws RdesktopException
-	 */
-	public boolean register(VChannel v) throws RdesktopException {
-		if (!options.use_rdp5) {
-			return false;
-		}
-
-		if (num_channels >= MAX_CHANNELS)
-			throw new RdesktopException("Channel table full. Could not register channel.");
-
-		channels[num_channels] = v;
-		v.set_mcs_id(MCS.MCS_GLOBAL_CHANNEL + 1 + num_channels);
-		num_channels++;
-
-		return true;
-	}
-
-	/**
 	 * Process a packet sent on a numbered channel
 	 * 
 	 * @param data Packet sent to channel
@@ -163,8 +104,7 @@ public class VChannels {
 	 */
 	public void channel_process(RdpPacket data, int mcsChannel) throws RdesktopException, IOException, CryptoException {
 
-		int length, flags;
-		int thislength = 0;
+		int flags = 0;
 		VChannel channel = null;
 
 		int i;
@@ -179,7 +119,7 @@ public class VChannels {
 		if (i >= num_channels)
 			return;
 
-		length = data.getLittleEndian32();
+		data.getLittleEndian32(); // length
 		flags = data.getLittleEndian32();
 
 		if (((flags & CHANNEL_FLAG_FIRST) != 0) && ((flags & CHANNEL_FLAG_LAST) != 0)) {
@@ -203,23 +143,62 @@ public class VChannels {
 	}
 
 	/**
-	 * Increase the size of an array
-	 * 
-	 * @param a Array to expand
-	 * @param amount Number of elements to add to the array
-	 * @return Expanded array
+	 * Remove all registered virtual channels
 	 */
-	static Object arrayExpand(Object a, int amount) {
-		Class cl = a.getClass();
-		if (!cl.isArray())
-			return null;
-		int length = Array.getLength(a);
-		int newLength = length + amount; // 50% more
+	public void clear() {
+		channels = new VChannel[MAX_CHANNELS];
+		num_channels = 0;
+	}
 
-		Class componentType = a.getClass().getComponentType();
-		Object newArray = Array.newInstance(componentType, newLength);
-		System.arraycopy(a, 0, newArray, 0, length);
-		return newArray;
+	/**
+	 * Retrieve the VChannel object for the specified MCS channel ID
+	 * 
+	 * @param channelno MCS ID for the required channel
+	 * @return Virtual Channel associated with the supplied MCS ID
+	 */
+	public VChannel find_channel_by_channelno(int channelno) {
+		if (channelno > MCS.MCS_GLOBAL_CHANNEL + num_channels) {
+			logger.warn("Channel " + channelno + " not defined. Highest channel defined is " + MCS.MCS_GLOBAL_CHANNEL
+				+ num_channels);
+			return null;
+		} else
+			return channels[channelno - MCS.MCS_GLOBAL_CHANNEL - 1];
+	}
+
+	/**
+	 * Obtain the MCS ID for a specific numbered channel
+	 * 
+	 * @param c Channel number for which to obtain MCS ID
+	 * @return MCS ID associated with the supplied channel number
+	 */
+	public int mcs_id(int c) {
+		return MCS.MCS_GLOBAL_CHANNEL + 1 + c;
+	}
+
+	public int num_channels() {
+		return num_channels;
+	}
+
+	/**
+	 * Register a new virtual channel
+	 * 
+	 * @param v Virtual channel to be registered
+	 * @return True if successful
+	 * @throws RdesktopException
+	 */
+	public boolean register(VChannel v) throws RdesktopException {
+		if (!state.isRDP5()) {
+			return false;
+		}
+
+		if (num_channels >= MAX_CHANNELS)
+			throw new RdesktopException("Channel table full. Could not register channel.");
+
+		channels[num_channels] = v;
+		v.set_mcs_id(MCS.MCS_GLOBAL_CHANNEL + 1 + num_channels);
+		num_channels++;
+
+		return true;
 	}
 
 	/**
@@ -239,5 +218,25 @@ public class VChannels {
 			System.arraycopy(source, 0, out, target.length, source.length);
 			return out;
 		}
+	}
+
+	/**
+	 * Increase the size of an array
+	 * 
+	 * @param a Array to expand
+	 * @param amount Number of elements to add to the array
+	 * @return Expanded array
+	 */
+	static Object arrayExpand(Object a, int amount) {
+		Class<?> cl = a.getClass();
+		if (!cl.isArray())
+			return null;
+		int length = Array.getLength(a);
+		int newLength = length + amount; // 50% more
+
+		Class<?> componentType = a.getClass().getComponentType();
+		Object newArray = Array.newInstance(componentType, newLength);
+		System.arraycopy(a, 0, newArray, 0, length);
+		return newArray;
 	}
 }

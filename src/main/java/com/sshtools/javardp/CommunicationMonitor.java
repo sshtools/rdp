@@ -20,15 +20,6 @@ public class CommunicationMonitor {
 	public static Object locker = null;
 
 	/**
-	 * Identify whether or not communications are locked
-	 * 
-	 * @return True if locked
-	 */
-	public static boolean locked() {
-		return locker != null;
-	}
-
-	/**
 	 * Wait for a lock on communications
 	 * 
 	 * @param o Calling object should supply reference to self
@@ -46,6 +37,15 @@ public class CommunicationMonitor {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Identify whether or not communications are locked
+	 * 
+	 * @return True if locked
+	 */
+	public static boolean locked() {
+		return locker != null;
 	}
 
 	/**

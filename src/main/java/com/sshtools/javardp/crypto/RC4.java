@@ -35,10 +35,12 @@ public final class RC4 { // must be final for security reasons
 	// ............................................................................
 
 	/**
-	 * The state of the cipher object when it is uninitialized, that is, the
-	 * state it is in right after it has been created.
+	 * The state of the cipher when it is ready to decrypt, that is, the state
+	 * it is in right after a call to <code>initDecrypt</code>.
+	 * 
+	 * @see #initDecrypt
 	 */
-	public static final int UNINITIALIZED = 0;
+	public static final int DECRYPT = 2;
 
 	/**
 	 * The state of the cipher when it is ready to encrypt, that is, the state
@@ -49,31 +51,29 @@ public final class RC4 { // must be final for security reasons
 	public static final int ENCRYPT = 1;
 
 	/**
-	 * The state of the cipher when it is ready to decrypt, that is, the state
-	 * it is in right after a call to <code>initDecrypt</code>.
-	 * 
-	 * @see #initDecrypt
+	 * The state of the cipher object when it is uninitialized, that is, the
+	 * state it is in right after it has been created.
 	 */
-	public static final int DECRYPT = 2;
-
-	/**
-	 * Will hold the contents of the current set S-box.
-	 */
-	private int[] sBox = new int[256];
-
-	/**
-	 * The two indices for the S-box computation referred to as i and j in
-	 * Schneier.
-	 */
-	private int x, y;
+	public static final int UNINITIALIZED = 0;
 
 	/**
 	 * The block size of this cipher. Being a stream cipher this value is 1!
 	 */
 	private static final int BLOCK_SIZE = 1;
 
-	private int state; // defaults to UNINITIALIZED = 0
 	private String cipherName = "RC4";
+
+	/**
+	 * Will hold the contents of the current set S-box.
+	 */
+	private int[] sBox = new int[256];
+
+	private int state; // defaults to UNINITIALIZED = 0
+	/**
+	 * The two indices for the S-box computation referred to as i and j in
+	 * Schneier.
+	 */
+	private int x, y;
 
 	// Constructor, finalizer, and clone()
 	// ............................................................................
@@ -91,12 +91,29 @@ public final class RC4 { // must be final for security reasons
 	 * Always throws a CloneNotSupportedException (cloning of ciphers is not
 	 * supported for security reasons).
 	 */
+	@Override
 	public final Object clone() throws CloneNotSupportedException {
 		throw new CloneNotSupportedException();
 	}
 
 	// Implementation of JCE methods
 	// ............................................................................
+
+	public final byte[] crypt(byte[] data) {
+		byte[] buffer = new byte[data.length];
+		engineUpdate(data, 0, data.length, buffer, 0);
+		return buffer;
+	}
+
+	public final byte[] crypt(byte[] data, int position, int length) {
+		byte[] buffer = new byte[length];
+		engineUpdate(data, position, length, buffer, 0);
+		return buffer;
+	}
+
+	public final void crypt(byte[] in, int in_offset, int length, byte[] out, int out_offset) {
+		engineUpdate(in, in_offset, length, out, out_offset);
+	}
 
 	/**
 	 * <b>SPI</b>: Returns the length of an input block, in bytes.
@@ -105,6 +122,21 @@ public final class RC4 { // must be final for security reasons
 	 */
 	public int engineBlockSize() {
 		return BLOCK_SIZE;
+	}
+
+	// Own methods
+	// ............................................................................
+
+	/**
+	 * <b>SPI</b>: Initializes this cipher for decryption, using the specified
+	 * key.
+	 * 
+	 * @param key the key to use for decryption.
+	 * @exception CryptoException if the key is invalid.
+	 */
+	public void engineInitDecrypt(byte[] key) throws CryptoException {
+		makeKey(key);
+		state = ENCRYPT;
 	}
 
 	/**
@@ -120,15 +152,41 @@ public final class RC4 { // must be final for security reasons
 	}
 
 	/**
-	 * <b>SPI</b>: Initializes this cipher for decryption, using the specified
-	 * key.
+	 * Returns this algorithm's standard cipher name (<em>not</em> including
+	 * mode and padding).
+	 * <p>
+	 * See <a href="../guide/ijce/Algorithms.html#Cipher"> <cite>International
+	 * JCE Standard Algorithm Names</cite></a> for a list of Cipher algorithm
+	 * names.
 	 * 
-	 * @param key the key to use for decryption.
-	 * @exception CryptoException if the key is invalid.
+	 * @return the standard cipher name (such as "DES").
 	 */
-	public void engineInitDecrypt(byte[] key) throws CryptoException {
-		makeKey(key);
-		state = ENCRYPT;
+	public final String getAlgorithm() {
+		return cipherName;
+	}
+
+	/**
+	 * Returns the state of this Cipher object. Possible states are:
+	 * <p>
+	 * <dl>
+	 * <dt>UNINITIALIZED
+	 * <dd>The cipher has not been initialized.
+	 * <dt>ENCRYPT
+	 * <dd>The cipher has been initialized for encryption. It may be used for
+	 * encryption only.
+	 * <dt>DECRYPT
+	 * <dd>The cipher has been initialized for decryption. It may be used for
+	 * decryption only.
+	 * </dl>
+	 * 
+	 * @return the state of this cipher object.
+	 * 
+	 * @see #UNINITIALIZED
+	 * @see #ENCRYPT
+	 * @see #DECRYPT
+	 */
+	public final int getState() {
+		return state;
 	}
 
 	/**
@@ -163,36 +221,6 @@ public final class RC4 { // must be final for security reasons
 		rc4(in, inOffset, inLen, out, outOffset);
 
 		return inLen;
-	}
-
-	// Own methods
-	// ............................................................................
-
-	/**
-	 * RC4 encryption/decryption. The input and output regions are assumed not
-	 * to overlap.
-	 * 
-	 * @param in the input data.
-	 * @param inOffset the offset into in specifying where the data starts.
-	 * @param inLen the length of the subarray.
-	 * @param out the output array.
-	 * @param outOffset the offset indicating where to start writing into the
-	 *            out array.
-	 */
-	private void rc4(byte[] in, int inOffset, int inLen, byte[] out, int outOffset) {
-		int xorIndex, t;
-
-		for (int i = 0; i < inLen; i++) {
-			x = (x + 1) & 0xFF;
-			y = (sBox[x] + y) & 0xFF;
-
-			t = sBox[x];
-			sBox[x] = sBox[y];
-			sBox[y] = t;
-
-			xorIndex = (sBox[x] + sBox[y]) & 0xFF;
-			out[outOffset++] = (byte) (in[inOffset++] ^ sBox[xorIndex]);
-		}
 	}
 
 	/**
@@ -238,56 +266,29 @@ public final class RC4 { // must be final for security reasons
 	}
 
 	/**
-	 * Returns this algorithm's standard cipher name (<em>not</em> including
-	 * mode and padding).
-	 * <p>
-	 * See <a href="../guide/ijce/Algorithms.html#Cipher"> <cite>International
-	 * JCE Standard Algorithm Names</cite></a> for a list of Cipher algorithm
-	 * names.
+	 * RC4 encryption/decryption. The input and output regions are assumed not
+	 * to overlap.
 	 * 
-	 * @return the standard cipher name (such as "DES").
+	 * @param in the input data.
+	 * @param inOffset the offset into in specifying where the data starts.
+	 * @param inLen the length of the subarray.
+	 * @param out the output array.
+	 * @param outOffset the offset indicating where to start writing into the
+	 *            out array.
 	 */
-	public final String getAlgorithm() {
-		return cipherName;
-	}
+	private void rc4(byte[] in, int inOffset, int inLen, byte[] out, int outOffset) {
+		int xorIndex, t;
 
-	/**
-	 * Returns the state of this Cipher object. Possible states are:
-	 * <p>
-	 * <dl>
-	 * <dt>UNINITIALIZED
-	 * <dd>The cipher has not been initialized.
-	 * <dt>ENCRYPT
-	 * <dd>The cipher has been initialized for encryption. It may be used for
-	 * encryption only.
-	 * <dt>DECRYPT
-	 * <dd>The cipher has been initialized for decryption. It may be used for
-	 * decryption only.
-	 * </dl>
-	 * 
-	 * @return the state of this cipher object.
-	 * 
-	 * @see #UNINITIALIZED
-	 * @see #ENCRYPT
-	 * @see #DECRYPT
-	 */
-	public final int getState() {
-		return state;
-	}
+		for (int i = 0; i < inLen; i++) {
+			x = (x + 1) & 0xFF;
+			y = (sBox[x] + y) & 0xFF;
 
-	public final byte[] crypt(byte[] data, int position, int length) {
-		byte[] buffer = new byte[length];
-		engineUpdate(data, position, length, buffer, 0);
-		return buffer;
-	}
+			t = sBox[x];
+			sBox[x] = sBox[y];
+			sBox[y] = t;
 
-	public final byte[] crypt(byte[] data) {
-		byte[] buffer = new byte[data.length];
-		engineUpdate(data, 0, data.length, buffer, 0);
-		return buffer;
-	}
-
-	public final void crypt(byte[] in, int in_offset, int length, byte[] out, int out_offset) {
-		engineUpdate(in, in_offset, length, out, out_offset);
+			xorIndex = (sBox[x] + sBox[y]) & 0xFF;
+			out[outOffset++] = (byte) (in[inOffset++] ^ sBox[xorIndex]);
+		}
 	}
 }

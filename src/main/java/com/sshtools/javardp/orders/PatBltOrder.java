@@ -14,8 +14,8 @@ package com.sshtools.javardp.orders;
 public class PatBltOrder extends DestBltOrder {
 
 	private int bgcolor = 0;
-	private int fgcolor = 0;
 	private Brush brush = null;
+	private int fgcolor = 0;
 
 	public PatBltOrder() {
 		super();
@@ -26,12 +26,20 @@ public class PatBltOrder extends DestBltOrder {
 		return this.bgcolor;
 	}
 
+	public Brush getBrush() {
+		return this.brush;
+	}
+
 	public int getForegroundColor() {
 		return this.fgcolor;
 	}
 
-	public Brush getBrush() {
-		return this.brush;
+	@Override
+	public void reset() {
+		super.reset();
+		bgcolor = 0;
+		fgcolor = 0;
+		brush.reset();
 	}
 
 	public void setBackgroundColor(int bgcolor) {
@@ -40,12 +48,5 @@ public class PatBltOrder extends DestBltOrder {
 
 	public void setForegroundColor(int fgcolor) {
 		this.fgcolor = fgcolor;
-	}
-
-	public void reset() {
-		super.reset();
-		bgcolor = 0;
-		fgcolor = 0;
-		brush.reset();
 	}
 }

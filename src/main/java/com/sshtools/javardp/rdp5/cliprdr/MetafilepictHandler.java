@@ -22,29 +22,26 @@ import com.sshtools.javardp.RdpPacket;
 
 public class MetafilepictHandler extends TypeHandler {
 
+	public static final int MM_ANISOTROPIC = 8;
+	public static final int MM_HIENGLISH = 5;
+	public static final int MM_HIMETRIC = 3;
+	public static final int MM_ISOTROPIC = 7;
+	public static final int MM_LOENGLISH = 4;
+	public static final int MM_LOMETRIC = 2;
 	/* Mapping Modes */
 	public static final int MM_TEXT = 1;
-	public static final int MM_LOMETRIC = 2;
-	public static final int MM_HIMETRIC = 3;
-	public static final int MM_LOENGLISH = 4;
-	public static final int MM_HIENGLISH = 5;
 	public static final int MM_TWIPS = 6;
-	public static final int MM_ISOTROPIC = 7;
-	public static final int MM_ANISOTROPIC = 8;
 
 	String[] mapping_modes = { "undefined", "MM_TEXT", "MM_LOMETRIC", "MM_HIMETRIC", "MM_LOENGLISH", "MM_HIENGLISH", "MM_TWIPS",
 		"MM_ISOTROPIC", "MM_ANISOTROPIC" };
 
+	@Override
 	public boolean formatValid(int format) {
 		return (format == CF_METAFILEPICT);
 	}
 
-	public boolean mimeTypeValid(String mimeType) {
-		return mimeType.equals("image");
-	}
-
-	public int preferredFormat() {
-		return CF_METAFILEPICT;
+	public byte[] fromTransferable(Transferable in) {
+		return null;
 	}
 
 	public Transferable handleData(RdpPacket data, int length) {
@@ -76,14 +73,7 @@ public class MetafilepictHandler extends TypeHandler {
 		return (new StringSelection(thingy));
 	}
 
-	public String name() {
-		return "CF_METAFILEPICT";
-	}
-
-	public byte[] fromTransferable(Transferable in) {
-		return null;
-	}
-
+	@Override
 	public void handleData(RdpPacket data, int length, ClipInterface c) {
 		String thingy = "";
 		OutputStream out = null;
@@ -112,6 +102,21 @@ public class MetafilepictHandler extends TypeHandler {
 		}
 	}
 
+	@Override
+	public boolean mimeTypeValid(String mimeType) {
+		return mimeType.equals("image");
+	}
+
+	@Override
+	public String name() {
+		return "CF_METAFILEPICT";
+	}
+
+	@Override
+	public int preferredFormat() {
+		return CF_METAFILEPICT;
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -119,6 +124,7 @@ public class MetafilepictHandler extends TypeHandler {
 	 * com.elusiva.rdp.rdp5.cliprdr.TypeHandler#send_data(java.awt.datatransfer
 	 * .Transferable, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
 	 */
+	@Override
 	public void send_data(Transferable in, ClipInterface c) {
 		c.send_null(ClipChannel.CLIPRDR_DATA_RESPONSE, ClipChannel.CLIPRDR_ERROR);
 	}

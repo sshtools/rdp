@@ -25,38 +25,21 @@ import org.slf4j.LoggerFactory;
 import com.sshtools.javardp.Options;
 
 public class KeyCode_FileBased {
-	static Logger logger = LoggerFactory.getLogger(KeyCode_FileBased.class);
-	
-	private Hashtable keysCurrentlyDown = new Hashtable();
-	private KeyEvent lastKeyEvent = null;
-	private boolean lastEventMatched = false;
-	public static final int SCANCODE_EXTENDED = 0x80;
 	public static final int DOWN = 1;
-	public static final int UP = 0;
-	public static final int QUIETUP = 2;
 	public static final int QUIETDOWN = 3;
-	private int mapCode = -1;
-	private boolean altQuiet = false;
-	public boolean useLockingKeyState = true;
+	public static final int QUIETUP = 2;
+	public static final int SCANCODE_EXTENDED = 0x80;
+	public static final int UP = 0;
+	static Logger logger = LoggerFactory.getLogger(KeyCode_FileBased.class);
 	public boolean capsLockDown = false;
-	Vector keyMap = new Vector();
+	public boolean useLockingKeyState = true;
 	protected Options options;
-
-	private void updateCapsLock(KeyEvent e) {
-		if (options.useLockingKeyState) {
-			try {
-				options.useLockingKeyState = true;
-				capsLockDown = e.getComponent().getToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK);
-			} catch (Exception uoe) {
-				options.useLockingKeyState = false;
-			}
-		}
-	}
-
-	public KeyCode_FileBased(Options options, URL base, InputStream fstream) throws IOException, KeyMapException {
-		this.options = options;
-		readMapFile(base, fstream);
-	}
+	Vector keyMap = new Vector();
+	private boolean altQuiet = false;
+	private Hashtable keysCurrentlyDown = new Hashtable();
+	private boolean lastEventMatched = false;
+	private KeyEvent lastKeyEvent = null;
+	private int mapCode = -1;
 
 	/**
 	 * Constructor for a keymap generated from a specified file, formatted in
@@ -78,6 +61,172 @@ public class KeyCode_FileBased {
 		} catch (IOException e) {
 			throw new KeyMapException("KeyMap file not found: " + keyMapFile);
 		}
+	}
+
+	public KeyCode_FileBased(Options options, URL base, InputStream fstream) throws IOException, KeyMapException {
+		this.options = options;
+		readMapFile(base, fstream);
+	}
+
+	/**
+	 * Retrieve the scancode corresponding to the supplied character as defined
+	 * within this object. Also update the mod array to hold any modifier keys
+	 * that are required to send alongside it.
+	 * 
+	 * @param c Character to obtain scancode for
+	 * @param mod List of modifiers to be updated by method
+	 * @return Scancode of supplied key
+	 */
+	public int charToScancode(char c, String[] mod) {
+		Iterator i = keyMap.iterator();
+		int smallestDist = -1;
+		MapDef best = null;
+		while (i.hasNext()) {
+			MapDef current = (MapDef) i.next();
+			if (current.appliesTo(c)) {
+				best = current;
+			}
+		}
+		if (best != null) {
+			if (best.isShiftDown())
+				mod[0] = "SHIFT";
+			else if (best.isCtrlDown() && best.isAltDown())
+				mod[0] = "ALTGR";
+			else
+				mod[0] = "NONE";
+			return best.getScancode();
+		} else
+			return -1;
+	}
+
+	/**
+	 * Return a mapping definition associated with the supplied key event from
+	 * within the list stored in this object.
+	 * 
+	 * @param e Key event to retrieve a definition for
+	 * @return Mapping definition for supplied keypress
+	 */
+	public MapDef getDef(KeyEvent e) {
+		if (e.getID() == KeyEvent.KEY_RELEASED) {
+			MapDef def = (MapDef) keysCurrentlyDown.get(new Integer(e.getKeyCode()));
+			registerKeyEvent(e, def);
+			if (e.getID() == KeyEvent.KEY_RELEASED)
+				logger.debug(
+						"Released: " + e.getKeyCode() + " returned scancode: " + ((def != null) ? "" + def.getScancode() : "null"));
+			return def;
+		}
+		updateCapsLock(e);
+		Iterator i = keyMap.iterator();
+		int smallestDist = -1;
+		MapDef best = null;
+		boolean noScanCode = !hasScancode(e.getKeyChar());
+		while (i.hasNext()) {
+			MapDef current = (MapDef) i.next();
+			boolean applies;
+			if ((e.getID() == KeyEvent.KEY_PRESSED)) {
+				applies = current.appliesToPressed(e);
+			} else if ((!lastEventMatched) && (e.getID() == KeyEvent.KEY_TYPED)) {
+				applies = current.appliesToTyped(e, capsLockDown);
+			} else
+				applies = false;
+			if (applies) {
+				int d = current.modifierDistance(e, capsLockDown);
+				if ((smallestDist == -1) || (d < smallestDist)) {
+					smallestDist = d;
+					best = current;
+				}
+			}
+		}
+		if (e.getID() == KeyEvent.KEY_PRESSED)
+			logger.debug(
+					"Pressed: " + e.getKeyCode() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
+		if (e.getID() == KeyEvent.KEY_TYPED)
+			logger.debug("Typed: " + e.getKeyChar() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
+		registerKeyEvent(e, best);
+		return best;
+	}
+
+	/**
+	 * Construct a list of keystrokes needed to reproduce an AWT key event via
+	 * RDP
+	 * 
+	 * @param e Keyboard event to reproduce
+	 * @return List of character pairs representing scancodes and key actions to
+	 *         send to server
+	 */
+	public String getKeyStrokes(KeyEvent e) {
+		String codes = "";
+		MapDef d = getDef(e);
+		if (d == null)
+			return "";
+		codes = stateChanges(e, d);
+		String type = "";
+		if (e.getID() == KeyEvent.KEY_RELEASED) {
+			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
+				logger.debug("Sending CAPSLOCK toggle");
+				codes = "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP) + codes;
+			} else {
+				type = "" + ((char) UP);
+				codes = ((char) d.getScancode()) + type + codes;
+			}
+		} else {
+			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
+				logger.debug("Sending CAPSLOCK toggle");
+				codes += "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP);
+			} else {
+				type = "" + ((char) DOWN);
+				codes += ((char) d.getScancode()) + type;
+			}
+		}
+		return codes;
+	}
+
+	/**
+	 * Get the RDP code specifying the key map in use
+	 * 
+	 * @return ID for current key map
+	 */
+	public int getMapCode() {
+		return mapCode;
+	}
+
+	/**
+	 * Return a scancode for the supplied key event, from within the mapping
+	 * definitions stored in this object.
+	 * 
+	 * @param e Key event for which to determine a scancode
+	 * @return Scancode for the supplied keypress, according to current mappings
+	 */
+	public int getScancode(KeyEvent e) {
+		String[] mod = { "" };
+		MapDef d = getDef(e);
+		if (d != null) {
+			return d.getScancode();
+		} else
+			return -1;
+	}
+
+	/**
+	 * Retrieve the scancode corresponding to the supplied character as defined
+	 * within this object. Also update the mod array to hold any modifier keys
+	 * that are required to send alongside it.
+	 * 
+	 * @param c Character to obtain scancode for
+	 * @param mod List of modifiers to be updated by method
+	 * @return Scancode of supplied key
+	 */
+	public boolean hasScancode(char c) {
+		if (c == KeyEvent.CHAR_UNDEFINED)
+			return false;
+		Iterator i = keyMap.iterator();
+		MapDef best = null;
+		while (i.hasNext()) {
+			MapDef current = (MapDef) i.next();
+			if (current.appliesTo(c)) {
+				best = current;
+			}
+		}
+		return (best != null);
 	}
 
 	/**
@@ -131,7 +280,7 @@ public class KeyCode_FileBased {
 			while (i.hasNext()) {
 				MapDef current = (MapDef) i.next();
 				if (current.isCharacterDef()
-					&& !(current.isAltDown() || current.isCtrlDown() || current.isShiftDown() || current.isCapslockOn())) {
+						&& !(current.isAltDown() || current.isCtrlDown() || current.isShiftDown() || current.isCapslockOn())) {
 					int code = getCodeFromAlphaChar(current.getKeyChar());
 					if (code > -1) {
 						newMap.add(new MapDef(options, code, 0, current.getScancode(), true, false, false, false));
@@ -156,32 +305,6 @@ public class KeyCode_FileBased {
 		}
 		if (!mapCodeSet)
 			throw new KeyMapException("No map identifier found in file");
-	}
-
-	/**
-	 * Given an alphanumeric character, return an AWT keycode
-	 * 
-	 * @param keyChar Alphanumeric character
-	 * @return AWT keycode representing input character, -1 if character not
-	 *         alphanumeric
-	 */
-	private int getCodeFromAlphaChar(char keyChar) {
-		if (('a' <= keyChar) && (keyChar <= 'z')) {
-			return KeyEvent.VK_A + keyChar - 'a';
-		}
-		if (('A' <= keyChar) && (keyChar <= 'Z')) {
-			return KeyEvent.VK_A + keyChar - 'A';
-		}
-		return -1;
-	}
-
-	/**
-	 * Get the RDP code specifying the key map in use
-	 * 
-	 * @return ID for current key map
-	 */
-	public int getMapCode() {
-		return mapCode;
 	}
 
 	/**
@@ -234,7 +357,7 @@ public class KeyCode_FileBased {
 			else
 				changes += ((char) 0x1d) + down;
 		}
-		if (options.altkey_quiet) {
+		if (options.isAltkeyQuiet()) {
 			if (state[ALT][BEFORE] != state[ALT][AFTER]) {
 				if (state[ALT][BEFORE])
 					changes += (char) 0x38 + quietup + ((char) 0x38) + quietdown + ((char) 0x38) + up;
@@ -286,126 +409,26 @@ public class KeyCode_FileBased {
 	}
 
 	/**
-	 * Retrieve the scancode corresponding to the supplied character as defined
-	 * within this object. Also update the mod array to hold any modifier keys
-	 * that are required to send alongside it.
+	 * Given an alphanumeric character, return an AWT keycode
 	 * 
-	 * @param c Character to obtain scancode for
-	 * @param mod List of modifiers to be updated by method
-	 * @return Scancode of supplied key
+	 * @param keyChar Alphanumeric character
+	 * @return AWT keycode representing input character, -1 if character not
+	 *         alphanumeric
 	 */
-	public boolean hasScancode(char c) {
-		if (c == KeyEvent.CHAR_UNDEFINED)
-			return false;
-		Iterator i = keyMap.iterator();
-		MapDef best = null;
-		while (i.hasNext()) {
-			MapDef current = (MapDef) i.next();
-			if (current.appliesTo(c)) {
-				best = current;
-			}
+	private int getCodeFromAlphaChar(char keyChar) {
+		if (('a' <= keyChar) && (keyChar <= 'z')) {
+			return KeyEvent.VK_A + keyChar - 'a';
 		}
-		return (best != null);
-	}
-
-	/**
-	 * Retrieve the scancode corresponding to the supplied character as defined
-	 * within this object. Also update the mod array to hold any modifier keys
-	 * that are required to send alongside it.
-	 * 
-	 * @param c Character to obtain scancode for
-	 * @param mod List of modifiers to be updated by method
-	 * @return Scancode of supplied key
-	 */
-	public int charToScancode(char c, String[] mod) {
-		Iterator i = keyMap.iterator();
-		int smallestDist = -1;
-		MapDef best = null;
-		while (i.hasNext()) {
-			MapDef current = (MapDef) i.next();
-			if (current.appliesTo(c)) {
-				best = current;
-			}
+		if (('A' <= keyChar) && (keyChar <= 'Z')) {
+			return KeyEvent.VK_A + keyChar - 'A';
 		}
-		if (best != null) {
-			if (best.isShiftDown())
-				mod[0] = "SHIFT";
-			else if (best.isCtrlDown() && best.isAltDown())
-				mod[0] = "ALTGR";
-			else
-				mod[0] = "NONE";
-			return best.getScancode();
-		} else
-			return -1;
-	}
-
-	/**
-	 * Return a mapping definition associated with the supplied key event from
-	 * within the list stored in this object.
-	 * 
-	 * @param e Key event to retrieve a definition for
-	 * @return Mapping definition for supplied keypress
-	 */
-	public MapDef getDef(KeyEvent e) {
-		if (e.getID() == KeyEvent.KEY_RELEASED) {
-			MapDef def = (MapDef) keysCurrentlyDown.get(new Integer(e.getKeyCode()));
-			registerKeyEvent(e, def);
-			if (e.getID() == KeyEvent.KEY_RELEASED)
-				logger.debug("Released: " + e.getKeyCode() + " returned scancode: "
-					+ ((def != null) ? "" + def.getScancode() : "null"));
-			return def;
-		}
-		updateCapsLock(e);
-		Iterator i = keyMap.iterator();
-		int smallestDist = -1;
-		MapDef best = null;
-		boolean noScanCode = !hasScancode(e.getKeyChar());
-		while (i.hasNext()) {
-			MapDef current = (MapDef) i.next();
-			boolean applies;
-			if ((e.getID() == KeyEvent.KEY_PRESSED)) {
-				applies = current.appliesToPressed(e);
-			} else if ((!lastEventMatched) && (e.getID() == KeyEvent.KEY_TYPED)) {
-				applies = current.appliesToTyped(e, capsLockDown);
-			} else
-				applies = false;
-			if (applies) {
-				int d = current.modifierDistance(e, capsLockDown);
-				if ((smallestDist == -1) || (d < smallestDist)) {
-					smallestDist = d;
-					best = current;
-				}
-			}
-		}
-		if (e.getID() == KeyEvent.KEY_PRESSED)
-			logger.debug("Pressed: " + e.getKeyCode() + " returned scancode: "
-				+ ((best != null) ? "" + best.getScancode() : "null"));
-		if (e.getID() == KeyEvent.KEY_TYPED)
-			logger.debug("Typed: " + e.getKeyChar() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
-		registerKeyEvent(e, best);
-		return best;
-	}
-
-	/**
-	 * Return a scancode for the supplied key event, from within the mapping
-	 * definitions stored in this object.
-	 * 
-	 * @param e Key event for which to determine a scancode
-	 * @return Scancode for the supplied keypress, according to current mappings
-	 */
-	public int getScancode(KeyEvent e) {
-		String[] mod = { "" };
-		MapDef d = getDef(e);
-		if (d != null) {
-			return d.getScancode();
-		} else
-			return -1;
+		return -1;
 	}
 
 	private void registerKeyEvent(KeyEvent e, MapDef m) {
 		if (e.getID() == KeyEvent.KEY_RELEASED) {
 			keysCurrentlyDown.remove(new Integer(e.getKeyCode()));
-			if ((!options.caps_sends_up_and_down) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
+			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
 				logger.debug("Turning CAPSLOCK off - key release");
 				capsLockDown = false;
 			}
@@ -417,7 +440,7 @@ public class KeyCode_FileBased {
 				lastEventMatched = true;
 			else
 				lastEventMatched = false;
-			if ((options.caps_sends_up_and_down) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
+			if ((options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
 				logger.debug("Toggling CAPSLOCK");
 				capsLockDown = !capsLockDown;
 			} else if (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK) {
@@ -431,38 +454,7 @@ public class KeyCode_FileBased {
 		}
 	}
 
-	/**
-	 * Construct a list of keystrokes needed to reproduce an AWT key event via
-	 * RDP
-	 * 
-	 * @param e Keyboard event to reproduce
-	 * @return List of character pairs representing scancodes and key actions to
-	 *         send to server
-	 */
-	public String getKeyStrokes(KeyEvent e) {
-		String codes = "";
-		MapDef d = getDef(e);
-		if (d == null)
-			return "";
-		codes = stateChanges(e, d);
-		String type = "";
-		if (e.getID() == KeyEvent.KEY_RELEASED) {
-			if ((!options.caps_sends_up_and_down) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Sending CAPSLOCK toggle");
-				codes = "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP) + codes;
-			} else {
-				type = "" + ((char) UP);
-				codes = ((char) d.getScancode()) + type + codes;
-			}
-		} else {
-			if ((!options.caps_sends_up_and_down) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Sending CAPSLOCK toggle");
-				codes += "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP);
-			} else {
-				type = "" + ((char) DOWN);
-				codes += ((char) d.getScancode()) + type;
-			}
-		}
-		return codes;
+	private void updateCapsLock(KeyEvent e) {
+		capsLockDown = e.getComponent().getToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK);
 	}
 }

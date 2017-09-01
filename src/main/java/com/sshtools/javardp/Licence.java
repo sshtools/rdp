@@ -21,29 +21,14 @@ import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.crypto.RC4;
+import com.sshtools.javardp.layers.Secure;
 
 public class Licence {
-
 	static Logger logger = LoggerFactory.getLogger(Licence.class);
-	
-	private Secure secure = null;
-	private Options options;
-
-	Licence(Options options, Secure s) {
-		this.options = options;
-		secure = s;
-		licence_key = new byte[16];
-		licence_sign_key = new byte[16];
-	}
-
-	private byte[] licence_key = null;
-	private byte[] licence_sign_key = null;
-	private byte[] in_token = null, in_sig = null;
-
-	/* constants for the licence negotiation */
-	private static final int LICENCE_TOKEN_SIZE = 10;
 	private static final int LICENCE_HWID_SIZE = 20;
 	private static final int LICENCE_SIGNATURE_SIZE = 16;
+	private static final int LICENCE_TAG_CHALLENGE = 0x02;
+	private static final int LICENCE_TAG_RESPONSE = 0x15;
 	/*
 	 * private static final int LICENCE_TAG_DEMAND = 0x0201; private static
 	 * final int LICENCE_TAG_AUTHREQ = 0x0202; private static final int
@@ -54,20 +39,34 @@ public class Licence {
 	 * static final int LICENCE_TAG_RESULT = 0x02ff;
 	 */
 	private static final int LICENCE_TAG_DEMAND = 0x01;
-	private static final int LICENCE_TAG_AUTHREQ = 0x02;
-	private static final int LICENCE_TAG_ISSUE = 0x03;
-	private static final int LICENCE_TAG_REISSUE = 0x04;
-	private static final int LICENCE_TAG_PRESENT = 0x12;
-	private static final int LICENCE_TAG_REQUEST = 0x13;
-	private static final int LICENCE_TAG_AUTHRESP = 0x15;
-	private static final int LICENCE_TAG_RESULT = 0xff;
-	private static final int LICENCE_TAG_USER = 0x000f;
 	private static final int LICENCE_TAG_HOST = 0x0010;
+	private static final int LICENCE_TAG_ISSUE = 0x03;
+	private static final int LICENCE_TAG_PRESENT = 0x12;
+	private static final int LICENCE_TAG_REISSUE = 0x04;
+	private static final int LICENCE_TAG_REQUEST = 0x13;
+	private static final int LICENCE_TAG_ERROR = 0xff;
+	private static final int LICENCE_TAG_USER = 0x000f;
+	/* constants for the licence negotiation */
+	private static final int LICENCE_TOKEN_SIZE = 10;
+	private IContext context;
+	private byte[] in_token = null, in_sig = null;
+	private byte[] licence_key = null;
+	private byte[] licence_sign_key = null;
+	private Secure secure = null;
+	private State state;
+
+	public Licence(State state, IContext context, Secure s) {
+		this.state = state;
+		this.context = context;
+		secure = s;
+		licence_key = new byte[16];
+		licence_sign_key = new byte[16];
+	}
 
 	public byte[] generate_hwid() throws UnsupportedEncodingException {
 		byte[] hwid = new byte[LICENCE_HWID_SIZE];
 		secure.setLittleEndian32(hwid, 2);
-		byte[] name = options.hostname.getBytes("US-ASCII");
+		byte[] name = state.getClientName().getBytes("US-ASCII");
 		if (name.length > LICENCE_HWID_SIZE - 4) {
 			System.arraycopy(name, 0, hwid, 4, LICENCE_HWID_SIZE - 4);
 		} else {
@@ -77,78 +76,20 @@ public class Licence {
 	}
 
 	/**
-	 * Process and handle licence data from a packet
+	 * Generate a set of encryption keys
 	 * 
-	 * @param data Packet containing licence data
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @param client_key Array in which to store client key
+	 * @param server_key Array in which to store server key
+	 * @param client_rsa Array in which to store RSA data
 	 * @throws CryptoException
 	 */
-	public void process(RdpPacket data) throws RdesktopException, IOException, CryptoException {
-		int tag = 0;
-		tag = data.get8();
-		data.incrementPosition(3); // version, length
-		switch (tag) {
-		case (LICENCE_TAG_DEMAND):
-			this.process_demand(data);
-			break;
-		case (LICENCE_TAG_AUTHREQ):
-			this.process_authreq(data);
-			break;
-		case (LICENCE_TAG_ISSUE):
-			this.process_issue(data);
-			break;
-		case (LICENCE_TAG_REISSUE):
-			logger.debug("Presented licence was accepted!");
-			break;
-		case (LICENCE_TAG_RESULT):
-			break;
-		default:
-			logger.warn("got licence tag: " + tag);
-		}
-	}
-
-	/**
-	 * Process a demand for a licence. Find a license and transmit to server, or
-	 * request new licence
-	 * 
-	 * @param data Packet containing details of licence demand
-	 * @throws UnsupportedEncodingException
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws CryptoException
-	 */
-	public void process_demand(RdpPacket data) throws UnsupportedEncodingException, RdesktopException, IOException,
-			CryptoException {
-		byte[] null_data = new byte[Secure.SEC_MODULUS_SIZE];
-		byte[] server_random = new byte[Secure.SEC_RANDOM_SIZE];
-		byte[] host = options.hostname.getBytes("US-ASCII");
-		byte[] user = options.username.getBytes("US-ASCII");
-		/* retrieve the server random */
-		data.copyToByteArray(server_random, 0, data.getPosition(), server_random.length);
-		data.incrementPosition(server_random.length);
-		/* Null client keys are currently used */
-		this.generate_keys(null_data, server_random, null_data);
-		if (!options.built_in_licence && options.load_licence) {
-			byte[] licence_data = load_licence();
-			if ((licence_data != null) && (licence_data.length > 0)) {
-				logger.debug("licence_data.length = " + licence_data.length);
-				/* Generate a signature for the HWID buffer */
-				byte[] hwid = generate_hwid();
-				byte[] signature = secure.sign(this.licence_sign_key, 16, 16, hwid, hwid.length);
-				/* now crypt the hwid */
-				RC4 rc4_licence = new RC4();
-				byte[] crypt_key = new byte[this.licence_key.length];
-				byte[] crypt_hwid = new byte[LICENCE_HWID_SIZE];
-				System.arraycopy(this.licence_key, 0, crypt_key, 0, this.licence_key.length);
-				rc4_licence.engineInitEncrypt(crypt_key);
-				rc4_licence.crypt(hwid, 0, LICENCE_HWID_SIZE, crypt_hwid, 0);
-				present(null_data, null_data, licence_data, licence_data.length, crypt_hwid, signature);
-				logger.debug("Presented stored licence to server!");
-				return;
-			}
-		}
-		this.send_request(null_data, null_data, user, host);
+	public void generate_keys(byte[] client_key, byte[] server_key, byte[] client_rsa) throws CryptoException {
+		byte[] session_key = new byte[48];
+		byte[] temp_hash = new byte[48];
+		temp_hash = secure.hash48(client_rsa, client_key, server_key, 65);
+		session_key = secure.hash48(temp_hash, server_key, client_key, 65);
+		System.arraycopy(session_key, 0, this.licence_sign_key, 0, 16);
+		this.licence_key = secure.hash16(session_key, client_key, server_key, 16);
 	}
 
 	/**
@@ -180,40 +121,6 @@ public class Licence {
 	}
 
 	/**
-	 * Respond to authorisation request, with token, hwid and signature, send
-	 * response to server
-	 * 
-	 * @param token Token data
-	 * @param crypt_hwid HWID for encryption
-	 * @param signature Signature data
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws CryptoException
-	 */
-	public void send_authresp(byte[] token, byte[] crypt_hwid, byte[] signature) throws RdesktopException, IOException,
-			CryptoException {
-		int sec_flags = Secure.SEC_LICENCE_NEG;
-		int length = 58;
-		RdpPacket data = null;
-		data = secure.init(sec_flags, length + 2);
-		data.set8(LICENCE_TAG_AUTHRESP);
-		data.set8(2); // version
-		data.setLittleEndian16(length);
-		data.setLittleEndian16(1);
-		data.setLittleEndian16(LICENCE_TOKEN_SIZE);
-		data.copyFromByteArray(token, 0, data.getPosition(), LICENCE_TOKEN_SIZE);
-		data.incrementPosition(LICENCE_TOKEN_SIZE);
-		data.setLittleEndian16(1);
-		data.setLittleEndian16(LICENCE_HWID_SIZE);
-		data.copyFromByteArray(crypt_hwid, 0, data.getPosition(), LICENCE_HWID_SIZE);
-		data.incrementPosition(LICENCE_HWID_SIZE);
-		data.copyFromByteArray(signature, 0, data.getPosition(), LICENCE_SIGNATURE_SIZE);
-		data.incrementPosition(LICENCE_SIGNATURE_SIZE);
-		data.markEnd();
-		secure.send(data, sec_flags);
-	}
-
-	/**
 	 * Present a licence to the server
 	 * 
 	 * @param client_random
@@ -230,8 +137,8 @@ public class Licence {
 			throws RdesktopException, IOException, CryptoException {
 		int sec_flags = Secure.SEC_LICENCE_NEG;
 		int length = /* rdesktop is 16 not 20, but this must be wrong?! */
-		20 + Secure.SEC_RANDOM_SIZE + Secure.SEC_MODULUS_SIZE + Secure.SEC_PADDING_SIZE + licence_size + LICENCE_HWID_SIZE
-			+ LICENCE_SIGNATURE_SIZE;
+				20 + Secure.SEC_RANDOM_SIZE + Secure.SEC_MODULUS_SIZE + Secure.SEC_PADDING_SIZE + licence_size + LICENCE_HWID_SIZE
+						+ LICENCE_SIGNATURE_SIZE;
 		RdpPacket s = secure.init(sec_flags, length + 4);
 		s.set8(LICENCE_TAG_PRESENT);
 		s.set8(2); // version
@@ -261,6 +168,67 @@ public class Licence {
 	}
 
 	/**
+	 * Process and handle licence data from a packet
+	 * 
+	 * @param data Packet containing licence data
+	 * @throws RdesktopException
+	 * @throws IOException
+	 * @throws CryptoException
+	 */
+	public void process(RdpPacket data) throws RdesktopException, IOException, CryptoException {
+		int tag = 0;
+		tag = data.get8();
+		data.incrementPosition(3); // version, length
+		switch (tag) {
+		case (LICENCE_TAG_DEMAND):
+			this.process_demand(data);
+			break;
+		case (LICENCE_TAG_CHALLENGE):
+			processChallenge(data);
+			break;
+		case (LICENCE_TAG_ISSUE):
+			this.process_issue(data);
+			break;
+		case (LICENCE_TAG_REISSUE):
+			logger.debug("Presented licence was accepted!");
+			break;
+		case (LICENCE_TAG_ERROR):
+			try {
+				processError(data);
+			}
+			catch(RdesktopLicenseException rle) {
+				switch(rle.getState()) {
+				case RdesktopLicenseException.LICENSE_STATE_NO_TRANSITION:
+					logger.info("License OK");
+					state.setLicenceIssued(true);
+					break;
+				default:
+					throw rle;
+				}
+			}
+			break;		
+		default:
+			logger.warn("got licence tag: " + tag);
+		}
+	}
+
+	/**
+	 * Process a licensing error
+	 * 
+	 * @param data Packet containing error details
+	 * @throws RdesktopException
+	 * @throws UnsupportedEncodingException
+	 * @throws IOException
+	 * @throws CryptoException
+	 */
+	private void processError(RdpPacket data)
+			throws RdesktopException, UnsupportedEncodingException, IOException, CryptoException {
+		int dwErrorCode = data.getLittleEndian32();
+		int dwStateTransition = data.getLittleEndian32();
+		throw new RdesktopLicenseException(dwErrorCode, dwStateTransition);
+	}
+
+	/**
 	 * Process an authorisation request
 	 * 
 	 * @param data Packet containing request details
@@ -269,8 +237,8 @@ public class Licence {
 	 * @throws IOException
 	 * @throws CryptoException
 	 */
-	public void process_authreq(RdpPacket data) throws RdesktopException, UnsupportedEncodingException, IOException,
-			CryptoException {
+	private void processChallenge(RdpPacket data)
+			throws RdesktopException, UnsupportedEncodingException, IOException, CryptoException {
 		byte[] out_token = new byte[LICENCE_TOKEN_SIZE];
 		byte[] decrypt_token = new byte[LICENCE_TOKEN_SIZE];
 		byte[] crypt_hwid = new byte[LICENCE_HWID_SIZE];
@@ -302,7 +270,50 @@ public class Licence {
 		System.arraycopy(this.licence_key, 0, crypt_key, 0, this.licence_key.length);
 		rc4_licence.engineInitEncrypt(crypt_key);
 		rc4_licence.crypt(hwid, 0, LICENCE_HWID_SIZE, crypt_hwid, 0);
-		this.send_authresp(out_token, crypt_hwid, out_sig);
+		this.sendResponse(out_token, crypt_hwid, out_sig);
+	}
+
+	/**
+	 * Process a demand for a licence. Find a license and transmit to server, or
+	 * request new licence
+	 * 
+	 * @param data Packet containing details of licence demand
+	 * @throws UnsupportedEncodingException
+	 * @throws RdesktopException
+	 * @throws IOException
+	 * @throws CryptoException
+	 */
+	public void process_demand(RdpPacket data)
+			throws UnsupportedEncodingException, RdesktopException, IOException, CryptoException {
+		byte[] null_data = new byte[Secure.SEC_MODULUS_SIZE];
+		byte[] server_random = new byte[Secure.SEC_RANDOM_SIZE];
+		byte[] host = state.getClientName().getBytes("US-ASCII");
+		byte[] user = state.getOptions().getUsername().getBytes("US-ASCII");
+		/* retrieve the server random */
+		data.copyToByteArray(server_random, 0, data.getPosition(), server_random.length);
+		data.incrementPosition(server_random.length);
+		/* Null client keys are currently used */
+		this.generate_keys(null_data, server_random, null_data);
+		if (!state.getOptions().isBuiltInLicence() && state.getOptions().isLoadLicence()) {
+			byte[] licence_data = load_licence();
+			if ((licence_data != null) && (licence_data.length > 0)) {
+				logger.debug("licence_data.length = " + licence_data.length);
+				/* Generate a signature for the HWID buffer */
+				byte[] hwid = generate_hwid();
+				byte[] signature = secure.sign(this.licence_sign_key, 16, 16, hwid, hwid.length);
+				/* now crypt the hwid */
+				RC4 rc4_licence = new RC4();
+				byte[] crypt_key = new byte[this.licence_key.length];
+				byte[] crypt_hwid = new byte[LICENCE_HWID_SIZE];
+				System.arraycopy(this.licence_key, 0, crypt_key, 0, this.licence_key.length);
+				rc4_licence.engineInitEncrypt(crypt_key);
+				rc4_licence.crypt(hwid, 0, LICENCE_HWID_SIZE, crypt_hwid, 0);
+				present(null_data, null_data, licence_data, licence_data.length, crypt_hwid, signature);
+				logger.debug("Presented stored licence to server!");
+				return;
+			}
+		}
+		this.send_request(null_data, null_data, user, host);
 	}
 
 	/**
@@ -311,8 +322,9 @@ public class Licence {
 	 * 
 	 * @param data Packet containing issued licence
 	 * @throws CryptoException
+	 * @throws IOException
 	 */
-	public void process_issue(RdpPacket data) throws CryptoException {
+	public void process_issue(RdpPacket data) throws CryptoException, IOException {
 		int length = 0;
 		int check = 0;
 		RC4 rc4_licence = new RC4();
@@ -332,7 +344,7 @@ public class Licence {
 		if (check != 0) {
 			// return;
 		}
-		secure.licenceIssued = true;
+		state.setLicenceIssued(true);
 		/*
 		 * data.incrementPosition(2); // in_uint8s(s, 2); // pad
 		 * 
@@ -341,10 +353,43 @@ public class Licence {
 		 * data.getLittleEndian32(length); // in_uint32_le(s, length); if
 		 * (!(data.getPosition() + length <= data.getEnd())) return; }
 		 */
-		secure.licenceIssued = true;
 		logger.debug("Server issued Licence");
-		if (options.save_licence)
+		if (state.getOptions().isSaveLicence())
 			save_licence(data, length - 2);
+	}
+
+	/**
+	 * Respond to authorisation request, with token, hwid and signature, send
+	 * response to server
+	 * 
+	 * @param token Token data
+	 * @param crypt_hwid HWID for encryption
+	 * @param signature Signature data
+	 * @throws RdesktopException
+	 * @throws IOException
+	 * @throws CryptoException
+	 */
+	private void sendResponse(byte[] token, byte[] crypt_hwid, byte[] signature)
+			throws RdesktopException, IOException, CryptoException {
+		int sec_flags = Secure.SEC_LICENCE_NEG;
+		int length = 58;
+		RdpPacket data = null;
+		data = secure.init(sec_flags, length + 2);
+		data.set8(LICENCE_TAG_RESPONSE);
+		data.set8(2); // version
+		data.setLittleEndian16(length);
+		data.setLittleEndian16(1);
+		data.setLittleEndian16(LICENCE_TOKEN_SIZE);
+		data.copyFromByteArray(token, 0, data.getPosition(), LICENCE_TOKEN_SIZE);
+		data.incrementPosition(LICENCE_TOKEN_SIZE);
+		data.setLittleEndian16(1);
+		data.setLittleEndian16(LICENCE_HWID_SIZE);
+		data.copyFromByteArray(crypt_hwid, 0, data.getPosition(), LICENCE_HWID_SIZE);
+		data.incrementPosition(LICENCE_HWID_SIZE);
+		data.copyFromByteArray(signature, 0, data.getPosition(), LICENCE_SIGNATURE_SIZE);
+		data.incrementPosition(LICENCE_SIGNATURE_SIZE);
+		data.markEnd();
+		secure.send(data, sec_flags);
 	}
 
 	/**
@@ -358,8 +403,8 @@ public class Licence {
 	 * @throws IOException
 	 * @throws CryptoException
 	 */
-	public void send_request(byte[] client_random, byte[] rsa_data, byte[] username, byte[] hostname) throws RdesktopException,
-			IOException, CryptoException {
+	public void send_request(byte[] client_random, byte[] rsa_data, byte[] username, byte[] hostname)
+			throws RdesktopException, IOException, CryptoException {
 		int sec_flags = Secure.SEC_LICENCE_NEG;
 		int userlen = (username.length == 0 ? 0 : username.length + 1);
 		int hostlen = (hostname.length == 0 ? 0 : hostname.length + 1);
@@ -369,7 +414,8 @@ public class Licence {
 		buffer.set8(2); // version
 		buffer.setLittleEndian16(length);
 		buffer.setLittleEndian32(1);
-		if (options.built_in_licence && (!options.load_licence) && (!options.save_licence)) {
+		if (state.getOptions().isBuiltInLicence() && (!state.getOptions().isLoadLicence())
+				&& (!state.getOptions().isSaveLicence())) {
 			logger.debug("Using built-in Windows Licence");
 			buffer.setLittleEndian32(0x03010000);
 		} else {
@@ -407,11 +453,12 @@ public class Licence {
 	 * Load a licence from disk
 	 * 
 	 * @return Raw byte data for stored licence
+	 * @throws IOException
 	 */
-	byte[] load_licence() {
+	byte[] load_licence() throws IOException {
 		logger.debug("load_licence");
 		// String home = "/root"; // getenv("HOME");
-		return (new LicenceStore_Localised(options)).load_licence();
+		return context.loadLicense();
 	}
 
 	/**
@@ -419,8 +466,9 @@ public class Licence {
 	 * 
 	 * @param data Packet containing licence data
 	 * @param length Length of licence
+	 * @throws IOException
 	 */
-	void save_licence(RdpPacket data, int length) {
+	void save_licence(RdpPacket data, int length) throws IOException {
 		logger.debug("save_licence");
 		int len;
 		int startpos = data.getPosition();
@@ -446,7 +494,7 @@ public class Licence {
 		}
 		byte[] databytes = new byte[len];
 		data.copyToByteArray(databytes, 0, data.getPosition(), len);
-		new LicenceStore_Localised(options).save_licence(databytes);
+		context.saveLicense(databytes);
 		/*
 		 * String dirpath = Options.licence_path;//home+"/.rdesktop"; String
 		 * filepath = dirpath +"/licence."+Options.hostname;
@@ -461,22 +509,5 @@ public class Licence {
 		 * e){logger.info("save_licence: file path not valid!");}
 		 * catch(IOException e){logger.warn("IOException in save_licence");}
 		 */
-	}
-
-	/**
-	 * Generate a set of encryption keys
-	 * 
-	 * @param client_key Array in which to store client key
-	 * @param server_key Array in which to store server key
-	 * @param client_rsa Array in which to store RSA data
-	 * @throws CryptoException
-	 */
-	public void generate_keys(byte[] client_key, byte[] server_key, byte[] client_rsa) throws CryptoException {
-		byte[] session_key = new byte[48];
-		byte[] temp_hash = new byte[48];
-		temp_hash = secure.hash48(client_rsa, client_key, server_key, 65);
-		session_key = secure.hash48(temp_hash, server_key, client_key, 65);
-		System.arraycopy(session_key, 0, this.licence_sign_key, 0, 16);
-		this.licence_key = secure.hash16(session_key, client_key, server_key, 16);
 	}
 }

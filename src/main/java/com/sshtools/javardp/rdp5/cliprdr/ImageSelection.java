@@ -27,22 +27,25 @@ public class ImageSelection implements Transferable {
 		this.image = image;
 	}
 
-	// Returns the supported flavors of our implementation
-	public DataFlavor[] getTransferDataFlavors() {
-		return new DataFlavor[] { Utilities.imageFlavor };
-	}
-
-	// Returns true if flavor is supported
-	public boolean isDataFlavorSupported(DataFlavor flavor) {
-		return Utilities.imageFlavor.equals(flavor);
-	}
-
 	// Returns Image object housed by Transferable object
+	@Override
 	public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
 		if (!Utilities.imageFlavor.equals(flavor)) {
 			throw new UnsupportedFlavorException(flavor);
 		}
 		// else return the payload
 		return image;
+	}
+
+	// Returns the supported flavors of our implementation
+	@Override
+	public DataFlavor[] getTransferDataFlavors() {
+		return new DataFlavor[] { Utilities.imageFlavor };
+	}
+
+	// Returns true if flavor is supported
+	@Override
+	public boolean isDataFlavorSupported(DataFlavor flavor) {
+		return Utilities.imageFlavor.equals(flavor);
 	}
 }

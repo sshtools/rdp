@@ -13,21 +13,13 @@ package com.sshtools.javardp.orders;
 
 public class DestBltOrder implements Order {
 
-	private int x = 0;
-	private int y = 0;
 	private int cx = 0;
 	private int cy = 0;
 	private int opcode = 0;
+	private int x = 0;
+	private int y = 0;
 
 	public DestBltOrder() {
-	}
-
-	public int getX() {
-		return this.x;
-	}
-
-	public int getY() {
-		return this.y;
 	}
 
 	public int getCX() {
@@ -42,12 +34,20 @@ public class DestBltOrder implements Order {
 		return this.opcode;
 	}
 
-	public void setX(int x) {
-		this.x = x;
+	public int getX() {
+		return this.x;
 	}
 
-	public void setY(int y) {
-		this.y = y;
+	public int getY() {
+		return this.y;
+	}
+
+	public void reset() {
+		x = 0;
+		y = 0;
+		cx = 0;
+		cy = 0;
+		opcode = 0;
 	}
 
 	public void setCX(int cx) {
@@ -62,11 +62,11 @@ public class DestBltOrder implements Order {
 		this.opcode = opcode;
 	}
 
-	public void reset() {
-		x = 0;
-		y = 0;
-		cx = 0;
-		cy = 0;
-		opcode = 0;
+	public void setX(int x) {
+		this.x = x;
+	}
+
+	public void setY(int y) {
+		this.y = y;
 	}
 }

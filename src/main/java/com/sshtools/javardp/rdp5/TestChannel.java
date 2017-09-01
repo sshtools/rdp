@@ -12,8 +12,8 @@
 package com.sshtools.javardp.rdp5;
 
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.State;
 
 /**
  * @author Tom Elliott
@@ -22,23 +22,26 @@ import com.sshtools.javardp.RdpPacket;
  *         Window - Preferences - Java - Code Style - Code Templates
  */
 public class TestChannel extends VChannel {
-	public TestChannel(IContext context, Options options, String name, int flags) {
-		super(context, options);
+	private int flags;
+
+	private String name;
+	public TestChannel(IContext context, State state, String name, int flags) {
+		super(context, state);
 		this.name = name;
 		this.flags = flags;
 	}
 
-	private String name;
-	private int flags;
-
-	public String name() {
-		return name;
-	}
-
+	@Override
 	public int flags() {
 		return flags;
 	}
 
+	@Override
+	public String name() {
+		return name;
+	}
+
+	@Override
 	public void process(RdpPacket data) {
 	}
 }

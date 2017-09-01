@@ -31,12 +31,16 @@ import javax.swing.SwingConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.graphics.Display;
+import com.sshtools.javardp.graphics.RdesktopCanvas;
+import com.sshtools.javardp.graphics.RdpCursor;
+
 public class WrappedImage extends JComponent implements Display, Scrollable {
 	static Logger logger = LoggerFactory.getLogger(WrappedImage.class);
 	private static final long serialVersionUID = 1L;
-	private IndexColorModel cm = null;
 	private BufferedImage bi = null;
 	private RdesktopCanvas canvas;
+	private IndexColorModel cm = null;
 
 	public WrappedImage(int width, int height, int imgType) {
 		bi = new BufferedImage(width, height, imgType);
@@ -45,76 +49,6 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	public WrappedImage(int width, int height, int imgType, IndexColorModel cm) {
 		bi = new BufferedImage(width, height, imgType);
 		this.cm = cm;
-	}
-
-	@Override
-	public void update(Graphics g) {
-		Rectangle r = g.getClipBounds();
-		if (logger.isDebugEnabled())
-			logger.info("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
-		int w = r.width;
-		int h = r.height;
-		if (r.x + w > getDisplayWidth()) {
-			w -= r.x + w - getDisplayWidth();
-		}
-		if (r.y + h > getDisplayHeight()) {
-			h -= r.y + h - getDisplayHeight();
-		}
-		g.drawImage(getSubimage(r.x, r.y, w, h), r.x, r.y, null);
-		if (canvas.options.save_graphics) {
-			RdesktopCanvas.saveToFile(canvas.options, getSubimage(r.x, r.y, w, h));
-		}
-		// }
-	}
-
-	@Override
-	public RdpCursor createCursor(String name, Point hotspot, Image data) {
-		return new AWTRdpCursor(hotspot, name, data);
-	}
-
-	@Override
-	public void setCursor(RdpCursor cursor) {
-		setCursor(cursor == null ? null : ((AWTRdpCursor) cursor).getCursor());
-	}
-
-	@Override
-	public Dimension getPreferredScrollableViewportSize() {
-		return this.getPreferredSize();
-	}
-
-	@Override
-	public Dimension getPreferredSize() {
-		return bi == null ? new Dimension(0, 0) : new Dimension(bi.getWidth(), bi.getHeight());
-	}
-
-	@Override
-	public void paintComponent(Graphics g) {
-		update(g);
-	}
-
-	@Override
-	public int getDisplayWidth() {
-		return bi.getWidth();
-	}
-
-	@Override
-	public int getDisplayHeight() {
-		return bi.getHeight();
-	}
-
-	@Override
-	public BufferedImage getBufferedImage() {
-		return bi;
-	}
-
-	@Override
-	public Graphics getDisplayGraphics() {
-		return bi.getGraphics();
-	}
-
-	@Override
-	public BufferedImage getSubimage(int x, int y, int width, int height) {
-		return bi.getSubimage(x, y, width, height);
 	}
 
 	/**
@@ -129,6 +63,113 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 		if (cm != null)
 			return cm.getRGB(color);
 		return color;
+	}
+
+	@Override
+	public RdpCursor createCursor(String name, Point hotspot, Image data) {
+		return new AWTRdpCursor(hotspot, name, data);
+	}
+
+	@Override
+	public BufferedImage getBufferedImage() {
+		return bi;
+	}
+
+	@Override
+	public Graphics getDisplayGraphics() {
+		return bi.getGraphics();
+	}
+
+	@Override
+	public int getDisplayHeight() {
+		return bi.getHeight();
+	}
+
+	@Override
+	public int getDisplayWidth() {
+		return bi.getWidth();
+	}
+
+	@Override
+	public Dimension getPreferredScrollableViewportSize() {
+		return this.getPreferredSize();
+	}
+
+	@Override
+	public Dimension getPreferredSize() {
+		return bi == null ? new Dimension(0, 0) : new Dimension(bi.getWidth(), bi.getHeight());
+	}
+
+	@Override
+	public int getRGB(int x, int y) {
+		if (cm == null)
+			return bi.getRGB(x, y);
+		else {
+			int pix = bi.getRGB(x, y) & 0xFFFFFF;
+			int[] vals = { (pix >> 16) & 0xFF, (pix >> 8) & 0xFF, (pix) & 0xFF };
+			int out = cm.getDataElement(vals, 0);
+			if (cm.getRGB(out) != bi.getRGB(x, y))
+				logger.info("Did not get correct colour value for color (" + Integer.toHexString(pix) + "), got (" + cm.getRGB(out)
+						+ ") instead");
+			return out;
+		}
+	}
+
+	@Override
+	public int[] getRGB(int x, int y, int cx, int cy, int[] data, int offset, int width) {
+		return bi.getRGB(x, y, cx, cy, data, offset, width);
+	}
+
+	@Override
+	public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10 : visibleRect.width / 10;
+	}
+
+	@Override
+	public boolean getScrollableTracksViewportHeight() {
+		return false;
+	}
+
+	@Override
+	public boolean getScrollableTracksViewportWidth() {
+		return false;
+	}
+
+	@Override
+	public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10 : visibleRect.width / 10;
+	}
+
+	@Override
+	public BufferedImage getSubimage(int x, int y, int width, int height) {
+		return bi.getSubimage(x, y, width, height);
+	}
+
+	@Override
+	public void init(RdesktopCanvas canvas) {
+		this.canvas = canvas;
+		enableEvents(AWTEvent.FOCUS_EVENT_MASK | AWTEvent.ACTION_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK
+				| AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_WHEEL_EVENT_MASK);
+		enableEvents(AWTEvent.KEY_EVENT_MASK);
+		setFocusable(true);
+		setFocusTraversalKeysEnabled(false);
+	}
+
+	@Override
+	public void paintComponent(Graphics g) {
+		update(g);
+	}
+
+	@Override
+	public void resizeDisplay(Dimension dimension) {
+		BufferedImage bim = bi;
+		bi = new BufferedImage(Math.max(dimension.width, 1), Math.max(dimension.height, 1), bi.getType());
+		bi.getGraphics().drawImage(bim, 0, 0, null);
+	}
+
+	@Override
+	public void setCursor(RdpCursor cursor) {
+		setCursor(cursor == null ? null : ((AWTRdpCursor) cursor).getCursor());
 	}
 
 	/**
@@ -146,6 +187,15 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 		if (cm != null)
 			color = cm.getRGB(color);
 		bi.setRGB(x, y, color);
+	}
+
+	@Override
+	public void setRGB(int x, int y, int cx, int cy, int[] data, int offset, int w) {
+		if (cm != null && data != null && data.length > 0) {
+			for (int i = 0; i < data.length; i++)
+				data[i] = cm.getRGB(data[i]);
+		}
+		bi.setRGB(x, y, cx, cy, data, offset, w);
 	}
 
 	/**
@@ -166,69 +216,19 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	}
 
 	@Override
-	public void setRGB(int x, int y, int cx, int cy, int[] data, int offset, int w) {
-		if (cm != null && data != null && data.length > 0) {
-			for (int i = 0; i < data.length; i++)
-				data[i] = cm.getRGB(data[i]);
+	public void update(Graphics g) {
+		Rectangle r = g.getClipBounds();
+		if (logger.isDebugEnabled())
+			logger.info("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
+		int w = r.width;
+		int h = r.height;
+		if (r.x + w > getDisplayWidth()) {
+			w -= r.x + w - getDisplayWidth();
 		}
-		bi.setRGB(x, y, cx, cy, data, offset, w);
-	}
-
-	@Override
-	public int[] getRGB(int x, int y, int cx, int cy, int[] data, int offset, int width) {
-		return bi.getRGB(x, y, cx, cy, data, offset, width);
-	}
-
-	@Override
-	public int getRGB(int x, int y) {
-		if (cm == null)
-			return bi.getRGB(x, y);
-		else {
-			int pix = bi.getRGB(x, y) & 0xFFFFFF;
-			int[] vals = { (pix >> 16) & 0xFF, (pix >> 8) & 0xFF, (pix) & 0xFF };
-			int out = cm.getDataElement(vals, 0);
-			if (cm.getRGB(out) != bi.getRGB(x, y))
-				logger.info("Did not get correct colour value for color (" + Integer.toHexString(pix) + "), got (" + cm.getRGB(out)
-						+ ") instead");
-			return out;
+		if (r.y + h > getDisplayHeight()) {
+			h -= r.y + h - getDisplayHeight();
 		}
-	}
-
-	@Override
-	public void resizeDisplay(Dimension dimension) {
-		BufferedImage bim = bi;
-		bi = new BufferedImage(Math.max(dimension.width, 1), Math.max(dimension.height, 1), bi.getType());
-		bi.getGraphics().drawImage(bim, 0, 0, null);
-	}
-
-	@Override
-	public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10 : visibleRect.width / 10;
-	}
-
-	@Override
-	public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-		return (orientation == SwingConstants.VERTICAL) ? visibleRect.height / 10 : visibleRect.width / 10;
-	}
-
-	@Override
-	public boolean getScrollableTracksViewportWidth() {
-		return false;
-	}
-
-	@Override
-	public boolean getScrollableTracksViewportHeight() {
-		return false;
-	}
-
-	@Override
-	public void init(RdesktopCanvas canvas) {
-		this.canvas = canvas;
-		enableEvents(AWTEvent.FOCUS_EVENT_MASK | AWTEvent.ACTION_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK
-				| AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_WHEEL_EVENT_MASK);
-		enableEvents(AWTEvent.KEY_EVENT_MASK);
-		setFocusable(true);
-		setFocusTraversalKeysEnabled(false);
+		g.drawImage(getSubimage(r.x, r.y, w, h), r.x, r.y, null);
 	}
 
 	class AWTRdpCursor extends RdpCursor {

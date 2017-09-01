@@ -28,17 +28,18 @@ public class ScreenBltOrder extends DestBltOrder {
 		return this.srcy;
 	}
 
+	@Override
+	public void reset() {
+		super.reset();
+		srcx = 0;
+		srcy = 0;
+	}
+
 	public void setSrcX(int srcx) {
 		this.srcx = srcx;
 	}
 
 	public void setSrcY(int srcy) {
 		this.srcy = srcy;
-	}
-
-	public void reset() {
-		super.reset();
-		srcx = 0;
-		srcy = 0;
 	}
 }

@@ -19,9 +19,9 @@ import com.sshtools.javardp.RdpPacket;
 
 public class BMPToImageThread extends Thread {
 
+	ClipInterface c;
 	RdpPacket data;
 	int length;
-	ClipInterface c;
 
 	public BMPToImageThread(RdpPacket data, int length, ClipInterface c) {
 		super();
@@ -30,6 +30,7 @@ public class BMPToImageThread extends Thread {
 		this.c = c;
 	}
 
+	@Override
 	public void run() {
 		String thingy = "";
 		OutputStream out = null;

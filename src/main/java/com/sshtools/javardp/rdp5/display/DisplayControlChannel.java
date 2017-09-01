@@ -3,13 +3,12 @@ package com.sshtools.javardp.rdp5.display;
 import java.io.IOException;
 import java.util.Collection;
 
-import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Options;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.RdpPacket;
-import com.sshtools.javardp.Secure;
+import com.sshtools.javardp.State;
 import com.sshtools.javardp.crypto.CryptoException;
+import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
 
@@ -18,21 +17,23 @@ public class DisplayControlChannel extends VChannel {
 	final static int DISPLAYCONTROL_PDU_TYPE_CAPS_LEN = 12;
 	final static int DISPLAYCONTROL_PDU_TYPE_MONITOR_LAYOUT = 0x00000002;
 	final static int DISPLAYCONTROL_PDU_TYPE_MONITOR_LAYOUT_LEN = 12;
-	private int maxNumMonitors;
 	private int maxMonitorAreaFactorA;
 	private int maxMonitorAreaFactorB;
+	private int maxNumMonitors;
 
-	public DisplayControlChannel(IContext context, Options options) {
-		super(context, options);
+	public DisplayControlChannel(IContext context, State state) {
+		super(context, state);
 	}
 
 	@Override
-	public String name() {
-		return "Microsoft::Windows::RDS::DisplayControl";
+	public int flags() {
+		// TODO no idea
+		return VChannels.CHANNEL_OPTION_INITIALIZED | VChannels.CHANNEL_OPTION_ENCRYPT_RDP | VChannels.CHANNEL_OPTION_COMPRESS_RDP
+				| VChannels.CHANNEL_OPTION_SHOW_PROTOCOL;
 	}
 
-	public int getMaxNumMonitors() {
-		return maxNumMonitors;
+	public long getMaxArea() {
+		return maxNumMonitors * maxMonitorAreaFactorA * maxMonitorAreaFactorB;
 	}
 
 	public int getMaxMonitorAreaFactorA() {
@@ -43,10 +44,17 @@ public class DisplayControlChannel extends VChannel {
 		return maxMonitorAreaFactorB;
 	}
 
-	public int flags() {
-		// TODO no idea
-		return VChannels.CHANNEL_OPTION_INITIALIZED | VChannels.CHANNEL_OPTION_ENCRYPT_RDP | VChannels.CHANNEL_OPTION_COMPRESS_RDP
-				| VChannels.CHANNEL_OPTION_SHOW_PROTOCOL;
+	public int getMaxNumMonitors() {
+		return maxNumMonitors;
+	}
+
+	public boolean isInitialised() {
+		return maxNumMonitors > 0;
+	}
+
+	@Override
+	public String name() {
+		return "Microsoft::Windows::RDS::DisplayControl";
 	}
 
 	@Override
@@ -63,14 +71,6 @@ public class DisplayControlChannel extends VChannel {
 			throw new RdesktopException(
 					"Expected DISPLAYCONTROL_PDU_TYPE_CAPS (" + DISPLAYCONTROL_PDU_TYPE_CAPS + ") but got " + type);
 		}
-	}
-
-	public long getMaxArea() {
-		return maxNumMonitors * maxMonitorAreaFactorA * maxMonitorAreaFactorB;
-	}
-	
-	public boolean isInitialised() {
-		return maxNumMonitors > 0;
 	}
 
 	public void sendDisplayControlCaps(Collection<MonitorLayout> layout) throws RdesktopException, IOException, CryptoException {
@@ -94,6 +94,6 @@ public class DisplayControlChannel extends VChannel {
 			l.writer(p);
 		}
 		p.markEnd();
-		context.getSecure().send_to_channel(p, Constants.encryption ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+		context.getSecure().send_to_channel(p, state.isEncryption() ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 	}
 }

@@ -19,20 +19,20 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.graphics.Bitmap;
+
 public class PstCache {
-
-	static Logger logger = LoggerFactory.getLogger(PstCache.class);
-
 	public static final int MAX_CELL_SIZE = 0x1000; /* pixels */
+	static int g_pstcache_Bpp;
 
+	static boolean g_pstcache_enumerated = false;
+
+	static File[] g_pstcache_fd = new File[8];
+	static int g_stamp;
+	static Logger logger = LoggerFactory.getLogger(PstCache.class);
 	protected static boolean IS_PERSISTENT(int id) {
 		return (id < 8 && g_pstcache_fd[id] != null);
 	}
-
-	static int g_stamp;
-	static File[] g_pstcache_fd = new File[8];
-	static int g_pstcache_Bpp;
-	static boolean g_pstcache_enumerated = false;
 
 	/* Update usage info for a bitmap */
 	protected static void touchBitmap(int cache_id, int cache_idx, int stamp) {
@@ -53,78 +53,13 @@ public class PstCache {
 		}
 	}
 
-	private static byte[] toBigEndian32(int value) {
-		byte[] out = new byte[4];
-		out[0] = (byte) (value & 0xFF);
-		out[1] = (byte) (value & 0xFF00);
-		out[2] = (byte) (value & 0xFF0000);
-		out[3] = (byte) (value & 0xFF000000);
-		return out;
-	}
-
-	/* Load a bitmap from the persistent cache */
-	static boolean pstcache_load_bitmap(Options options, int cache_id, int cache_idx) throws IOException, RdesktopException {
-		logger.info("PstCache.pstcache_load_bitmap");
-		byte[] celldata = null;
-		FileInputStream fd;
-		// CELLHEADER cellhdr;
-		Bitmap bitmap;
-		byte[] cellHead = null;
-		if (!options.persistent_bitmap_caching)
-			return false;
-		if (!IS_PERSISTENT(cache_id) || cache_idx >= Rdp.BMPCACHE2_NUM_PSTCELLS)
-			return false;
-		fd = new FileInputStream(g_pstcache_fd[cache_id]);
-		int offset = cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE + CELLHEADER.size());
-		fd.read(cellHead, offset, CELLHEADER.size());
-		CELLHEADER c = new CELLHEADER(cellHead);
-		// rd_lseek_file(fd, cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE +
-		// sizeof(CELLHEADER)));
-		// rd_read_file(fd, &cellhdr, sizeof(CELLHEADER));
-		// celldata = (uint8 *) xmalloc(cellhdr.length);
-		// rd_read_file(fd, celldata, cellhdr.length);
-		celldata = new byte[c.length];
-		fd.read(celldata);
-		logger.debug("Loading bitmap from disk (" + cache_id + ":" + cache_idx + ")\n");
-		bitmap = new Bitmap(options, celldata, c.width, c.height, 0, 0, options.Bpp);
-		// bitmap = ui_create_bitmap(cellhdr.width, cellhdr.height, celldata);
-		Orders.cache.putBitmap(cache_id, cache_idx, bitmap, c.stamp);
-		// xfree(celldata);
-		return true;
-	}
-
-	/* Store a bitmap in the persistent cache */
-	static boolean pstcache_put_bitmap(Options options, int cache_id, int cache_idx, byte[] bitmap_id, int width, int height,
-			int length, byte[] data) throws IOException {
-		logger.info("PstCache.pstcache_put_bitmap");
-		FileOutputStream fd;
-		CELLHEADER cellhdr = new CELLHEADER();
-		if (!IS_PERSISTENT(cache_id) || cache_idx >= Rdp.BMPCACHE2_NUM_PSTCELLS)
-			return false;
-		cellhdr.bitmap_id = bitmap_id;
-		// memcpy(cellhdr.bitmap_id, bitmap_id, 8/* sizeof(BITMAP_ID) */);
-		cellhdr.width = width;
-		cellhdr.height = height;
-		cellhdr.length = length;
-		cellhdr.stamp = 0;
-		fd = new FileOutputStream(g_pstcache_fd[cache_id]);
-		int offset = cache_idx * (options.Bpp * MAX_CELL_SIZE + CELLHEADER.size());
-		fd.write(cellhdr.toBytes(), offset, CELLHEADER.size());
-		fd.write(data);
-		// rd_lseek_file(fd, cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE +
-		// sizeof(CELLHEADER)));
-		// rd_write_file(fd, &cellhdr, sizeof(CELLHEADER));
-		// rd_write_file(fd, data, length);
-		return true;
-	}
-
 	/* list the bitmaps from the persistent cache file */
-	static int pstcache_enumerate(Options options, int cache_id, int[] idlist) throws IOException, RdesktopException {
+	static int pstcache_enumerate(State state, int cache_id, int[] idlist) throws IOException, RdesktopException {
 		logger.info("PstCache.pstcache_enumerate");
 		FileInputStream fd;
 		int n, c = 0;
 		CELLHEADER cellhdr = null;
-		if (!(options.bitmap_caching && options.persistent_bitmap_caching && IS_PERSISTENT(cache_id)))
+		if (!(state.getOptions().isBitmapCaching() && state.getOptions().isPersistentBitmapCaching() && IS_PERSISTENT(cache_id)))
 			return 0;
 		/*
 		 * The server disconnects if the bitmap cache content is sent more than
@@ -152,8 +87,8 @@ public class PstCache {
 					 * Pre-caching is not possible with 8bpp because a colourmap
 					 * is needed to load them
 					 */
-					if (options.precache_bitmaps && (options.server_bpp > 8)) {
-						if (pstcache_load_bitmap(options, cache_id, n))
+					if (state.getOptions().isPrecacheBitmaps() && (state.getServerBpp() > 8)) {
+						if (pstcache_load_bitmap(state, cache_id, n))
 							c++;
 					}
 					g_stamp = Math.max(g_stamp, cellhdr.stamp);
@@ -168,15 +103,15 @@ public class PstCache {
 	}
 
 	/* initialise the persistent bitmap cache */
-	static boolean pstcache_init(Options options, int cache_id) {
+	static boolean pstcache_init(State state, int cache_id) {
 		// int fd;
 		String filename;
 		if (g_pstcache_enumerated)
 			return true;
 		g_pstcache_fd[cache_id] = null;
-		if (!(options.bitmap_caching && options.persistent_bitmap_caching))
+		if (!(state.getOptions().isBitmapCaching() && state.getOptions().isPersistentBitmapCaching()))
 			return false;
-		g_pstcache_Bpp = options.Bpp;
+		g_pstcache_Bpp = state.getBytesPerPixel();
 		filename = "./cache/pstcache_" + cache_id + "_" + g_pstcache_Bpp;
 		logger.debug("persistent bitmap cache file: " + filename);
 		File cacheDir = new File("./cache/");
@@ -201,18 +136,79 @@ public class PstCache {
 		g_pstcache_fd[cache_id] = f;
 		return true;
 	}
+
+	/* Load a bitmap from the persistent cache */
+	static boolean pstcache_load_bitmap(State state, int cache_id, int cache_idx) throws IOException, RdesktopException {
+		logger.info("PstCache.pstcache_load_bitmap");
+		byte[] celldata = null;
+		FileInputStream fd;
+		// CELLHEADER cellhdr;
+		Bitmap bitmap;
+		byte[] cellHead = null;
+		if (!state.getOptions().isPersistentBitmapCaching())
+			return false;
+		if (!IS_PERSISTENT(cache_id) || cache_idx >= Rdp.BMPCACHE2_NUM_PSTCELLS)
+			return false;
+		fd = new FileInputStream(g_pstcache_fd[cache_id]);
+		int offset = cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE + CELLHEADER.size());
+		fd.read(cellHead, offset, CELLHEADER.size());
+		CELLHEADER c = new CELLHEADER(cellHead);
+		// rd_lseek_file(fd, cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE +
+		// sizeof(CELLHEADER)));
+		// rd_read_file(fd, &cellhdr, sizeof(CELLHEADER));
+		// celldata = (uint8 *) xmalloc(cellhdr.length);
+		// rd_read_file(fd, celldata, cellhdr.length);
+		celldata = new byte[c.length];
+		fd.read(celldata);
+		logger.debug("Loading bitmap from disk (" + cache_id + ":" + cache_idx + ")\n");
+		bitmap = new Bitmap(state, celldata, c.width, c.height, 0, 0, state.getBytesPerPixel());
+		// bitmap = ui_create_bitmap(cellhdr.width, cellhdr.height, celldata);
+		Orders.cache.putBitmap(cache_id, cache_idx, bitmap, c.stamp);
+		// xfree(celldata);
+		return true;
+	}
+
+	/* Store a bitmap in the persistent cache */
+	static boolean pstcache_put_bitmap(State state, int cache_id, int cache_idx, byte[] bitmap_id, int width, int height,
+			int length, byte[] data) throws IOException {
+		logger.info("PstCache.pstcache_put_bitmap");
+		FileOutputStream fd;
+		CELLHEADER cellhdr = new CELLHEADER();
+		if (!IS_PERSISTENT(cache_id) || cache_idx >= Rdp.BMPCACHE2_NUM_PSTCELLS)
+			return false;
+		cellhdr.bitmap_id = bitmap_id;
+		// memcpy(cellhdr.bitmap_id, bitmap_id, 8/* sizeof(BITMAP_ID) */);
+		cellhdr.width = width;
+		cellhdr.height = height;
+		cellhdr.length = length;
+		cellhdr.stamp = 0;
+		fd = new FileOutputStream(g_pstcache_fd[cache_id]);
+		int offset = cache_idx * (state.getBytesPerPixel() * MAX_CELL_SIZE + CELLHEADER.size());
+		fd.write(cellhdr.toBytes(), offset, CELLHEADER.size());
+		fd.write(data);
+		// rd_lseek_file(fd, cache_idx * (g_pstcache_Bpp * MAX_CELL_SIZE +
+		// sizeof(CELLHEADER)));
+		// rd_write_file(fd, &cellhdr, sizeof(CELLHEADER));
+		// rd_write_file(fd, data, length);
+		return true;
+	}
+
+	private static byte[] toBigEndian32(int value) {
+		byte[] out = new byte[4];
+		out[0] = (byte) (value & 0xFF);
+		out[1] = (byte) (value & 0xFF00);
+		out[2] = (byte) (value & 0xFF0000);
+		out[3] = (byte) (value & 0xFF000000);
+		return out;
+	}
 }
 
 /* Header for an entry in the persistent bitmap cache file */
 class CELLHEADER {
 	byte[] bitmap_id = new byte[8]; // int8 *
-	int width, height; // int8
 	int length; // int16
 	int stamp; // int32
-
-	static int size() {
-		return 8 * 8 + 8 * 2 + 16 + 32;
-	}
+	int width, height; // int8
 
 	public CELLHEADER() {
 	}
@@ -224,10 +220,14 @@ class CELLHEADER {
 		height = data[bitmap_id.length + 1];
 		length = (data[bitmap_id.length + 2] >> 8) + data[bitmap_id.length + 3];
 		stamp = (data[bitmap_id.length + 6] >> 24) + (data[bitmap_id.length + 6] >> 16) + (data[bitmap_id.length + 6] >> 8)
-			+ data[bitmap_id.length + 7];
+				+ data[bitmap_id.length + 7];
 	}
 
 	public byte[] toBytes() {
 		return null;
+	}
+
+	static int size() {
+		return 8 * 8 + 8 * 2 + 16 + 32;
 	}
 }

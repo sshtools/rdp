@@ -1,13 +1,13 @@
-package com.sshtools.javardp;
+package com.sshtools.javardp.graphics;
 
 import java.awt.Image;
 import java.awt.Point;
 
 public class RdpCursor {
 
+	private Image data;
 	private Point hotspot;
 	private String name;
-	private Image data;
 
 	public RdpCursor(Point hotspot, String name, Image data) {
 		super();
@@ -16,28 +16,28 @@ public class RdpCursor {
 		this.data = data;
 	}
 
-	public Point getHotspot() {
-		return hotspot;
+	public Image getData() {
+		return data;
 	}
 
-	public void setHotspot(Point hotspot) {
-		this.hotspot = hotspot;
+	public Point getHotspot() {
+		return hotspot;
 	}
 
 	public String getName() {
 		return name;
 	}
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public Image getData() {
-		return data;
-	}
-
 	public void setData(Image data) {
 		this.data = data;
+	}
+
+	public void setHotspot(Point hotspot) {
+		this.hotspot = hotspot;
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 
 }

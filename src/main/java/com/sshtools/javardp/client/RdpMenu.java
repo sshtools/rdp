@@ -18,7 +18,7 @@ import java.awt.MenuItem;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import com.sshtools.javardp.RdesktopCanvas;
+import com.sshtools.javardp.graphics.RdesktopCanvas;
 
 public class RdpMenu extends MenuBar {
 	RdesktopFrame parent;
@@ -34,6 +34,7 @@ public class RdpMenu extends MenuBar {
 		Menu m = new Menu("File");
 		item = new MenuItem("Send CTRL-ALT-DEL");
 		item.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				sendCtrlAltDel();
 			}
@@ -42,6 +43,7 @@ public class RdpMenu extends MenuBar {
 		m.addSeparator();
 		item = new MenuItem("Exit");
 		item.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				parent.exit();
 			}
@@ -66,6 +68,7 @@ public class RdpMenu extends MenuBar {
 	/**
 	 * @deprecated Replaced by action listeners.
 	 */
+	@Deprecated
 	public boolean action(Event event, Object arg) {
 		/*
 		 * if(arg == "Turn Caps-Lock On") ((MenuItem)

@@ -20,6 +20,17 @@ public class Utilities {
 	public static DataFlavor imageFlavor = DataFlavor.imageFlavor;
 
 	/**
+	 * Split a string into segments separated by a specified substring
+	 * 
+	 * @param in Input string
+	 * @param splitWith String with which to split input string
+	 * @return Array of separated string segments
+	 */
+	public static String[] split(String in, String splitWith) {
+		return in.split(splitWith);
+	}
+
+	/**
 	 * Replaces each substring of this string that matches the given regular
 	 * expression with the given replacement.
 	 * 
@@ -32,17 +43,6 @@ public class Utilities {
 	 */
 	public static String strReplaceAll(String in, String find, String replace) {
 		return in.replaceAll(find, replace);
-	}
-
-	/**
-	 * Split a string into segments separated by a specified substring
-	 * 
-	 * @param in Input string
-	 * @param splitWith String with which to split input string
-	 * @return Array of separated string segments
-	 */
-	public static String[] split(String in, String splitWith) {
-		return in.split(splitWith);
 	}
 
 }

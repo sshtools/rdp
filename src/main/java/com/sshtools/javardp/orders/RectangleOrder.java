@@ -13,21 +13,17 @@ package com.sshtools.javardp.orders;
 
 public class RectangleOrder implements Order {
 
-	private int x = 0;
-	private int y = 0;
+	public int color = 0;
 	private int cx = 0;
 	private int cy = 0;
-	public int color = 0;
+	private int x = 0;
+	private int y = 0;
 
 	public RectangleOrder() {
 	}
 
-	public int getX() {
-		return this.x;
-	}
-
-	public int getY() {
-		return this.y;
+	public int getColor() {
+		return this.color;
 	}
 
 	public int getCX() {
@@ -38,16 +34,24 @@ public class RectangleOrder implements Order {
 		return this.cy;
 	}
 
-	public int getColor() {
-		return this.color;
+	public int getX() {
+		return this.x;
 	}
 
-	public void setX(int x) {
-		this.x = x;
+	public int getY() {
+		return this.y;
 	}
 
-	public void setY(int y) {
-		this.y = y;
+	public void reset() {
+		x = 0;
+		y = 0;
+		cx = 0;
+		cy = 0;
+		color = 0;
+	}
+
+	public void setColor(int color) {
+		this.color = color;
 	}
 
 	public void setCX(int cx) {
@@ -58,15 +62,11 @@ public class RectangleOrder implements Order {
 		this.cy = cy;
 	}
 
-	public void setColor(int color) {
-		this.color = color;
+	public void setX(int x) {
+		this.x = x;
 	}
 
-	public void reset() {
-		x = 0;
-		y = 0;
-		cx = 0;
-		cy = 0;
-		color = 0;
+	public void setY(int y) {
+		this.y = y;
 	}
 }

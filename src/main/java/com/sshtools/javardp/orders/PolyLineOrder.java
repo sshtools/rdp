@@ -13,24 +13,24 @@ package com.sshtools.javardp.orders;
 
 public class PolyLineOrder implements Order {
 
-	private int x = 0;
-	private int y = 0;
-	private int flags = 0;
+	byte[] data = new byte[256];
+	private int datasize = 0;
 	private int fgcolor = 0;
+	private int flags = 0;
 	private int lines = 0;
 	private int opcode = 0;
-	private int datasize = 0;
-	byte[] data = new byte[256];
+	private int x = 0;
+	private int y = 0;
 
 	public PolyLineOrder() {
 	}
 
-	public int getX() {
-		return this.x;
+	public byte[] getData() {
+		return this.data;
 	}
 
-	public int getY() {
-		return this.y;
+	public int getDataSize() {
+		return this.datasize;
 	}
 
 	public int getFlags() {
@@ -45,24 +45,35 @@ public class PolyLineOrder implements Order {
 		return this.lines;
 	}
 
-	public int getDataSize() {
-		return this.datasize;
-	}
-
-	public byte[] getData() {
-		return this.data;
-	}
-
 	public int getOpcode() {
 		return this.opcode;
 	}
 
-	public void setX(int x) {
-		this.x = x;
+	public int getX() {
+		return this.x;
 	}
 
-	public void setY(int y) {
-		this.y = y;
+	public int getY() {
+		return this.y;
+	}
+
+	public void reset() {
+		x = 0;
+		y = 0;
+		flags = 0;
+		fgcolor = 0;
+		lines = 0;
+		datasize = 0;
+		opcode = 0;
+		data = new byte[256];
+	}
+
+	public void setData(byte[] data) {
+		this.data = data;
+	}
+
+	public void setDataSize(int datasize) {
+		this.datasize = datasize;
 	}
 
 	public void setFlags(int flags) {
@@ -77,26 +88,15 @@ public class PolyLineOrder implements Order {
 		this.lines = lines;
 	}
 
-	public void setDataSize(int datasize) {
-		this.datasize = datasize;
-	}
-
-	public void setData(byte[] data) {
-		this.data = data;
-	}
-
 	public void setOpcode(int opcode) {
 		this.opcode = opcode;
 	}
 
-	public void reset() {
-		x = 0;
-		y = 0;
-		flags = 0;
-		fgcolor = 0;
-		lines = 0;
-		datasize = 0;
-		opcode = 0;
-		data = new byte[256];
+	public void setX(int x) {
+		this.x = x;
+	}
+
+	public void setY(int y) {
+		this.y = y;
 	}
 }
