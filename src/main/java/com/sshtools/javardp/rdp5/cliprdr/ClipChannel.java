@@ -24,13 +24,11 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.CommunicationMonitor;
 import com.sshtools.javardp.IContext;
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
@@ -93,7 +91,6 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 				send_format_announce();
 			} catch (RdesktopException e) {
 			} catch (IOException e) {
-			} catch (CryptoException e) {
 			}
 		}
 	}
@@ -111,7 +108,8 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	 */
 	@Override
 	public void lostOwnership(Clipboard arg0, Transferable arg1) {
-		logger.debug("Lost clipboard ownership");
+		if (logger.isDebugEnabled())
+			logger.debug("Lost clipboard ownership");
 	}
 
 	/*
@@ -126,7 +124,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	 * Data processing methods
 	 */
 	@Override
-	public void process(RdpPacket data) throws RdesktopException, IOException, CryptoException {
+	public void process(Packet data) throws RdesktopException, IOException {
 		int type, status;
 		int length, format;
 		type = data.getLittleEndian16();
@@ -162,42 +160,45 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	}
 
 	@Override
-	public void send_data(byte[] data, int length) {
-		CommunicationMonitor.lock(this);
-		RdpPacket all = new RdpPacket(12 + length);
-		all.setLittleEndian16(CLIPRDR_DATA_RESPONSE);
-		all.setLittleEndian16(CLIPRDR_RESPONSE);
-		all.setLittleEndian32(length + 4); // don't know why, but we need to add
-		// between 1 and 4 to the length,
-		// otherwise the server cliprdr thread hangs
-		all.copyFromByteArray(data, 0, all.getPosition(), length);
-		all.incrementPosition(length);
-		all.setLittleEndian32(0);
+	public void send_data(byte[] data, int length) throws RdesktopException {
 		try {
-			this.send_packet(all);
-		} catch (RdesktopException e) {
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-			if (!context.isUnderApplet())
-				context.exit();
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-			if (!context.isUnderApplet())
-				context.exit();
-		} catch (CryptoException e) {
-			System.err.println(e.getMessage());
-			e.printStackTrace();
-			if (!context.isUnderApplet())
-				context.exit();
+			state.getCommLock().acquire();
+			try {
+				Packet all = new Packet(12 + length);
+				all.setLittleEndian16(CLIPRDR_DATA_RESPONSE);
+				all.setLittleEndian16(CLIPRDR_RESPONSE);
+				all.setLittleEndian32(length + 4); // don't know why, but we
+													// need to add
+				// between 1 and 4 to the length,
+				// otherwise the server cliprdr thread hangs
+				all.copyFromByteArray(data, 0, all.getPosition(), length);
+				all.incrementPosition(length);
+				all.setLittleEndian32(0);
+				try {
+					this.send_packet(all);
+				} catch (RdesktopException e) {
+					System.err.println(e.getMessage());
+					e.printStackTrace();
+					if (!context.isUnderApplet())
+						context.exit();
+				} catch (IOException e) {
+					System.err.println(e.getMessage());
+					e.printStackTrace();
+					if (!context.isUnderApplet())
+						context.exit();
+				}
+			} finally {
+				state.getCommLock().release();
+			}
+		} catch (InterruptedException ie) {
+			throw new RdesktopException("Interrupted waiting to send data.", ie);
 		}
-		CommunicationMonitor.unlock(this);
 	}
 
 	@Override
 	public void send_null(int type, int status) {
-		RdpPacket s;
-		s = new RdpPacket(12);
+		Packet s;
+		s = new Packet(12);
 		s.setLittleEndian16(type);
 		s.setLittleEndian16(status);
 		s.setLittleEndian32(0);
@@ -211,9 +212,6 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			e.printStackTrace();
-		} catch (CryptoException e) {
-			System.err.println(e.getMessage());
-			e.printStackTrace();
 		}
 	}
 
@@ -221,7 +219,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		this.clipboard = clipboard;
 	}
 
-	void handle_data_request(RdpPacket data) throws RdesktopException, IOException, CryptoException {
+	void handle_data_request(Packet data) throws RdesktopException, IOException {
 		int format = data.getLittleEndian32();
 		Transferable clipData = clipboard.getContents(this);
 		byte[] outData = null;
@@ -238,7 +236,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		// this.send_null(CLIPRDR_DATA_RESPONSE,CLIPRDR_ERROR);
 	}
 
-	void handle_data_response(RdpPacket data, int length) {
+	void handle_data_response(Packet data, int length) {
 		// if(currentHandler !=
 		// null)clipboard.setContents(currentHandler.handleData(data,
 		// length),this);
@@ -248,8 +246,8 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		currentHandler = null;
 	}
 
-	void request_clipboard_data(int formatcode) throws RdesktopException, IOException, CryptoException {
-		RdpPacket s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 24);
+	void request_clipboard_data(int formatcode) throws RdesktopException, IOException {
+		Packet s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 24);
 		s.setLittleEndian32(16); // length
 		int flags = VChannels.CHANNEL_FLAG_FIRST | VChannels.CHANNEL_FLAG_LAST;
 		if ((this.flags() & VChannels.CHANNEL_OPTION_SHOW_PROTOCOL) != 0)
@@ -261,16 +259,17 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		s.setLittleEndian32(formatcode);
 		s.setLittleEndian32(0); // Unknown. Garbage pad?
 		s.markEnd();
-		context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+		context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
+				this.mcs_id());
 	}
 
-	void send_format_announce() throws RdesktopException, IOException, CryptoException {
+	void send_format_announce() throws RdesktopException, IOException {
 		Transferable clipData = clipboard.getContents(clipboard);
 		DataFlavor[] dataTypes = clipData.getTransferDataFlavors();
 		TypeHandlerList availableFormats = allHandlers.getHandlersForClipboard(dataTypes);
-		RdpPacket s;
+		Packet s;
 		int number_of_formats = availableFormats.count();
-		s = new RdpPacket(number_of_formats * 36 + 12);
+		s = new Packet(number_of_formats * 36 + 12);
 		s.setLittleEndian16(CLIPRDR_FORMAT_ANNOUNCE);
 		s.setLittleEndian16(CLIPRDR_REQUEST);
 		s.setLittleEndian32(number_of_formats * 36);
@@ -285,7 +284,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		send_packet(s);
 	}
 
-	private void handle_clip_format_announce(RdpPacket data, int length) throws RdesktopException, IOException, CryptoException {
+	private void handle_clip_format_announce(Packet data, int length) throws RdesktopException, IOException {
 		TypeHandlerList serverTypeList = new TypeHandlerList();
 		// System.out.print("Available types: ");
 		for (int c = length; c >= 36; c -= 36) {
@@ -300,13 +299,5 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		currentHandler = serverTypeList.getFirst();
 		if (currentHandler != null)
 			request_clipboard_data(currentHandler.preferredFormat());
-	}
-
-	/*
-	 * Support methods
-	 */
-	private void reset_bool(boolean[] x) {
-		for (int i = 0; i < x.length; i++)
-			x[i] = false;
 	}
 }

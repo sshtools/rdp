@@ -11,13 +11,22 @@
  */
 package com.sshtools.javardp;
 
-public class OrderException extends Exception {
+public class OrderException extends RdesktopException {
+	private static final long serialVersionUID = 6364281713782083731L;
 
 	public OrderException() {
 		super();
 	}
 
-	public OrderException(String s) {
-		super(s);
+	public OrderException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public OrderException(String message) {
+		super(message);
+	}
+
+	public OrderException(Throwable cause) {
+		super(cause);
 	}
 }

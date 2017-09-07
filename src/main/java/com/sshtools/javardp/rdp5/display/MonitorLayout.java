@@ -1,6 +1,6 @@
 package com.sshtools.javardp.rdp5.display;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
 
 public class MonitorLayout {
 	public final static int ORIENTATION_LANDSCAPE = 0;
@@ -111,7 +111,7 @@ public class MonitorLayout {
 		this.width = width;
 	}
 
-	public void writer(RdpPacket p) {
+	public void writer(Packet p) {
 		p.setLittleEndian32(left);
 		p.setLittleEndian32(top);
 		p.setLittleEndian32(width);

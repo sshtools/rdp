@@ -23,9 +23,9 @@ import org.slf4j.LoggerFactory;
 import com.sshtools.javardp.Cache;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Input;
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Rdp;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.WrappedImage;
 import com.sshtools.javardp.keymapping.KeyCode;
@@ -76,7 +76,6 @@ public class RdesktopCanvas {
 	// protected int[] backstore_int = null;
 	// Clip region
 	private int top = 0;
-
 	private int width;
 
 	/**
@@ -192,7 +191,6 @@ public class RdesktopCanvas {
 		case 24:
 		case 32:
 			int xorBytesPerPixel = xorBpp >> 3;
-			int elemIdx = 0;
 			xorStep = nWidth * xorBytesPerPixel;
 			if (xorStep * nHeight > xorMask.length)
 				return null;
@@ -200,14 +198,10 @@ public class RdesktopCanvas {
 				if (andStep * nHeight > andMask.length)
 					return null;
 			}
-			if (xorBpp == 32) {
-				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_4BYTE_ABGR);
-			} else if (xorBpp == 16) {
-				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_USHORT_555_RGB);
-			} else if (xorBpp == 8) {
+			if (xorBpp == 8) {
 				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_BYTE_INDEXED, colormap);
 			} else {
-				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_3BYTE_BGR);
+				bim = new BufferedImage(nWidth, nHeight, BufferedImage.TYPE_INT_ARGB);
 			}
 			for (y = 0; y < nHeight; y++) {
 				int xorBitsIdx = 0;
@@ -225,21 +219,17 @@ public class RdesktopCanvas {
 					System.arraycopy(xorMask, xorStep * (nHeight - y - 1), xorBits, 0, xorBits.length);
 				}
 				for (x = 0; x < nWidth; x++) {
-					if (xorBpp == 32) {
-						// TODO
-						xorPixel = bim.getRGB(x, y);
-					} else if (xorBpp == 16) {
-						// TODO
-						xorPixel = bim.getRGB(x, y);
-					} else if (xorBpp == 8) {
+					if (xorBpp == 8) {
 						xorPixel = colormap.getRGB(xorBits[xorBitsIdx]);
-					} else {
+					} else if (xorBpp == 24 || xorBpp == 32) {
 						int b1 = (xorBits[xorBitsIdx] << 16) & 0x00ffffff;
 						int b2 = (xorBits[xorBitsIdx + 1] << 8) & 0x00ffffff;
 						int b3 = xorBits[xorBitsIdx + 2] & 0x000000ff;
-						int val = b1 | b2 | b3;
+						int val = b1 | b2 | b3 | 0xff000000;
 						bim.setRGB(x, y, val);
-						xorPixel = bim.getRGB(x, y) & 0x00ffffff;
+						xorPixel = bim.getRGB(x, y);
+					} else {
+						throw new UnsupportedOperationException("TODO 16 bit cursor colour depth is not supported.");
 					}
 					xorBitsIdx += xorBytesPerPixel;
 					andPixel = 0;
@@ -283,7 +273,7 @@ public class RdesktopCanvas {
 	 * @param cm Colour model currently in use, if any
 	 * @throws RdesktopException
 	 */
-	public void displayCompressed(int x, int y, int width, int height, int size, RdpPacket data, int Bpp, IndexColorModel cm)
+	public void displayCompressed(int x, int y, int width, int height, int size, Packet data, int Bpp, IndexColorModel cm)
 			throws RdesktopException {
 		backstore = Bitmap.decompressImgDirect(state, width, height, size, data, Bpp, cm, x, y, backstore);
 	}

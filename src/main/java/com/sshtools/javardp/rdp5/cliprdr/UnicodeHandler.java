@@ -15,7 +15,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
+import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class UnicodeHandler extends TypeHandler {
@@ -42,7 +43,7 @@ public class UnicodeHandler extends TypeHandler {
 			byte[] sBytes = s.getBytes();
 			int length = sBytes.length;
 			int lengthBy2 = length * 2;
-			RdpPacket p = new RdpPacket(lengthBy2);
+			Packet p = new Packet(lengthBy2);
 			for (int i = 0; i < sBytes.length; i++) {
 				p.setLittleEndian16(sBytes[i]);
 			}
@@ -54,7 +55,7 @@ public class UnicodeHandler extends TypeHandler {
 	}
 
 	@Override
-	public void handleData(RdpPacket data, int length, ClipInterface c) {
+	public void handleData(Packet data, int length, ClipInterface c) {
 		String thingy = "";
 		for (int i = 0; i < length; i += 2) {
 			int aByte = data.getLittleEndian16();
@@ -88,7 +89,7 @@ public class UnicodeHandler extends TypeHandler {
 	 * .Transferable)
 	 */
 	@Override
-	public void send_data(Transferable in, ClipInterface c) {
+	public void send_data(Transferable in, ClipInterface c) throws RdesktopException {
 		byte[] data = fromTransferable(in);
 		c.send_data(data, data.length);
 	}

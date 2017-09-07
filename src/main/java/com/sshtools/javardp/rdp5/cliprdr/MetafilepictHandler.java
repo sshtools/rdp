@@ -18,7 +18,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
 
 public class MetafilepictHandler extends TypeHandler {
 
@@ -44,7 +44,7 @@ public class MetafilepictHandler extends TypeHandler {
 		return null;
 	}
 
-	public Transferable handleData(RdpPacket data, int length) {
+	public Transferable handleData(Packet data, int length) {
 		String thingy = "";
 		OutputStream out = null;
 
@@ -74,7 +74,7 @@ public class MetafilepictHandler extends TypeHandler {
 	}
 
 	@Override
-	public void handleData(RdpPacket data, int length, ClipInterface c) {
+	public void handleData(Packet data, int length, ClipInterface c) {
 		String thingy = "";
 		OutputStream out = null;
 

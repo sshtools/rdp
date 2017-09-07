@@ -31,12 +31,14 @@ import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.ConnectionException;
 import com.sshtools.javardp.Constants;
+import com.sshtools.javardp.DefaultCredentialsProvider;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Options;
 import com.sshtools.javardp.OrderException;
 import com.sshtools.javardp.RdesktopDisconnectException;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Rdp;
+import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.io.DefaultIO;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
@@ -123,6 +125,7 @@ public class Rdesktop {
 		// parse arguments
 		boolean fKdeHack = false;
 		int c;
+		DefaultCredentialsProvider dcp = new DefaultCredentialsProvider();
 		String arg = null;
 		String server = null;
 		StringBuffer sb = new StringBuffer();
@@ -135,7 +138,8 @@ public class Rdesktop {
 		cliOptions.addOption("noRemapHash", "no-remap-hash", false, "Do not remap hash");
 		cliOptions.addOption("noEncryption", "no-encryption", false, "No encryption");
 		cliOptions.addOption("4", "use-rdp4", false, "Use RDP4");
-		cliOptions.addOption("ssl", "use-ssl", false, "Use SSL");
+		cliOptions.addOption("S", "no-ssl", false, "Do not uue SSL");
+		cliOptions.addOption("N", "no-nla", false, "Do not uue NLA");
 		cliOptions.addOption("enableMenu", "enable-menu", false, "Enable menu");
 		cliOptions.addOption("console", "console", false, "Console");
 		cliOptions.addOption("loadLicense", "load-license", false, "Load license");
@@ -175,8 +179,19 @@ public class Rdesktop {
 			if (cli.hasOption("4")) {
 				options.setRdp5(false);
 			}
-			if (cli.hasOption("ssl")) {
-				options.setSsl(true);
+			if (cli.hasOption("no-ssl")) {
+				for (SecurityType t : SecurityType.supported()) {
+					if (t.isSSL()) {
+						options.getSecurityTypes().remove(t);
+					}
+				}
+			}
+			if (cli.hasOption("no-nla")) {
+				for (SecurityType t : SecurityType.supported()) {
+					if (t.isNLA()) {
+						options.getSecurityTypes().remove(t);
+					}
+				}
 			}
 			if (cli.hasOption("enableMenu")) {
 				enable_menu = true;
@@ -206,7 +221,7 @@ public class Rdesktop {
 				options.setDirectory(cli.getOptionValue('c'));
 			}
 			if (cli.hasOption('d')) {
-				options.setDomain(cli.getOptionValue('d'));
+				dcp.setDomain(cli.getOptionValue('d'));
 			}
 			if (cli.hasOption('f')) {
 				Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
@@ -243,16 +258,16 @@ public class Rdesktop {
 				}
 			}
 			if (cli.hasOption('n')) {
-				options.setClientName(cli.getOptionValue('n'));
+				options.setWorkstationName(cli.getOptionValue('n'));
 			}
 			if (cli.hasOption('p')) {
-				options.setPassword(cli.getOptionValue('p').toCharArray());
+				dcp.setPassword(cli.getOptionValue('p').toCharArray());
 			}
 			if (cli.hasOption('s')) {
 				options.setCommand(cli.getOptionValue('s'));
 			}
 			if (cli.hasOption('u')) {
-				options.setUsername(cli.getOptionValue('u'));
+				dcp.setUsername(cli.getOptionValue('u'));
 			}
 			if (cli.hasOption('t')) {
 				arg = cli.getOptionValue('t');
@@ -319,10 +334,12 @@ public class Rdesktop {
 			InputStream istr = resource.openStream();
 			// logger.info("istr = " + istr);
 			if (istr == null) {
-				logger.debug("Loading keymap from filename");
+				if (logger.isDebugEnabled())
+					logger.debug("Loading keymap from filename");
 				keyMap = new KeyCode_FileBased(options, keyMapPath + mapFile);
 			} else {
-				logger.debug("Loading keymap from InputStream");
+				if (logger.isDebugEnabled())
+					logger.debug("Loading keymap from InputStream");
 				keyMap = new KeyCode_FileBased(options, resource, istr);
 			}
 			if (istr != null)
@@ -346,26 +363,32 @@ public class Rdesktop {
 				channels.register(clipChannel);
 		}
 		window.setClip(clipChannel);
-		logger.debug("Registering keyboard...");
+		if (logger.isDebugEnabled())
+			logger.debug("Registering keyboard...");
 		if (keyMap != null)
 			window.registerKeyboard(keyMap);
-		logger.debug("keep_running = " + keep_running);
+		if (logger.isDebugEnabled())
+			logger.debug("keep_running = " + keep_running);
 		while (keep_running) {
-			logger.debug("Initialising RDP layer...");
+			if (logger.isDebugEnabled())
+				logger.debug("Initialising RDP layer...");
 			rdpLayer = new Rdp(window, state, channels);
 			window.setRdp(rdpLayer);
-			logger.debug("Registering drawing surface...");
+			if (logger.isDebugEnabled())
+				logger.debug("Registering drawing surface...");
 			window.registerDrawingSurface();
-			logger.debug("Registering comms layer...");
+			if (logger.isDebugEnabled())
+				logger.debug("Registering comms layer...");
 			window.registerCommLayer(rdpLayer);
-			logger.info("Connecting to " + server + ":" + port + " ...");
+			if (logger.isDebugEnabled())
+				logger.info("Connecting to " + server + ":" + port + " ...");
 			if (server.equalsIgnoreCase("localhost"))
 				server = "127.0.0.1";
 			if (rdpLayer != null) {
 				// Attempt to connect to server on port Options.port
 				try {
-					rdpLayer.connect(options.getUsername(), new DefaultIO(InetAddress.getByName(server), port), options.getDomain(),
-							options.getPassword(), options.getCommand(), options.getDirectory());
+					rdpLayer.connect(new DefaultIO(InetAddress.getByName(server), port), dcp, options.getCommand(),
+							options.getDirectory());
 					// Remove to get rid of sendEvent tool
 					if (showTools) {
 						toolFrame = new SendEvent(rdpLayer);

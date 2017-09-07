@@ -13,14 +13,17 @@ package com.sshtools.javardp.rdp5;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.security.InvalidKeyException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.MCS;
 
 public class VChannels {
@@ -100,9 +103,8 @@ public class VChannels {
 	 * @param mcsChannel Number specified for channel
 	 * @throws RdesktopException
 	 * @throws IOException
-	 * @throws CryptoException
 	 */
-	public void channel_process(RdpPacket data, int mcsChannel) throws RdesktopException, IOException, CryptoException {
+	public void channel_process(Packet data, int mcsChannel) throws RdesktopException, IOException {
 
 		int flags = 0;
 		VChannel channel = null;
@@ -132,7 +134,7 @@ public class VChannels {
 			fragment_buffer = append(fragment_buffer, content);
 
 			if ((flags & CHANNEL_FLAG_LAST) != 0) {
-				RdpPacket fullpacket = new RdpPacket(fragment_buffer.length);
+				Packet fullpacket = new Packet(fragment_buffer.length);
 				fullpacket.copyFromByteArray(fragment_buffer, 0, 0, fragment_buffer.length);
 				// process the entire reconstructed packet
 				channel.process(fullpacket);

@@ -15,15 +15,15 @@ import java.awt.Image;
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
 
 public class BMPToImageThread extends Thread {
 
 	ClipInterface c;
-	RdpPacket data;
+	Packet data;
 	int length;
 
-	public BMPToImageThread(RdpPacket data, int length, ClipInterface c) {
+	public BMPToImageThread(Packet data, int length, ClipInterface c) {
 		super();
 		this.data = data;
 		this.length = length;

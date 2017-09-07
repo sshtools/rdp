@@ -8,6 +8,7 @@ public enum SecurityType {
 	NONE, STANDARD, SSL, HYBRID, RDSTLS, HYBRID_EX;
 	public static SecurityType[] fromMasks(int selectedProtocol) {
 		List<SecurityType> types = new LinkedList<SecurityType>();
+		types.add(STANDARD);
 		if ((selectedProtocol & 0x00000001) != 0)
 			types.add(SSL);
 		if ((selectedProtocol & 0x00000002) != 0)
@@ -46,8 +47,20 @@ public enum SecurityType {
 		}
 	}
 
+	/**
+	 * The default supported security types.
+	 * 
+	 * @return supported types
+	 */
+	public static SecurityType[] supported() {
+		return new SecurityType[] { SecurityType.STANDARD, SecurityType.SSL, SecurityType.HYBRID };
+	}
+
 	public boolean isSSL() {
-		//return Arrays.asList(SecurityType.HYBRID, SecurityType.SSL, SecurityType.HYBRID_EX, SecurityType.RDSTLS).contains(this);
 		return Arrays.asList(SecurityType.HYBRID, SecurityType.SSL, SecurityType.HYBRID_EX, SecurityType.RDSTLS).contains(this);
+	}
+
+	public boolean isNLA() {
+		return Arrays.asList(SecurityType.HYBRID, SecurityType.HYBRID_EX, SecurityType.RDSTLS).contains(this);
 	}
 }

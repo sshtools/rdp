@@ -35,9 +35,7 @@ import com.sshtools.javardp.orders.Text2Order;
 import com.sshtools.javardp.orders.TriBltOrder;
 
 public class Orders {
-
 	public static Cache cache = null;
-
 	static Logger logger = LoggerFactory.getLogger(Orders.class);
 	private static final int BUFSIZE_MASK = 0x3FFF; /* or 0x1FFF? */
 	private static final int FLAG_51_UNKNOWN = 0x0800;
@@ -97,7 +95,7 @@ public class Orders {
 	 * @throws OrderException
 	 * @throws RdesktopException
 	 */
-	public void processOrders(RdpPacket data, int next_packet, int n_orders) throws OrderException, RdesktopException {
+	public void processOrders(Packet data, int next_packet, int n_orders) throws OrderException, RdesktopException {
 		int present = 0;
 		// int n_orders = 0;
 		int order_flags = 0, order_type = 0;
@@ -137,43 +135,53 @@ public class Orders {
 				delta = ((order_flags & RDP_ORDER_DELTA) != 0);
 				switch (os.getOrderType()) {
 				case RDP_ORDER_DESTBLT:
-					logger.debug("DestBlt Order");
+					if (logger.isDebugEnabled())
+						logger.debug("DestBlt Order");
 					this.processDestBlt(data, os.getDestBlt(), present, delta);
 					break;
 				case RDP_ORDER_PATBLT:
-					logger.debug("PatBlt Order");
+					if (logger.isDebugEnabled())
+						logger.debug("PatBlt Order");
 					this.processPatBlt(data, os.getPatBlt(), present, delta);
 					break;
 				case RDP_ORDER_SCREENBLT:
-					logger.debug("ScreenBlt Order");
+					if (logger.isDebugEnabled())
+						logger.debug("ScreenBlt Order");
 					this.processScreenBlt(data, os.getScreenBlt(), present, delta);
 					break;
 				case RDP_ORDER_LINE:
-					logger.debug("Line Order");
+					if (logger.isDebugEnabled())
+						logger.debug("Line Order");
 					this.processLine(data, os.getLine(), present, delta);
 					break;
 				case RDP_ORDER_RECT:
-					logger.debug("Rectangle Order");
+					if (logger.isDebugEnabled())
+						logger.debug("Rectangle Order");
 					this.processRectangle(data, os.getRectangle(), present, delta);
 					break;
 				case RDP_ORDER_DESKSAVE:
-					logger.debug("Desksave!");
+					if (logger.isDebugEnabled())
+						logger.debug("Desksave!");
 					this.processDeskSave(data, os.getDeskSave(), present, delta);
 					break;
 				case RDP_ORDER_MEMBLT:
-					logger.debug("MemBlt Order");
+					if (logger.isDebugEnabled())
+						logger.debug("MemBlt Order");
 					this.processMemBlt(data, os.getMemBlt(), present, delta);
 					break;
 				case RDP_ORDER_TRIBLT:
-					logger.debug("TriBlt Order");
+					if (logger.isDebugEnabled())
+						logger.debug("TriBlt Order");
 					this.processTriBlt(data, os.getTriBlt(), present, delta);
 					break;
 				case RDP_ORDER_POLYLINE:
-					logger.debug("Polyline Order");
+					if (logger.isDebugEnabled())
+						logger.debug("Polyline Order");
 					this.processPolyLine(data, os.getPolyLine(), present, delta);
 					break;
 				case RDP_ORDER_TEXT2:
-					logger.debug("Text2 Order");
+					if (logger.isDebugEnabled())
+						logger.debug("Text2 Order");
 					this.processText2(data, os.getText2(), present, delta);
 					break;
 				default:
@@ -182,7 +190,8 @@ public class Orders {
 				}
 				if ((order_flags & RDP_ORDER_BOUNDS) != 0) {
 					surface.resetClip();
-					logger.debug("Reset clip");
+					if (logger.isDebugEnabled())
+						logger.debug("Reset clip");
 				}
 			}
 			processed++;
@@ -319,8 +328,8 @@ public class Orders {
 						// (short)glyph.getOffset()) + ", " + (y +
 						// (short)glyph.getBaseLine()) + ")" );
 						surface.drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
-							glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
-							text2.getForegroundColor());
+								glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
+								text2.getForegroundColor());
 						if ((text2.getFlags() & TEXT2_IMPLICIT_X) != 0) {
 							x += glyph.getWidth();
 						}
@@ -336,13 +345,13 @@ public class Orders {
 							// logger.info("y +=" + (text[ptext +
 							// (i+1)]&0x000000ff) + " | " + ((text[ptext +
 							// (i+2)]&0x000000ff) << 8));
-							int var = this.twosComplement16((text[ptext + i + 1] & 0x000000ff)
-								| ((text[ptext + i + 2] & 0x000000ff) << 8));
+							int var = this.twosComplement16(
+									(text[ptext + i + 1] & 0x000000ff) | ((text[ptext + i + 2] & 0x000000ff) << 8));
 							y += var;
 							i += 2;
 						} else {
-							int var = this.twosComplement16((text[ptext + i + 1] & 0x000000ff)
-								| ((text[ptext + i + 2] & 0x000000ff) << 8));
+							int var = this.twosComplement16(
+									(text[ptext + i + 1] & 0x000000ff) | ((text[ptext + i + 2] & 0x000000ff) << 8));
 							x += var;
 							i += 2;
 						}
@@ -356,8 +365,8 @@ public class Orders {
 				}
 				if (glyph != null) {
 					surface.drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
-						glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
-						text2.getForegroundColor());
+							glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
+							text2.getForegroundColor());
 					if ((text2.getFlags() & TEXT2_IMPLICIT_X) != 0)
 						x += glyph.getWidth();
 				}
@@ -367,7 +376,7 @@ public class Orders {
 		}
 	}
 
-	private int inPresent(RdpPacket data, int flags, int size) {
+	private int inPresent(Packet data, int flags, int size) {
 		int present = 0;
 		int bits = 0;
 		int i = 0;
@@ -395,7 +404,7 @@ public class Orders {
 	 * @param bounds BoundsOrder object in which to store description of bounds
 	 * @throws OrderException
 	 */
-	private void parseBounds(RdpPacket data, BoundsOrder bounds) throws OrderException {
+	private void parseBounds(Packet data, BoundsOrder bounds) throws OrderException {
 		int present = 0;
 		present = data.get8();
 		if ((present & 1) != 0) {
@@ -430,7 +439,7 @@ public class Orders {
 	 * @param brush Brush object in which to store the brush description
 	 * @param present Flags defining the information available within the packet
 	 */
-	private void parseBrush(RdpPacket data, Brush brush, int present) {
+	private void parseBrush(Packet data, Brush brush, int present) {
 		if ((present & 0x01) != 0)
 			brush.setXOrigin(data.get8());
 		if ((present & 0x02) != 0)
@@ -457,7 +466,7 @@ public class Orders {
 	 * @throws RdesktopException
 	 * @throws IOException
 	 */
-	private void process_bmpcache2(RdpPacket data, int flags, boolean compressed) throws RdesktopException, IOException {
+	private void process_bmpcache2(Packet data, int flags, boolean compressed) throws RdesktopException, IOException {
 		Bitmap bitmap;
 		int y;
 		int cache_id, cache_idx_low, width, height, Bpp;
@@ -486,8 +495,9 @@ public class Orders {
 			cache_idx = ((cache_idx ^ LONG_FORMAT) << 8) + cache_idx_low;
 		}
 		// in_uint8p(s, data, bufsize);
-		logger.info("BMPCACHE2(compr=" + compressed + ",flags=" + flags + ",cx=" + width + ",cy=" + height + ",id=" + cache_id
-			+ ",idx=" + cache_idx + ",Bpp=" + Bpp + ",bs=" + bufsize + ")");
+		if (logger.isDebugEnabled())
+			logger.debug("BMPCACHE2(compr=" + compressed + ",flags=" + flags + ",cx=" + width + ",cy=" + height + ",id=" + cache_id
+					+ ",idx=" + cache_idx + ",Bpp=" + Bpp + ",bs=" + bufsize + ")");
 		bmpdata = new byte[width * height * Bpp];
 		int[] bmpdataInt = new int[width * height];
 		if (compressed) {
@@ -496,7 +506,8 @@ public class Orders {
 			else
 				bmpdataInt = Bitmap.decompressInt(state, width, height, bufsize, data, Bpp);
 			if (bmpdataInt == null) {
-				logger.debug("Failed to decompress bitmap data");
+				if (logger.isDebugEnabled())
+					logger.debug("Failed to decompress bitmap data");
 				// xfree(bmpdata);
 				return;
 			}
@@ -526,7 +537,7 @@ public class Orders {
 			if ((flags & PERSIST) != 0)
 				PstCache.pstcache_put_bitmap(state, cache_id, cache_idx, bitmap_id, width, height, width * height * Bpp, bmpdata);
 		} else {
-			logger.debug("process_bmpcache2: ui_create_bitmap failed");
+			logger.error("process_bmpcache2: ui_create_bitmap failed");
 		}
 		// xfree(bmpdata);
 	}
@@ -537,7 +548,7 @@ public class Orders {
 	 * @param data Packet containing compressed bitmap
 	 * @throws RdesktopException
 	 */
-	private void processBitmapCache(RdpPacket data) throws RdesktopException {
+	private void processBitmapCache(Packet data) throws RdesktopException {
 		int bufsize, pad2, row_size, final_size, size;
 		int pad1;
 		bufsize = pad2 = row_size = final_size = size = 0;
@@ -598,7 +609,7 @@ public class Orders {
 	 * @param data Packet containing cache information
 	 * @throws RdesktopException
 	 */
-	private void processColorCache(RdpPacket data) throws RdesktopException {
+	private void processColorCache(Packet data) throws RdesktopException {
 		byte[] palette = null;
 		byte[] red = null;
 		byte[] green = null;
@@ -636,8 +647,7 @@ public class Orders {
 	 *            the source
 	 * @throws RdesktopException
 	 */
-	private void processDeskSave(RdpPacket data, DeskSaveOrder desksave, int present, boolean delta)
-			throws RdesktopException {
+	private void processDeskSave(Packet data, DeskSaveOrder desksave, int present, boolean delta) throws RdesktopException {
 		int width = 0, height = 0;
 		if ((present & 0x01) != 0) {
 			desksave.setOffset(data.getLittleEndian32());
@@ -677,7 +687,7 @@ public class Orders {
 	 * @param delta True if the coordinates of the blit destination are
 	 *            described as relative to the source
 	 */
-	private void processDestBlt(RdpPacket data, DestBltOrder destblt, int present, boolean delta) {
+	private void processDestBlt(Packet data, DestBltOrder destblt, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			destblt.setX(setCoordinate(data, destblt.getX(), delta));
 		if ((present & 0x02) != 0)
@@ -700,7 +710,7 @@ public class Orders {
 	 *            glyphs representing a font
 	 * @throws RdesktopException
 	 */
-	private void processFontCache(RdpPacket data) throws RdesktopException {
+	private void processFontCache(Packet data) throws RdesktopException {
 		Glyph glyph = null;
 		int font = 0, nglyphs = 0;
 		int character = 0, offset = 0, baseline = 0, width = 0, height = 0;
@@ -732,7 +742,7 @@ public class Orders {
 	 * @param delta True if the coordinates of the end of the line are defined
 	 *            as relative to the start
 	 */
-	private void processLine(RdpPacket data, LineOrder line, int present, boolean delta) {
+	private void processLine(Packet data, LineOrder line, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			line.setMixmode(data.getLittleEndian16());
 		if ((present & 0x02) != 0)
@@ -769,7 +779,7 @@ public class Orders {
 	 * @param delta True if destination coordinates are described as relative to
 	 *            the source
 	 */
-	private void processMemBlt(RdpPacket data, MemBltOrder memblt, int present, boolean delta) {
+	private void processMemBlt(Packet data, MemBltOrder memblt, int present, boolean delta) {
 		if ((present & 0x01) != 0) {
 			memblt.setCacheID(data.get8());
 			memblt.setColorTable(data.get8());
@@ -804,7 +814,7 @@ public class Orders {
 	 * @param delta True if the coordinates of the blit destination are
 	 *            described as relative to the source
 	 */
-	private void processPatBlt(RdpPacket data, PatBltOrder patblt, int present, boolean delta) {
+	private void processPatBlt(Packet data, PatBltOrder patblt, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			patblt.setX(setCoordinate(data, patblt.getX(), delta));
 		if ((present & 0x02) != 0)
@@ -833,7 +843,7 @@ public class Orders {
 	 * @param delta True if each set of coordinates is described relative to
 	 *            previous set
 	 */
-	private void processPolyLine(RdpPacket data, PolyLineOrder polyline, int present, boolean delta) {
+	private void processPolyLine(Packet data, PolyLineOrder polyline, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			polyline.setX(setCoordinate(data, polyline.getX(), delta));
 		if ((present & 0x02) != 0)
@@ -866,7 +876,7 @@ public class Orders {
 	 * @param data Packet containing raw bitmap data
 	 * @throws RdesktopException
 	 */
-	private void processRawBitmapCache(RdpPacket data) throws RdesktopException {
+	private void processRawBitmapCache(Packet data) throws RdesktopException {
 		int cache_id = data.get8();
 		data.incrementPosition(1); // pad
 		int width = data.get8();
@@ -899,7 +909,7 @@ public class Orders {
 	 * @param delta True if the rectangle is described as (x,y,width,height), as
 	 *            opposed to (x1,y1,x2,y2)
 	 */
-	private void processRectangle(RdpPacket data, RectangleOrder rect, int present, boolean delta) {
+	private void processRectangle(Packet data, RectangleOrder rect, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			rect.setX(setCoordinate(data, rect.getX(), delta));
 		if ((present & 0x02) != 0)
@@ -927,7 +937,7 @@ public class Orders {
 	 * @param delta True if the coordinates of the blit destination are
 	 *            described as relative to the source
 	 */
-	private void processScreenBlt(RdpPacket data, ScreenBltOrder screenblt, int present, boolean delta) {
+	private void processScreenBlt(Packet data, ScreenBltOrder screenblt, int present, boolean delta) {
 		if ((present & 0x01) != 0)
 			screenblt.setX(setCoordinate(data, screenblt.getX(), delta));
 		if ((present & 0x02) != 0)
@@ -954,7 +964,7 @@ public class Orders {
 	 * @throws OrderException
 	 * @throws RdesktopException
 	 */
-	private void processSecondaryOrders(RdpPacket data) throws OrderException, RdesktopException {
+	private void processSecondaryOrders(Packet data) throws OrderException, RdesktopException {
 		int length = 0;
 		int type = 0;
 		int flags = 0;
@@ -965,19 +975,23 @@ public class Orders {
 		next_order = data.getPosition() + length + 7;
 		switch (type) {
 		case RDP_ORDER_RAW_BMPCACHE:
-			logger.debug("Raw BitmapCache Order");
+			if (logger.isDebugEnabled())
+				logger.debug("Raw BitmapCache Order");
 			this.processRawBitmapCache(data);
 			break;
 		case RDP_ORDER_COLCACHE:
-			logger.debug("Colorcache Order");
+			if (logger.isDebugEnabled())
+				logger.debug("Colorcache Order");
 			this.processColorCache(data);
 			break;
 		case RDP_ORDER_BMPCACHE:
-			logger.debug("Bitmapcache Order");
+			if (logger.isDebugEnabled())
+				logger.debug("Bitmapcache Order");
 			this.processBitmapCache(data);
 			break;
 		case RDP_ORDER_FONTCACHE:
-			logger.debug("Fontcache Order");
+			if (logger.isDebugEnabled())
+				logger.debug("Fontcache Order");
 			this.processFontCache(data);
 			break;
 		case RDP_ORDER_RAW_BMPCACHE2:
@@ -1009,7 +1023,7 @@ public class Orders {
 	 * @param delta Unused
 	 * @throws RdesktopException
 	 */
-	private void processText2(RdpPacket data, Text2Order text2, int present, boolean delta) throws RdesktopException {
+	private void processText2(Packet data, Text2Order text2, int present, boolean delta) throws RdesktopException {
 		if ((present & 0x000001) != 0) {
 			text2.setFont(data.get8());
 		}
@@ -1096,7 +1110,7 @@ public class Orders {
 			 */
 		}
 		this.drawText(text2, text2.getClipRight() - text2.getClipLeft(), text2.getClipBottom() - text2.getClipTop(),
-			text2.getBoxRight() - text2.getBoxLeft(), text2.getBoxBottom() - text2.getBoxTop());
+				text2.getBoxRight() - text2.getBoxLeft(), text2.getBoxBottom() - text2.getBoxTop());
 	}
 
 	/**
@@ -1109,7 +1123,7 @@ public class Orders {
 	 * @param delta True if destination coordinates are described as relative to
 	 *            the source
 	 */
-	private void processTriBlt(RdpPacket data, TriBltOrder triblt, int present, boolean delta) {
+	private void processTriBlt(Packet data, TriBltOrder triblt, int present, boolean delta) {
 		if ((present & 0x01) != 0) {
 			triblt.setCacheID(data.get8());
 			triblt.setColorTable(data.get8());
@@ -1167,7 +1181,7 @@ public class Orders {
 	 * @param present Flags defining information available within packet
 	 * @return True if successful
 	 */
-	private static boolean parsePen(RdpPacket data, Pen pen, int present) {
+	private static boolean parsePen(Packet data, Pen pen, int present) {
 		if ((present & 0x01) != 0)
 			pen.setStyle(data.get8());
 		if ((present & 0x02) != 0)
@@ -1183,7 +1197,7 @@ public class Orders {
 	 * @param data Packet containing colour value at current read position
 	 * @return Integer colour value read from packet
 	 */
-	private static int setColor(RdpPacket data) {
+	private static int setColor(Packet data) {
 		int color = 0;
 		int i = 0;
 		i = data.get8(); // in_uint8(s, i);
@@ -1207,7 +1221,7 @@ public class Orders {
 	 *            offset coordinate, false if absolute
 	 * @return Integer value of coordinate stored in packet, in absolute form
 	 */
-	private static int setCoordinate(RdpPacket data, int coordinate, boolean delta) {
+	private static int setCoordinate(Packet data, int coordinate, boolean delta) {
 		byte change = 0;
 		if (delta) {
 			change = (byte) data.get8();

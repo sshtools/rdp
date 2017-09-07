@@ -15,7 +15,7 @@ import java.awt.datatransfer.DataFlavor;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
 
 public class TypeHandlerList {
 
@@ -82,7 +82,7 @@ public class TypeHandlerList {
 		return handlers.iterator();
 	}
 
-	public void writeTypeDefinitions(RdpPacket data) {
+	public void writeTypeDefinitions(Packet data) {
 		TypeHandler handler = null;
 		for (Iterator i = handlers.iterator(); i.hasNext();) {
 			handler = (TypeHandler) i.next();

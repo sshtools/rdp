@@ -24,12 +24,11 @@ import com.sshtools.javardp.graphics.Bitmap;
 public class PstCache {
 	public static final int MAX_CELL_SIZE = 0x1000; /* pixels */
 	static int g_pstcache_Bpp;
-
 	static boolean g_pstcache_enumerated = false;
-
 	static File[] g_pstcache_fd = new File[8];
 	static int g_stamp;
 	static Logger logger = LoggerFactory.getLogger(PstCache.class);
+
 	protected static boolean IS_PERSISTENT(int id) {
 		return (id < 8 && g_pstcache_fd[id] != null);
 	}
@@ -67,7 +66,8 @@ public class PstCache {
 		 */
 		if (g_pstcache_enumerated)
 			return 0;
-		logger.debug("pstcache enumeration... ");
+		if (logger.isDebugEnabled())
+			logger.debug("pstcache enumeration... ");
 		for (n = 0; n < Rdp.BMPCACHE2_NUM_PSTCELLS; n++) {
 			fd = new FileInputStream(g_pstcache_fd[cache_id]);
 			byte[] cellhead_data = new byte[CELLHEADER.size()];
@@ -113,7 +113,8 @@ public class PstCache {
 			return false;
 		g_pstcache_Bpp = state.getBytesPerPixel();
 		filename = "./cache/pstcache_" + cache_id + "_" + g_pstcache_Bpp;
-		logger.debug("persistent bitmap cache file: " + filename);
+		if (logger.isDebugEnabled())
+			logger.debug("persistent bitmap cache file: " + filename);
 		File cacheDir = new File("./cache/");
 		if (!cacheDir.exists() && !cacheDir.mkdir()) {
 			logger.warn("failed to get/make cache directory");
@@ -160,7 +161,8 @@ public class PstCache {
 		// rd_read_file(fd, celldata, cellhdr.length);
 		celldata = new byte[c.length];
 		fd.read(celldata);
-		logger.debug("Loading bitmap from disk (" + cache_id + ":" + cache_idx + ")\n");
+		if (logger.isDebugEnabled())
+			logger.debug("Loading bitmap from disk (" + cache_id + ":" + cache_idx + ")\n");
 		bitmap = new Bitmap(state, celldata, c.width, c.height, 0, 0, state.getBytesPerPixel());
 		// bitmap = ui_create_bitmap(cellhdr.width, cellhdr.height, celldata);
 		Orders.cache.putBitmap(cache_id, cache_idx, bitmap, c.stamp);

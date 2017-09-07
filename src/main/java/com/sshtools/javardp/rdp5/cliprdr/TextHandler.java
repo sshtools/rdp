@@ -15,7 +15,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
+import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class TextHandler extends TypeHandler {
@@ -44,7 +45,7 @@ public class TextHandler extends TypeHandler {
 		return null;
 	}
 
-	public Transferable handleData(RdpPacket data, int length) {
+	public Transferable handleData(Packet data, int length) {
 		String thingy = "";
 		for (int i = 0; i < length; i++) {
 			int aByte = data.get8();
@@ -62,7 +63,7 @@ public class TextHandler extends TypeHandler {
 	 * , int, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
 	 */
 	@Override
-	public void handleData(RdpPacket data, int length, ClipInterface c) {
+	public void handleData(Packet data, int length, ClipInterface c) {
 		String thingy = "";
 		for (int i = 0; i < length; i++) {
 			int aByte = data.get8();
@@ -95,7 +96,7 @@ public class TextHandler extends TypeHandler {
 	 * .Transferable, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
 	 */
 	@Override
-	public void send_data(Transferable in, ClipInterface c) {
+	public void send_data(Transferable in, ClipInterface c) throws RdesktopException {
 		String s;
 		if (in != null) {
 			try {

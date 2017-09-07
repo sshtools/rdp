@@ -10,4 +10,8 @@ public interface IO {
 	InputStream getInputStream() throws IOException;
 
 	OutputStream getOutputStream() throws IOException;
+
+	byte[] getPublicKey();
+	
+	String getAddress();
 }

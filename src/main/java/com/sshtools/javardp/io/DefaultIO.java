@@ -41,9 +41,19 @@ public class DefaultIO implements IO {
 		return socket;
 	}
 
+	@Override
+	public byte[] getPublicKey() {
+		return new byte[0];
+	}
+
 	void checkConnected() throws IOException {
 		if (socket == null) {
 			socket = new Socket(address, port);
 		}
+	}
+
+	@Override
+	public String getAddress() {
+		return address.getHostAddress();
 	}
 }

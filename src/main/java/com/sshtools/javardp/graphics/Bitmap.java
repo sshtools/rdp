@@ -19,8 +19,8 @@ import java.awt.image.IndexColorModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.WrappedImage;
 
@@ -158,7 +158,7 @@ public class Bitmap {
 	 * @return Byte array of pixels containing decompressed bitmap data
 	 * @throws RdesktopException
 	 */
-	public static byte[] decompress(int width, int height, int size, RdpPacket data, int Bpp) throws RdesktopException {
+	public static byte[] decompress(int width, int height, int size, Packet data, int Bpp) throws RdesktopException {
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);
 		data.incrementPosition(size);
@@ -536,7 +536,7 @@ public class Bitmap {
 	 * @return Decompressed bitmap as Image object
 	 * @throws RdesktopException
 	 */
-	public static Image decompressImg(State state, int width, int height, int size, RdpPacket data, int Bpp, IndexColorModel cm)
+	public static Image decompressImg(State state, int width, int height, int size, Packet data, int Bpp, IndexColorModel cm)
 			throws RdesktopException {
 		Display w = null;
 		byte[] compressed_pixel = new byte[size];
@@ -925,7 +925,7 @@ public class Bitmap {
 	 *         specified coordinates
 	 * @throws RdesktopException
 	 */
-	public static Display decompressImgDirect(State state, int width, int height, int size, RdpPacket data, int Bpp,
+	public static Display decompressImgDirect(State state, int width, int height, int size, Packet data, int Bpp,
 			IndexColorModel cm, int left, int top, Display w) throws RdesktopException {
 		// WrappedImage w = null;
 		byte[] compressed_pixel = new byte[size];
@@ -1303,7 +1303,7 @@ public class Bitmap {
 	 * @return Integer array of pixels containing decompressed bitmap data
 	 * @throws RdesktopException
 	 */
-	public static int[] decompressInt(State state, int width, int height, int size, RdpPacket data, int Bpp)
+	public static int[] decompressInt(State state, int width, int height, int size, Packet data, int Bpp)
 			throws RdesktopException {
 		byte[] compressed_pixel = new byte[size];
 		data.copyToByteArray(compressed_pixel, 0, data.getPosition(), size);

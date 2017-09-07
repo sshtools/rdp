@@ -11,18 +11,22 @@
  */
 package com.sshtools.javardp.layers;
 
+
 import java.io.EOFException;
 import java.io.IOException;
+import java.security.InvalidKeyException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.OrderException;
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.io.IO;
 import com.sshtools.javardp.rdp5.VChannels;
 
@@ -70,7 +74,7 @@ public class MCS {
 	 * @return Length of following data
 	 * @throws RdesktopException
 	 */
-	public int berParseHeader(RdpPacket data, int tagval) throws RdesktopException {
+	public int berParseHeader(Packet data, int tagval) throws RdesktopException {
 		int tag = 0;
 		int length = 0;
 		int len;
@@ -104,14 +108,15 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
 	 */
-	public void connect(IO io, RdpPacket data) throws IOException, RdesktopException, OrderException, CryptoException {
-		logger.debug("MCS.connect");
+	public void connect(IO io, Packet data) throws IOException, RdesktopException {
+		if (logger.isDebugEnabled())
+			logger.debug("MCS.connect");
 		isoLayer.connect(io);
 		this.sendConnectInitial(data);
 		this.receiveConnectResponse(data);
-		logger.debug("connect response received");
+		if (logger.isDebugEnabled())
+			logger.debug("connect response received");
 		send_edrq();
 		send_aurq();
 		this.McsUserID = receive_aucf();
@@ -151,10 +156,10 @@ public class MCS {
 	 * @return
 	 * @throws RdesktopException
 	 */
-	public RdpPacket init(int length) throws RdesktopException {
-		RdpPacket data = isoLayer.init(length + 8);
+	public Packet init(int length) throws RdesktopException {
+		Packet data = isoLayer.init(length + 8);
 		// data.pushLayer(RdpPacket.MCS_HEADER, 8);
-		data.setHeader(RdpPacket.MCS_HEADER);
+		data.setHeader(Packet.MCS_HEADER);
 		data.incrementPosition(8);
 		data.setStart(data.getPosition());
 		return data;
@@ -166,7 +171,7 @@ public class MCS {
 	 * @param data Packet containing domain parameters at current read position
 	 * @throws RdesktopException
 	 */
-	public void parseDomainParams(RdpPacket data) throws RdesktopException {
+	public void parseDomainParams(Packet data) throws RdesktopException {
 		int length;
 		length = this.berParseHeader(data, TAG_DOMAIN_PARAMS);
 		data.incrementPosition(length);
@@ -183,15 +188,15 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
 	 */
-	public RdpPacket receive(int[] channel) throws IOException, RdesktopException, OrderException, CryptoException {
-		logger.debug("receive");
+	public Packet receive(int[] channel) throws IOException, RdesktopException, OrderException {
+		if (logger.isDebugEnabled())
+			logger.debug("receive");
 		int opcode = 0, appid = 0, length = 0;
-		RdpPacket buffer = isoLayer.receive();
+		Packet buffer = isoLayer.receive();
 		if (buffer == null)
 			return null;
-		buffer.setHeader(RdpPacket.MCS_HEADER);
+		buffer.setHeader(Packet.MCS_HEADER);
 		opcode = buffer.get8();
 		appid = opcode >> 2;
 		if (appid != SDIN) {
@@ -204,6 +209,7 @@ public class MCS {
 		channel[0] = buffer.getBigEndian16(); // Get ChannelID
 		buffer.incrementPosition(1); // Skip Flags
 		length = buffer.get8();
+		if(logger.isDebugEnabled())
 		logger.debug("Channel ID = " + channel[0] + ", length = " + length);
 		if ((length & 0x80) != 0) {
 			buffer.incrementPosition(1);
@@ -219,12 +225,12 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
 	 */
-	public int receive_aucf() throws IOException, RdesktopException, OrderException, CryptoException {
-		logger.debug("receive_aucf");
+	public int receive_aucf() throws IOException, RdesktopException, OrderException {
+		if (logger.isDebugEnabled())
+			logger.debug("receive_aucf");
 		int opcode = 0, result = 0, UserID = 0;
-		RdpPacket buffer = isoLayer.receive();
+		Packet buffer = isoLayer.receive();
 		opcode = buffer.get8();
 		if ((opcode >> 2) != AUCF) {
 			throw new RdesktopException("Expected AUCF got " + opcode);
@@ -248,10 +254,12 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 */
-	public void receive_cjcf() throws IOException, RdesktopException, OrderException, CryptoException {
-		logger.debug("receive_cjcf");
+	public void receive_cjcf() throws IOException, RdesktopException, OrderException {
+		if (logger.isDebugEnabled())
+			if (logger.isDebugEnabled())
+				logger.debug("receive_cjcf");
 		int opcode = 0, result = 0;
-		RdpPacket buffer = isoLayer.receive();
+		Packet buffer = isoLayer.receive();
 		opcode = buffer.get8();
 		if ((opcode >> 2) != CJCF) {
 			throw new RdesktopException("Expected CJCF got" + opcode);
@@ -276,17 +284,21 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
+	 * @throws InvalidKeyException 
+	 * @throws BadPaddingException 
+	 * @throws IllegalBlockSizeException 
 	 */
-	public void receiveConnectResponse(RdpPacket data) throws IOException, RdesktopException, OrderException, CryptoException {
-		logger.debug("MCS.receiveConnectResponse");
+	public void receiveConnectResponse(Packet data) throws IOException, RdesktopException {
+
+		if(logger.isDebugEnabled())logger.debug("MCS.receiveConnectResponse");
 		String[] connect_results = { "Successful", "Domain Merging", "Domain not Hierarchical", "No Such Channel", "No Such Domain",
 				"No Such User", "Not Admitted", "Other User ID", "Parameters Unacceptable", "Token Not Available",
 				"Token Not Possessed", "Too Many Channels", "Too Many Tokens", "Too Many Users", "Unspecified Failure",
 				"User Rejected" };
 		int result = 0;
 		int length = 0;
-		RdpPacket buffer = isoLayer.receive();
+		Packet buffer = isoLayer.receive();
+		if(logger.isDebugEnabled())
 		logger.debug("Received buffer");
 		length = berParseHeader(buffer, CONNECT_RESPONSE);
 		length = berParseHeader(buffer, BER_TAG_RESULT);
@@ -318,7 +330,7 @@ public class MCS {
 	 * @throws RdesktopException
 	 * @throws IOException
 	 */
-	public void send(RdpPacket buffer) throws RdesktopException, IOException {
+	public void send(Packet buffer) throws RdesktopException, IOException {
 		send_to_channel(buffer, MCS_GLOBAL_CHANNEL);
 	}
 
@@ -329,7 +341,7 @@ public class MCS {
 	 * @throws RdesktopException
 	 */
 	public void send_aucf() throws IOException, RdesktopException {
-		RdpPacket buffer = isoLayer.init(2);
+		Packet buffer = isoLayer.init(2);
 		buffer.set8(AUCF << 2);
 		buffer.set8(0);
 		buffer.markEnd();
@@ -343,7 +355,7 @@ public class MCS {
 	 * @throws RdesktopException
 	 */
 	public void send_aurq() throws IOException, RdesktopException {
-		RdpPacket buffer = isoLayer.init(1);
+		Packet buffer = isoLayer.init(1);
 		buffer.set8(AURQ << 2);
 		buffer.markEnd();
 		isoLayer.send(buffer);
@@ -357,7 +369,7 @@ public class MCS {
 	 * @throws RdesktopException
 	 */
 	public void send_cjrq(int channelid) throws IOException, RdesktopException {
-		RdpPacket buffer = isoLayer.init(5);
+		Packet buffer = isoLayer.init(5);
 		buffer.set8(CJRQ << 2);
 		buffer.setBigEndian16(this.McsUserID); // height
 		buffer.setBigEndian16(channelid); // interval
@@ -372,8 +384,9 @@ public class MCS {
 	 * @throws RdesktopException
 	 */
 	public void send_edrq() throws IOException, RdesktopException {
+		if(logger.isDebugEnabled())
 		logger.debug("send_edrq");
-		RdpPacket buffer = isoLayer.init(5);
+		Packet buffer = isoLayer.init(5);
 		buffer.set8(EDRQ << 2);
 		buffer.setBigEndian16(1); // height
 		buffer.setBigEndian16(1); // interval
@@ -389,10 +402,10 @@ public class MCS {
 	 * @throws RdesktopException
 	 * @throws IOException
 	 */
-	public void send_to_channel(RdpPacket buffer, int channel) throws RdesktopException, IOException {
+	public void send_to_channel(Packet buffer, int channel) throws RdesktopException, IOException {
 		int length = 0;
-		buffer.setPosition(buffer.getHeader(RdpPacket.MCS_HEADER));
-		length = buffer.getEnd() - buffer.getHeader(RdpPacket.MCS_HEADER) - 8;
+		buffer.setPosition(buffer.getHeader(Packet.MCS_HEADER));
+		length = buffer.getEnd() - buffer.getHeader(Packet.MCS_HEADER) - 8;
 		length |= 0x8000;
 		buffer.set8((SDRQ << 2));
 		buffer.setBigEndian16(this.McsUserID);
@@ -409,7 +422,7 @@ public class MCS {
 	 * @param tagval Data type for header
 	 * @param length Length of data header precedes
 	 */
-	public void sendBerHeader(RdpPacket buffer, int tagval, int length) {
+	public void sendBerHeader(Packet buffer, int tagval, int length) {
 		if (tagval > 0xff) {
 			buffer.setBigEndian16(tagval);
 		} else {
@@ -429,7 +442,7 @@ public class MCS {
 	 * @param buffer Packet in which to store encoded value
 	 * @param value Integer value to store
 	 */
-	public void sendBerInteger(RdpPacket buffer, int value) {
+	public void sendBerInteger(Packet buffer, int value) {
 		int len = 1;
 		if (value > 0xff)
 			len = 2;
@@ -449,11 +462,10 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 */
-	public void sendConnectInitial(RdpPacket data) throws IOException, RdesktopException {
-		logger.debug("MCS.sendConnectInitial");
+	public void sendConnectInitial(Packet data) throws IOException, RdesktopException {
 		if (false) {
 			int length = 7 + (3 * 34) + 4 + data.getEnd();
-			RdpPacket buffer = isoLayer.init(length + 5);
+			Packet buffer = isoLayer.init(length + 5);
 			sendBerHeader(buffer, CONNECT_INITIAL, length);
 			sendBerHeader(buffer, BER_TAG_OCTET_STRING, 0); // calling domain
 			sendBerHeader(buffer, BER_TAG_OCTET_STRING, 0); // called domain
@@ -470,12 +482,13 @@ public class MCS {
 			isoLayer.send(buffer);
 			return;
 		}
-		logger.debug("MCS.sendConnectInitial");
+		if(logger.isDebugEnabled())
+			logger.debug("MCS.sendConnectInitial");
 		int datalen = data.getEnd();
 		int length = 9 + domainParamSize(34, 2, 0, 0xffff) + domainParamSize(1, 1, 1, 0x420)
 				+ domainParamSize(0xffff, 0xfc17, 0xffff, 0xffff) + 4 + datalen; // RDP5
 																					// Code
-		RdpPacket buffer = isoLayer.init(length + 5);
+		Packet buffer = isoLayer.init(length + 5);
 		sendBerHeader(buffer, CONNECT_INITIAL, length);
 		sendBerHeader(buffer, BER_TAG_OCTET_STRING, 1); // calling domain
 		buffer.set8(1); // RDP5 Code
@@ -505,7 +518,7 @@ public class MCS {
 	 * @param max_tokens Maximum number of tokens
 	 * @param max_pdusize Maximum size for an MCS PDU
 	 */
-	public void sendDomainParams(RdpPacket buffer, int max_channels, int max_users, int max_tokens, int max_pdusize) {
+	public void sendDomainParams(Packet buffer, int max_channels, int max_users, int max_tokens, int max_pdusize) {
 		int size = BERIntSize(max_channels) + BERIntSize(max_users) + BERIntSize(max_tokens) + BERIntSize(1) + BERIntSize(0)
 				+ BERIntSize(1) + BERIntSize(max_pdusize) + BERIntSize(2);
 		sendBerHeader(buffer, TAG_DOMAIN_PARAMS, size);

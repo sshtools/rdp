@@ -240,7 +240,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	@Override
 	public byte[] loadLicense() throws IOException {
 		Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-		return prefs.getByteArray("licence." + state.getClientName(), null);
+		return prefs.getByteArray("licence." + state.getWorkstationName(), null);
 	}
 
 	/**
@@ -270,7 +270,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	@Override
 	public void saveLicense(byte[] license) throws IOException {
 		Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-		prefs.putByteArray("licence." + state.getClientName(), license);
+		prefs.putByteArray("licence." + state.getWorkstationName(), license);
 	}
 
 	@Override

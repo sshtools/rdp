@@ -23,7 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
+import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class DIBHandler extends TypeHandler implements ImageObserver {
@@ -42,7 +43,7 @@ public class DIBHandler extends TypeHandler implements ImageObserver {
 	}
 
 	@Override
-	public void handleData(RdpPacket data, int length, ClipInterface c) {
+	public void handleData(Packet data, int length, ClipInterface c) {
 		// System.out.println("DIBHandler.handleData");
 		BMPToImageThread t = new BMPToImageThread(data, length, c);
 		t.start();
@@ -69,7 +70,7 @@ public class DIBHandler extends TypeHandler implements ImageObserver {
 	}
 
 	@Override
-	public void send_data(Transferable in, ClipInterface c) {
+	public void send_data(Transferable in, ClipInterface c) throws RdesktopException {
 		byte[] out = null;
 		try {
 			if (in != null && in.isDataFlavorSupported(Utilities.imageFlavor)) {

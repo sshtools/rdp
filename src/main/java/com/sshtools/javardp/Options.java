@@ -5,7 +5,12 @@
  */
 package com.sshtools.javardp;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.TimeZone;
+
+import javax.security.auth.login.Configuration;
 
 import org.apache.commons.lang3.SystemUtils;
 
@@ -20,13 +25,12 @@ public class Options {
 	private int bpp = 16;
 	private boolean builtInLicence = false;
 	private boolean capsSendsUpAndDown = true;
-	private String clientName = ""; // -n hostname
+	private String workstationName = ""; // -n hostname
 	private String command = ""; // -s command
 	private int connectionType = Rdp.CONNECTION_TYPE_WAN;
 	private boolean consoleSession = false;
 	private boolean debugHexdump = false;
 	private String directory = ""; // -d directory
-	private String domain = ""; // -d domain
 	private boolean fullscreen = false;
 	private int height = 0; // -g widthxheight
 	private boolean hideDecorations = false;
@@ -38,18 +42,16 @@ public class Options {
 	private boolean orders = true;
 	private boolean owncolmap = false;
 	private boolean packetEncryption = true;
-	private char[] password = new char[0]; // -p password
 	private boolean persistentBitmapCaching = false;
 	private boolean polygonEllipseOrders = false;
 	private boolean precacheBitmaps = false;
 	private boolean rdp5 = true;
-	private int rdp5PerformanceFlags = Rdp.RDP5_NO_CURSOR_SHADOW | Rdp.RDP5_NO_CURSORSETTINGS | Rdp.RDP5_NO_FULLWINDOWDRAG
-			| Rdp.RDP5_NO_MENUANIMATIONS | Rdp.RDP5_NO_THEMING | Rdp.RDP5_NO_WALLPAPER;
+	private int rdp5PerformanceFlags = Rdp.PERF_DISABLE_CURSOR_SHADOW | Rdp.PERF_DISABLE_CURSORSETTINGS
+			| Rdp.PERF_DISABLE_FULLWINDOW_DRAG | Rdp.PERF_DISABLE_MENU_ANIMATIONS | Rdp.PERF_DISABLE_THEMING
+			| Rdp.PERF_DISABLE_WALLPAPER;
 	private boolean remapHash = true;
 	private boolean saveLicence = false;
 	private boolean sendmotion = true;
-	private boolean ssl = false;
-	private String username = "Administrator"; // -u username
 	private int width = 0; // -g widthxheight
 	// number of bytes are used for a pixel
 	private int winButtonSize = 0; /* If zero, disable single app mode */
@@ -57,10 +59,43 @@ public class Options {
 	private int osMinor = -1;
 	private int osMajor = -1;
 	private boolean desktopSave;
+	private String clientDomain;
 	private String clientIp = "";
 	private int clientAddressFamily = -1;
 	private String clientDir;
 	private TimeZone timeZone = TimeZone.getDefault();
+	private Configuration jaasConfiguration;
+	private String cookie;
+	private List<SecurityType> securityTypes = new ArrayList<>(Arrays.asList(SecurityType.supported()));
+	private int lmCompatibility = 3;
+
+	public String getClientDomain() {
+		return clientDomain;
+	}
+
+	public void setClientDomain(String clientDomain) {
+		this.clientDomain = clientDomain;
+	}
+
+	public String getCookie() {
+		return cookie;
+	}
+
+	public List<SecurityType> getSecurityTypes() {
+		return securityTypes;
+	}
+
+	public void setCookie(String cookie) {
+		this.cookie = cookie;
+	}
+
+	public Configuration getJaasConfiguration() {
+		return jaasConfiguration;
+	}
+
+	public void setJaasConfiguration(Configuration jaasConfiguration) {
+		this.jaasConfiguration = jaasConfiguration;
+	}
 
 	public TimeZone getTimeZone() {
 		return timeZone;
@@ -87,13 +122,14 @@ public class Options {
 	}
 
 	public void setClientAddressFamily(int clientAddressFamily) {
-		switch(clientAddressFamily) {
+		switch (clientAddressFamily) {
 		case -1:
 		case Rdp.AF_INET:
 		case Rdp.AF_INET6:
 			this.clientAddressFamily = clientAddressFamily;
 		default:
-			throw new IllegalArgumentException(String.format("Must be one of AF_INET(0x%x), AF_INET6(0x%x) or AUTO(-1)", Rdp.AF_INET, Rdp.AF_INET6));
+			throw new IllegalArgumentException(
+					String.format("Must be one of AF_INET(0x%x), AF_INET6(0x%x) or AUTO(-1)", Rdp.AF_INET, Rdp.AF_INET6));
 		}
 	}
 
@@ -109,8 +145,8 @@ public class Options {
 		return bpp;
 	}
 
-	public String getClientName() {
-		return clientName;
+	public String getWorkstationName() {
+		return workstationName;
 	}
 
 	public String getCommand() {
@@ -125,10 +161,6 @@ public class Options {
 		return directory;
 	}
 
-	public String getDomain() {
-		return domain;
-	}
-
 	public int getHeight() {
 		return height;
 	}
@@ -137,16 +169,8 @@ public class Options {
 		return keylayout;
 	}
 
-	public char[] getPassword() {
-		return password;
-	}
-
 	public int getRdp5PerformanceFlags() {
 		return rdp5PerformanceFlags;
-	}
-
-	public String getUsername() {
-		return username;
 	}
 
 	public int getWidth() {
@@ -245,10 +269,6 @@ public class Options {
 		return sendmotion;
 	}
 
-	public boolean isSsl() {
-		return ssl;
-	}
-
 	public void setAltkeyQuiet(boolean altkeyQuiet) {
 		this.altkeyQuiet = altkeyQuiet;
 	}
@@ -273,8 +293,8 @@ public class Options {
 		this.capsSendsUpAndDown = capsSendsUpAndDown;
 	}
 
-	public void setClientName(String clientName) {
-		this.clientName = clientName;
+	public void setWorkstationName(String clientName) {
+		this.workstationName = clientName;
 	}
 
 	public void setCommand(String command) {
@@ -295,10 +315,6 @@ public class Options {
 
 	public void setDirectory(String directory) {
 		this.directory = directory;
-	}
-
-	public void setDomain(String domain) {
-		this.domain = domain;
 	}
 
 	public void setFullscreen(boolean fullscreen) {
@@ -341,10 +357,6 @@ public class Options {
 		this.packetEncryption = packetEncryption;
 	}
 
-	public void setPassword(char[] password) {
-		this.password = password;
-	}
-
 	public void setPersistentBitmapCaching(boolean persistentBitmapCaching) {
 		this.persistentBitmapCaching = persistentBitmapCaching;
 	}
@@ -377,14 +389,6 @@ public class Options {
 
 	public void setSendmotion(boolean sendmotion) {
 		this.sendmotion = sendmotion;
-	}
-
-	public void setSsl(boolean ssl) {
-		this.ssl = ssl;
-	}
-
-	public void setUsername(String username) {
-		this.username = username;
 	}
 
 	public void setWidth(int width) {
@@ -443,5 +447,20 @@ public class Options {
 
 	public void setDesktopSave(boolean desktopSave) {
 		this.desktopSave = desktopSave;
+	}
+
+	public int getSecurityTypesMask() {
+		int i = 0;
+		for (SecurityType t : getSecurityTypes())
+			i |= t.getMask();
+		return i;
+	}
+
+	public int getLMCompatibility() {
+		return lmCompatibility;
+	}
+
+	public void setLMCompatibility(int lmCompatibility) {
+		this.lmCompatibility  = lmCompatibility;
 	}
 }

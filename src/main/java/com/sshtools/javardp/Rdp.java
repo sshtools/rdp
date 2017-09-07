@@ -18,12 +18,19 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
+import java.util.List;
 import java.util.TimeZone;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.ShortBufferException;
+
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.crypto.CryptoException;
+import com.sshtools.javardp.CredentialProvider.CredentialType;
 import com.sshtools.javardp.graphics.Bitmap;
 import com.sshtools.javardp.graphics.RdesktopCanvas;
 import com.sshtools.javardp.graphics.RdpCursor;
@@ -64,16 +71,6 @@ public class Rdp {
 	public static final int INFO_ENABLEWINDOWS_KEY = 0x100;
 	public static final int INFO_MOUSE_HAS_WHEEL = 0x200;
 	/* constants for RDP Layer */
-	public static int RDP5_DISABLE_NOTHING = 0x00;
-	public static int RDP5_NO_CURSOR_SHADOW = 0x20;
-	public static int RDP5_NO_CURSORSETTINGS = 0x40; /*
-														 * disables cursor
-														 * blinking
-														 */
-	public static int RDP5_NO_FULLWINDOWDRAG = 0x02;
-	public static int RDP5_NO_MENUANIMATIONS = 0x04;
-	public static int RDP5_NO_THEMING = 0x08;
-	public static int RDP5_NO_WALLPAPER = 0x01;
 	public static final int SECURITY_TYPE_HYBRID = 0x02;
 	public static final int SECURITY_TYPE_HYBRID_EX = 0x04;
 	public static final int SECURITY_TYPE_RDSTLS = 0x03;
@@ -174,6 +171,20 @@ public class Rdp {
 	// Address Family
 	public static final int AF_INET = 0x0002;
 	public static final int AF_INET6 = 0x0017;
+	// Performance flags
+	public static final int PERF_DISABLE_NOTHING = 0x00;
+	public static final int PERF_DISABLE_CURSOR_SHADOW = 0x20;
+	public static final int PERF_DISABLE_CURSORSETTINGS = 0x40; /*
+																 * disables
+																 * cursor
+																 * blinking
+																 */
+	public static final int PERF_DISABLE_FULLWINDOW_DRAG = 0x02;
+	public static final int PERF_DISABLE_MENU_ANIMATIONS = 0x04;
+	public static final int PERF_DISABLE_THEMING = 0x08;
+	public static final int PERF_DISABLE_WALLPAPER = 0x01;
+	public static final int PERF_ENABLE_FONT_SMOOTHING = 0x80;
+	public static final int PERF_ENABLE_DESKTOP_COMPOSITION = 0x100;
 	//
 	private static final int RDP5_FLAG = 0x0030;
 	protected Orders orders = null;
@@ -188,7 +199,7 @@ public class Rdp {
 	private IContext context;
 	private int next_packet = 0;
 	private State state;
-	private RdpPacket stream = null;
+	private Packet stream = null;
 	private RdesktopCanvas surface = null;
 	private VChannels channels;
 
@@ -225,13 +236,17 @@ public class Rdp {
 	 * @throws IOException
 	 * @throws SocketException
 	 * @throws UnknownHostException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws InvalidKeyException
 	 */
-	public void connect(String username, IO io, String domain, char[] password, String command, String directory)
-			throws ConnectionException, UnknownHostException, SocketException, IOException, RdesktopException, CryptoException,
-			OrderException {
+	public void connect(IO io, CredentialProvider credentialProvider, String command, String directory)
+			throws ConnectionException, UnknownHostException, SocketException, IOException, RdesktopException, OrderException,
+			InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		state.setCredentialProvider(credentialProvider);
 		secureLayer.connect(io);
 		this.connected = true;
-		this.sendLogonInfo(domain, username, password, command, directory);
+		this.sendLogonInfo(command, directory);
 		// TODO should this be here any more as it should all now be negotiated
 		// properly
 		if (state.getSecurityType() == SecurityType.STANDARD && !state.getOptions().isPacketEncryption()) {
@@ -263,11 +278,16 @@ public class Rdp {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws InvalidKeyException
 	 * @throws CryptoException
+	 * @throws ShortBufferException
 	 */
-	public void mainLoop() throws IOException, RdesktopException, OrderException, CryptoException {
+	public void mainLoop() throws IOException, RdesktopException, OrderException, InvalidKeyException, IllegalBlockSizeException,
+			BadPaddingException, ShortBufferException {
 		int[] type = new int[1];
-		RdpPacket data = null;
+		Packet data = null;
 		while (true) {
 			try {
 				data = this.receive(type);
@@ -283,10 +303,12 @@ public class Rdp {
 		}
 	}
 
-	private void processPacket(int[] type, RdpPacket data) throws RdesktopException, IOException, CryptoException, OrderException {
+	private void processPacket(int[] type, Packet data) throws RdesktopException, IOException, OrderException, InvalidKeyException,
+			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
 		switch (type[0]) {
 		case (Rdp.RDP_PDU_DEMAND_ACTIVE):
-			logger.debug("Rdp.RDP_PDU_DEMAND_ACTIVE");
+			if (logger.isDebugEnabled())
+				logger.debug("Rdp.RDP_PDU_DEMAND_ACTIVE");
 			// get this after licence negotiation, just before the 1st
 			// order...
 			this.processDemandActive(data);
@@ -308,7 +330,8 @@ public class Rdp {
 			this.stream = null; // ty this fix
 			break;
 		case (Rdp.RDP_PDU_DATA):
-			logger.debug("Rdp.RDP_PDU_DATA");
+			if (logger.isDebugEnabled())
+				logger.debug("Rdp.RDP_PDU_DATA");
 			// all the others should be this
 			this.processData(data);
 			break;
@@ -327,9 +350,8 @@ public class Rdp {
 	 * @param e True if packet is encrypted
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
 	 */
-	public void rdp5_process(RdpPacket s, boolean e) throws RdesktopException, OrderException, CryptoException {
+	public void rdp5_process(Packet s, boolean e) throws RdesktopException, OrderException {
 		rdp5_process(s, e, false);
 	}
 
@@ -341,11 +363,10 @@ public class Rdp {
 	 * @param shortform True if packet is of the "short" form
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws CryptoException
 	 */
-	public void rdp5_process(RdpPacket s, boolean encryption, boolean shortform)
-			throws RdesktopException, OrderException, CryptoException {
-		logger.debug("Processing RDP 5 order");
+	public void rdp5_process(Packet s, boolean encryption, boolean shortform) throws RdesktopException, OrderException {
+		if (logger.isDebugEnabled())
+			logger.debug("Processing RDP 5 order");
 		int length, count;
 		int type;
 		int next;
@@ -361,7 +382,8 @@ public class Rdp {
 			type = s.get8();
 			length = s.getLittleEndian16();
 			/* next_packet = */next = s.getPosition() + length;
-			logger.debug("RDP5: type = " + type);
+			if (logger.isDebugEnabled())
+				logger.debug("RDP5: type = " + type);
 			switch (type) {
 			case 0: /* orders */
 				count = s.getLittleEndian16();
@@ -401,7 +423,7 @@ public class Rdp {
 	 * @param s Packet to be processed
 	 * @param channelno Channel on which packet was received
 	 */
-	void rdp5_process_channel(RdpPacket s, int channelno) {
+	void rdp5_process_channel(Packet s, int channelno) {
 		VChannel channel = channels.find_channel_by_channelno(channelno);
 		if (channel != null) {
 			try {
@@ -417,7 +439,7 @@ public class Rdp {
 	}
 
 	public void sendInput(int time, int message_type, int device_flags, int param1, int param2) {
-		RdpPacket data = null;
+		Packet data = null;
 		try {
 			data = this.initData(16);
 		} catch (RdesktopException e) {
@@ -431,7 +453,8 @@ public class Rdp {
 		data.setLittleEndian16(param1);
 		data.setLittleEndian16(param2);
 		data.markEnd();
-		logger.info("input");
+		if (logger.isDebugEnabled())
+			logger.debug("input");
 		// if(logger.isInfoEnabled()) logger.info(data);
 		try {
 			this.sendData(data, RDP_DATA_PDU_INPUT);
@@ -439,18 +462,14 @@ public class Rdp {
 			if (context.getRdp().isConnected())
 				context.error(r, true);
 			context.exit();
-		} catch (CryptoException c) {
-			if (context.getRdp().isConnected())
-				context.error(c, true);
-			context.exit();
 		} catch (IOException i) {
 			if (context.getRdp().isConnected())
 				context.error(i, true);
 			context.exit();
-		}
+		} 
 	}
 
-	protected void process_cached_pointer_pdu(RdpPacket data) throws RdesktopException {
+	protected void process_cached_pointer_pdu(Packet data) throws RdesktopException {
 		if (logger.isDebugEnabled())
 			logger.debug("Rdp.RDP_POINTER_CACHED");
 		int cache_idx = data.getLittleEndian16();
@@ -459,8 +478,9 @@ public class Rdp {
 		surface.getDisplay().setCursor(cache.getCursor(cache_idx));
 	}
 
-	protected void process_colour_pointer_pdu(RdpPacket data) throws RdesktopException {
-		logger.debug("Rdp.RDP_POINTER_COLOR");
+	protected void process_colour_pointer_pdu(Packet data) throws RdesktopException {
+		if (logger.isDebugEnabled())
+			logger.debug("Rdp.RDP_POINTER_COLOR");
 		int x = 0, y = 0, width = 0, height = 0, cache_idx = 0, masklen = 0, datalen = 0;
 		byte[] mask = null, pixel = null;
 		RdpCursor cursor = null;
@@ -483,9 +503,9 @@ public class Rdp {
 		cache.putCursor(cache_idx, cursor);
 	}
 
-	protected void process_colour_pointer_pdu_new(RdpPacket data) throws RdesktopException {
-		logger.debug("Rdp.RDP_POINTER_POINTER");
-		// TODO
+	protected void process_colour_pointer_pdu_new(Packet data) throws RdesktopException {
+		if (logger.isDebugEnabled())
+			logger.debug("Rdp.RDP_POINTER_POINTER");
 		int x = 0, y = 0, width = 0, height = 0, cache_idx = 0, masklen = 0, datalen = 0;
 		byte[] mask = null, pixel = null;
 		RdpCursor cursor = null;
@@ -504,19 +524,18 @@ public class Rdp {
 		data.copyToByteArray(mask, 0, data.getPosition(), masklen);
 		data.incrementPosition(masklen);
 		cursor = surface.createCursor(x, y, width, height, mask, pixel, cache_idx, xorBpp, false);
-		// logger.info("Creating and setting cursor " + cache_idx);
 		surface.getDisplay().setCursor(cursor);
 		cache.putCursor(cache_idx, cursor);
 	}
 
 	/* Process a null system pointer PDU */
-	protected void process_null_system_pointer_pdu(RdpPacket s) throws RdesktopException {
+	protected void process_null_system_pointer_pdu(Packet s) throws RdesktopException {
 		// FIXME: We should probably set another cursor here,
 		// like the X window system base cursor or something.
 		surface.getDisplay().setCursor(cache.getCursor(0));
 	}
 
-	protected void processBitmapUpdates(RdpPacket data) throws RdesktopException {
+	protected void processBitmapUpdates(Packet data) throws RdesktopException {
 		// logger.info("processBitmapUpdates");
 		int n_updates = 0;
 		int left = 0, top = 0, right = 0, bottom = 0, width = 0, height = 0;
@@ -606,14 +625,15 @@ public class Rdp {
 	 * @param data Packet containing set error PDU at current read position
 	 * @return Code specifying the reason
 	 */
-	protected int processSetErrorPdu(RdpPacket data) {
+	protected int processSetErrorPdu(Packet data) {
 		int v = data.getLittleEndian32();
 		int vv = v & 0xff;
-		logger.debug(String.format("Received set error PDU (%d - %d)", v, vv));
+		if (logger.isDebugEnabled())
+			logger.debug(String.format("Received set error PDU (%d - %d)", v, vv));
 		return v;
 	}
 
-	protected void processPalette(RdpPacket data) {
+	protected void processPalette(Packet data) {
 		int n_colors = 0;
 		IndexColorModel cm = null;
 		byte[] palette = null;
@@ -646,7 +666,7 @@ public class Rdp {
 	 * @param data Packet containing capability set data at current read
 	 *            position
 	 */
-	void processServerCaps(RdpPacket data, int length) {
+	void processServerCaps(Packet data, int length) {
 		int n;
 		int next, start;
 		int ncapsets, capset_type, capset_length;
@@ -733,23 +753,24 @@ public class Rdp {
 	 * @return Packet initialised for RDP
 	 * @throws RdesktopException
 	 */
-	private RdpPacket initData(int size) throws RdesktopException {
-		RdpPacket buffer = null;
-		buffer = secureLayer.init(state.getSecurityType() == SecurityType.STANDARD  ? Secure.SEC_ENCRYPT : 0, size + 18);
-		buffer.pushLayer(RdpPacket.RDP_HEADER, 18);
+	private Packet initData(int size) throws RdesktopException {
+		Packet buffer = null;
+		buffer = secureLayer.init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, size + 18);
+		buffer.pushLayer(Packet.RDP_HEADER, 18);
 		// buffer.setHeader(RdpPacket.RDP_HEADER);
 		// buffer.incrementPosition(18);
 		// buffer.setStart(buffer.getPosition());
 		return buffer;
 	}
 
-	private void process_system_pointer_pdu(RdpPacket data) {
+	private void process_system_pointer_pdu(Packet data) {
 		int system_pointer_type = 0;
 		data.getLittleEndian16(system_pointer_type); // in_uint16(s,
 		// system_pointer_type);
 		switch (system_pointer_type) {
 		case RDP_NULL_POINTER:
-			logger.debug("RDP_NULL_POINTER");
+			if (logger.isDebugEnabled())
+				logger.debug("RDP_NULL_POINTER");
 			surface.getDisplay().setCursor(null);
 			break;
 		default:
@@ -766,7 +787,7 @@ public class Rdp {
 	 * @throws RdesktopException
 	 * @throws OrderException
 	 */
-	private void processData(RdpPacket data) throws RdesktopException, OrderException {
+	private void processData(Packet data) throws RdesktopException, OrderException {
 		int data_type;
 		data_type = 0;
 		data.incrementPosition(6); // skip shareid, pad, streamid
@@ -777,26 +798,32 @@ public class Rdp {
 		clen -= 18;
 		switch (data_type) {
 		case (Rdp.RDP_DATA_PDU_UPDATE):
-			logger.debug("Rdp.RDP_DATA_PDU_UPDATE");
+			if (logger.isDebugEnabled())
+				logger.debug("Rdp.RDP_DATA_PDU_UPDATE");
 			this.processUpdate(data);
 			break;
 		case RDP_DATA_PDU_CONTROL:
-			logger.debug(("Received Control PDU\n"));
+			if (logger.isDebugEnabled())
+				logger.debug(("Received Control PDU\n"));
 			break;
 		case RDP_DATA_PDU_SYNCHRONISE:
-			logger.debug(("Received Sync PDU\n"));
+			if (logger.isDebugEnabled())
+				logger.debug(("Received Sync PDU\n"));
 			break;
 		case (Rdp.RDP_DATA_PDU_POINTER):
-			logger.debug("Received pointer PDU");
+			if (logger.isDebugEnabled())
+				logger.debug("Received pointer PDU");
 			this.processPointer(data);
 			break;
 		case (Rdp.RDP_DATA_PDU_BELL):
-			logger.debug("Received bell PDU");
+			if (logger.isDebugEnabled())
+				logger.debug("Received bell PDU");
 			Toolkit tx = Toolkit.getDefaultToolkit();
 			tx.beep();
 			break;
 		case (Rdp.RDP_DATA_PDU_LOGON):
-			logger.debug("User logged on");
+			if (logger.isDebugEnabled())
+				logger.debug("User logged on");
 			context.setLoggedOn();
 			break;
 		case RDP_DATA_PDU_SET_ERROR:
@@ -815,10 +842,14 @@ public class Rdp {
 	 * @param data Packet containing demand at current read position
 	 * @throws RdesktopException
 	 * @throws IOException
-	 * @throws CryptoException
 	 * @throws OrderException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws InvalidKeyException
+	 * @throws ShortBufferException
 	 */
-	private void processDemandActive(RdpPacket data) throws RdesktopException, IOException, CryptoException, OrderException {
+	private void processDemandActive(Packet data) throws RdesktopException, IOException, OrderException, InvalidKeyException,
+			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
 		int type[] = new int[1];
 		state.setShareId(data.getLittleEndian32());
 		logger.info(String.format("Share ID is %d (%04x)", state.getShareId(), state.getShareId()));
@@ -841,14 +872,15 @@ public class Rdp {
 		this.orders.resetOrderState();
 	}
 
-	private void processPointer(RdpPacket data) throws RdesktopException {
+	private void processPointer(Packet data) throws RdesktopException {
 		int message_type = 0;
 		int x = 0, y = 0;
 		message_type = data.getLittleEndian16();
 		data.incrementPosition(2);
 		switch (message_type) {
 		case (Rdp.RDP_POINTER_MOVE):
-			logger.debug("Rdp.RDP_POINTER_MOVE");
+			if (logger.isDebugEnabled())
+				logger.debug("Rdp.RDP_POINTER_MOVE");
 			x = data.getLittleEndian16();
 			y = data.getLittleEndian16();
 			if (data.getPosition() <= data.getEnd()) {
@@ -872,7 +904,7 @@ public class Rdp {
 		}
 	}
 
-	private void processUpdate(RdpPacket data) throws OrderException, RdesktopException {
+	private void processUpdate(Packet data) throws OrderException, RdesktopException {
 		int update_type = 0;
 		update_type = data.getLittleEndian16();
 		switch (update_type) {
@@ -904,8 +936,13 @@ public class Rdp {
 	 * @throws RdesktopException
 	 * @throws CryptoException
 	 * @throws OrderException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws InvalidKeyException
+	 * @throws ShortBufferException
 	 */
-	private RdpPacket receive(int[] type) throws IOException, RdesktopException, CryptoException, OrderException {
+	private Packet receive(int[] type) throws IOException, RdesktopException, OrderException, InvalidKeyException,
+			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
 		int length = 0;
 		if ((this.stream == null) || (this.next_packet >= this.stream.getEnd())) {
 			this.stream = secureLayer.receive();
@@ -924,7 +961,8 @@ public class Rdp {
 			return stream;
 		}
 		type[0] = this.stream.getLittleEndian16() & 0xf;
-		logger.info("receive " + type[0]);
+		if (logger.isDebugEnabled())
+			logger.debug("receive " + type[0]);
 		if (stream.getPosition() != stream.getEnd()) {
 			stream.incrementPosition(2);
 		}
@@ -932,14 +970,14 @@ public class Rdp {
 		return stream;
 	}
 
-	private void sendFontCaps(RdpPacket data) {
+	private void sendFontCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_FONTS);
 		data.setLittleEndian16(RDP_CAPLEN_FONTS);
 		data.setLittleEndian16(1); /* Support fontlist */
 		data.setLittleEndian16(0); /* pad */
 	}
 
-	private void sendActivateCaps(RdpPacket data) {
+	private void sendActivateCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_ACTIVATE);
 		data.setLittleEndian16(RDP_CAPLEN_ACTIVATE);
 		data.setLittleEndian16(0); /* Help key */
@@ -949,7 +987,7 @@ public class Rdp {
 	}
 
 	/* Output bitmap cache v2 capability set */
-	private void sendBitmapcache2Caps(RdpPacket data) {
+	private void sendBitmapcache2Caps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_BMPCACHE2);
 		data.setLittleEndian16(RDP_CAPLEN_BMPCACHE);
 		data.setLittleEndian16(state.getOptions().isPersistentBitmapCaching() ? 2 : 0); /* version */
@@ -968,7 +1006,7 @@ public class Rdp {
 		// not used */
 	}
 
-	private void sendBitmapcacheCaps(RdpPacket data) {
+	private void sendBitmapcacheCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_BMPCACHE);
 		data.setLittleEndian16(RDP_CAPLEN_BMPCACHE);
 		data.incrementPosition(24); /* unused */
@@ -980,7 +1018,7 @@ public class Rdp {
 		data.setLittleEndian16(0x1000); /* max cell size */
 	}
 
-	private void sendBitmapCaps(RdpPacket data) {
+	private void sendBitmapCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_BITMAP);
 		data.setLittleEndian16(RDP_CAPLEN_BITMAP);
 		data.setLittleEndian16(state.getServerBpp()); /* Preferred BPP */
@@ -1001,14 +1039,15 @@ public class Rdp {
 		data.setLittleEndian16(0); /* Pad */
 	}
 
-	private void sendColorcacheCaps(RdpPacket data) {
+	private void sendColorcacheCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_COLCACHE);
 		data.setLittleEndian16(RDP_CAPLEN_COLCACHE);
 		data.setLittleEndian16(6); /* cache size */
 		data.setLittleEndian16(0); /* pad */
 	}
 
-	private void sendConfirmActive() throws RdesktopException, IOException, CryptoException {
+	private void sendConfirmActive()
+			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		int caplen = RDP_CAPLEN_GENERAL + // 1
 				RDP_CAPLEN_BITMAP + // 2
 				RDP_CAPLEN_ORDER + // 3
@@ -1030,7 +1069,7 @@ public class Rdp {
 		// Purpose
 		// unknown
 		int sec_flags = state.getSecurityType() == SecurityType.STANDARD ? RDP5_FLAG | Secure.SEC_ENCRYPT : RDP5_FLAG;
-		RdpPacket data = secureLayer.init(sec_flags, 6 + 14 + caplen + RDP_SOURCE.length);
+		Packet data = secureLayer.init(sec_flags, 6 + 14 + caplen + RDP_SOURCE.length);
 		// RdpPacket data = this.init(14 + caplen +
 		// RDP_SOURCE.length);
 		data.setLittleEndian16(2 + 14 + caplen + RDP_SOURCE.length);
@@ -1065,22 +1104,24 @@ public class Rdp {
 		sendVirtualChannelCaps(data); // 15
 		sendBrushCaps(data); // 16
 		data.markEnd();
-		logger.debug("confirm active");
+		if (logger.isDebugEnabled())
+			logger.debug("confirm active");
 		// this.send(data, RDP_PDU_CONFIRM_ACTIVE);
 		context.getSecure().send(data, sec_flags);
 	}
 
-	private void sendControl(int action) throws RdesktopException, IOException, CryptoException {
-		RdpPacket data = this.initData(8);
+	private void sendControl(int action) throws RdesktopException, IOException {
+		Packet data = this.initData(8);
 		data.setLittleEndian16(action);
 		data.setLittleEndian16(0); // userid
 		data.setLittleEndian32(0); // control id
 		data.markEnd();
-		logger.debug("control");
+		if (logger.isDebugEnabled())
+			logger.debug("control");
 		this.sendData(data, RDP_DATA_PDU_CONTROL);
 	}
 
-	private void sendControlCaps(RdpPacket data) {
+	private void sendControlCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_CONTROL);
 		data.setLittleEndian16(RDP_CAPLEN_CONTROL);
 		data.setLittleEndian16(0); /* Control capabilities */
@@ -1096,39 +1137,47 @@ public class Rdp {
 	 * @param data_pdu_type Type of data
 	 * @throws RdesktopException
 	 * @throws IOException
-	 * @throws CryptoException
+	 * @throws InterruptedException
 	 */
-	private void sendData(RdpPacket data, int data_pdu_type) throws RdesktopException, IOException, CryptoException {
-		CommunicationMonitor.lock(this);
-		int length;
-		data.setPosition(data.getHeader(RdpPacket.RDP_HEADER));
-		length = data.getEnd() - data.getPosition();
-		data.setLittleEndian16(length);
-		data.setLittleEndian16(RDP_PDU_DATA | 0x10);
-		data.setLittleEndian16(secureLayer.getUserID() + 1001);
-		data.setLittleEndian32(state.getShareId());
-		data.set8(0); // pad
-		data.set8(1); // stream id
-		data.setLittleEndian16(length - 14);
-		data.set8(data_pdu_type);
-		data.set8(0); // compression type
-		data.setLittleEndian16(0); // compression length
-		secureLayer.send(data, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0);
-		CommunicationMonitor.unlock(this);
+	private void sendData(Packet data, int data_pdu_type) throws RdesktopException, IOException {
+		try {
+			state.getCommLock().acquire();
+			try {
+				int length;
+				data.setPosition(data.getHeader(Packet.RDP_HEADER));
+				length = data.getEnd() - data.getPosition();
+				data.setLittleEndian16(length);
+				data.setLittleEndian16(RDP_PDU_DATA | 0x10);
+				data.setLittleEndian16(secureLayer.getUserID() + 1001);
+				data.setLittleEndian32(state.getShareId());
+				data.set8(0); // pad
+				data.set8(1); // stream id
+				data.setLittleEndian16(length - 14);
+				data.set8(data_pdu_type);
+				data.set8(0); // compression type
+				data.setLittleEndian16(0); // compression length
+				secureLayer.send(data, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0);
+			} finally {
+				state.getCommLock().release();
+			}
+		} catch (InterruptedException ie) {
+			throw new RdesktopException("Interrupted waiting to send data.", ie);
+		}
 	}
 
-	private void sendFonts(int seq) throws RdesktopException, IOException, CryptoException {
-		RdpPacket data = this.initData(8);
+	private void sendFonts(int seq) throws RdesktopException, IOException {
+		Packet data = this.initData(8);
 		data.setLittleEndian16(0); /* number of fonts */
 		data.setLittleEndian16(0x3e); /* unknown */
 		data.setLittleEndian16(seq); /* unknown */
 		data.setLittleEndian16(0x32); /* entry size */
 		data.markEnd();
-		logger.debug("fonts");
+		if (logger.isDebugEnabled())
+			logger.debug("fonts");
 		this.sendData(data, RDP_DATA_PDU_FONT2);
 	}
 
-	private void sendGeneralCaps(RdpPacket data) {
+	private void sendGeneralCaps(Packet data) {
 		logger.info("Sending general caps");
 		data.setLittleEndian16(RDP_CAPSET_GENERAL);
 		data.setLittleEndian16(RDP_CAPLEN_GENERAL);
@@ -1157,7 +1206,7 @@ public class Rdp {
 		data.set8(0); /* Suppress output support */
 	}
 
-	private void sendInputCaps(RdpPacket data) {
+	private void sendInputCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_INPUT);
 		data.setLittleEndian16(RDP_CAPLEN_INPUT);
 		data.setLittleEndian16(INPUT_FLAG_SCANCODES); // flags (SCANCODES
@@ -1174,26 +1223,26 @@ public class Rdp {
 		}
 	}
 
-	private void sendBrushCaps(RdpPacket data) {
+	private void sendBrushCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_BRUSH);
 		data.setLittleEndian16(RDP_CAPLEN_BRUSH);
 		data.setLittleEndian32(0x03);
 	}
 
-	private void sendVirtualChannelCaps(RdpPacket data) {
+	private void sendVirtualChannelCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_VIRTUAL_CHANNELS);
 		data.setLittleEndian16(RDP_CAPLEN_VIRTUAL_CHANNELS);
 		data.setLittleEndian32(0); /* no support for vchannel compressionn */
 		data.setLittleEndian32(0); /* chunk size */
 	}
 
-	private void sendSoundCaps(RdpPacket data) {
+	private void sendSoundCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_SOUND);
 		data.setLittleEndian16(RDP_CAPLEN_SOUND);
 		data.setLittleEndian16(1); /* supports beep */
 	}
 
-	private void sendOffscreenBitmapCacheCaps(RdpPacket data) {
+	private void sendOffscreenBitmapCacheCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_OFFSCREEN_BITMAP_CACHE);
 		data.setLittleEndian16(RDP_CAPLEN_OFFSCREEN_BITMAP_CACHE);
 		data.setLittleEndian32(0); /* no support */
@@ -1201,7 +1250,7 @@ public class Rdp {
 		data.setLittleEndian16(0); /* cache entries in k */
 	}
 
-	private void sendGlyphCacheCaps(RdpPacket data) {
+	private void sendGlyphCacheCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_GLYPHCACHE);
 		data.setLittleEndian16(RDP_CAPLEN_GLYPHCACHE);
 		for (int i = 0; i < 10; i++) {
@@ -1225,28 +1274,46 @@ public class Rdp {
 	 * @param directory Starting working directory for session
 	 * @throws RdesktopException
 	 * @throws IOException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws InvalidKeyException
 	 * @throws CryptoException
 	 */
-	private void sendLogonInfo(String domain, String username, char[] password, String command, String directory)
-			throws RdesktopException, IOException, CryptoException {
+	private void sendLogonInfo(String command, String directory)
+			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		int flags = INFO_MOUSE | INFO_DISABLECTRLALTDEL | INFO_UNICODE | INFO_MAXIMIZE_SHELL | INFO_ENABLEWINDOWS_KEY
 				| INFO_MOUSE_HAS_WHEEL;
+		String domain;
+		String username;
+		char[] password = new char[0];
+		List<String> creds = state.getCredentialProvider().getCredentials("login", 0, CredentialType.DOMAIN,
+				CredentialType.USERNAME, CredentialType.PASSWORD);
+		if (creds == null) {
+			domain = username = "";
+		} else {
+			domain = StringUtils.defaultIfBlank(creds.get(0), "");
+			username = StringUtils.defaultIfBlank(creds.get(1), "");
+			password = StringUtils.defaultIfBlank(creds.get(2), "").toCharArray();
+		}
+		directory = StringUtils.defaultIfBlank(directory, "");
 		if (password != null && password.length > 0)
 			flags |= INFO_LOGON_AUTO;
 		int len_ip = 2 * state.getClientIp().length();
 		int len_dll = 2 * state.getClientDir().length();
-		int sec_flags = state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_LOGON_INFO | Secure.SEC_ENCRYPT : Secure.SEC_LOGON_INFO;
+		int sec_flags = state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_LOGON_INFO | Secure.SEC_ENCRYPT
+				: Secure.SEC_LOGON_INFO;
 		int domainlen = 2 * domain.length();
 		int userlen = 2 * username.length();
-		int passlen = 2 * password.length;
+		int passlen = 2 * (password == null ? 0 : password.length);
 		int commandlen = 2 * command.length();
 		int dirlen = 2 * directory.length();
 		int packetlen = 18 + domainlen + userlen + passlen + commandlen + dirlen + 10;
 		if (state.isRDP5()) {
 			packetlen += 2 + 4 + len_ip + 4 + len_dll + 172 + 4 + 4 + 2 + 28 + 2 + 2;
 		}
-		logger.debug("Sending RDP Logon packet");
-		RdpPacket data = secureLayer.init(sec_flags, packetlen);
+		if (logger.isDebugEnabled())
+			logger.debug("Sending RDP Logon packet");
+		Packet data = secureLayer.init(sec_flags, packetlen);
 		data = secureLayer.init(sec_flags, packetlen);
 		data.setLittleEndian32(0); // code page
 		data.setLittleEndian32(flags);
@@ -1264,7 +1331,8 @@ public class Rdp {
 		data.outUnicodeString(command, commandlen);
 		data.outUnicodeString(directory, dirlen);
 		if (state.isRDP5()) {
-			logger.debug("Sending RDP5+ extra login info");
+			if (logger.isDebugEnabled())
+				logger.debug("Sending RDP5+ extra login info");
 			/* Extra Info */
 			data.setLittleEndian16(state.getClientAddressFamily());
 			data.setLittleEndian16(len_ip + 2);
@@ -1285,7 +1353,7 @@ public class Rdp {
 		secureLayer.send(data, sec_flags);
 	}
 
-	private void sendTimeZone(RdpPacket data) {
+	private void sendTimeZone(Packet data) {
 		// 172 bytes
 		TimeZone tz = state.getOptions().getTimeZone();
 		data.setLittleEndian32(tz.getRawOffset() / 1000 / 60);
@@ -1293,7 +1361,7 @@ public class Rdp {
 		writeTimeZone(data, tz, tz.getDisplayName(true, TimeZone.LONG));
 	}
 
-	private void writeTimeZone(RdpPacket data, TimeZone tz, String name) {
+	private void writeTimeZone(Packet data, TimeZone tz, String name) {
 		// 84 bytes
 		data.outUnicodeString(name, name.length() * 2);
 		data.incrementPosition(62 - (2 * name.length()));
@@ -1309,7 +1377,7 @@ public class Rdp {
 		data.setLittleEndian32(0); // Bias
 	}
 
-	private void sendOrderCaps(RdpPacket data) {
+	private void sendOrderCaps(Packet data) {
 		byte[] order_caps = new byte[32];
 		order_caps[0] = 1; /* dest blt */
 		order_caps[1] = 1; /* pat blt */// nb no rectangle orders if this is 0
@@ -1354,7 +1422,7 @@ public class Rdp {
 		data.setLittleEndian16(0); /* Pad */
 	}
 
-	private void sendPointerCaps(RdpPacket data) {
+	private void sendPointerCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_POINTER);
 		data.setLittleEndian16(RDP_CAPLEN_POINTER);
 		data.setLittleEndian16(
@@ -1365,19 +1433,21 @@ public class Rdp {
 				state.getPointerCacheSize()); /* Pointer (new) Cache size */
 	}
 
-	private void sendShareCaps(RdpPacket data) {
+	private void sendShareCaps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_SHARE);
 		data.setLittleEndian16(RDP_CAPLEN_SHARE);
 		data.setLittleEndian16(0); /* userid */
 		data.setLittleEndian16(0); /* pad */
 	}
 
-	private void sendSynchronize() throws RdesktopException, IOException, CryptoException {
-		RdpPacket data = this.initData(4);
+	private void sendSynchronize()
+			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		Packet data = this.initData(4);
 		data.setLittleEndian16(1); // type
 		data.setLittleEndian16(state.getServerChannelId());
 		data.markEnd();
-		logger.debug("sync");
+		if (logger.isDebugEnabled())
+			logger.debug("sync");
 		this.sendData(data, RDP_DATA_PDU_SYNCHRONISE);
 	}
 
@@ -1388,13 +1458,14 @@ public class Rdp {
 	 *            position
 	 * @return resized
 	 */
-	static boolean processBitmapCaps(State options, RdpPacket data) {
+	static boolean processBitmapCaps(State options, Packet data) {
 		int width, height, bpp;
 		bpp = data.getLittleEndian16(); // in_uint16_le(s, bpp);
 		data.incrementPosition(6); // in_uint8s(s, 6);
 		width = data.getLittleEndian16(); // in_uint16_le(s, width);
 		height = data.getLittleEndian16(); // in_uint16_le(s, height);
-		logger.debug("setting desktop size and bpp to: " + width + "x" + height + "x" + bpp);
+		if (logger.isDebugEnabled())
+			logger.debug("setting desktop size and bpp to: " + width + "x" + height + "x" + bpp);
 		/*
 		 * The server may limit bpp and change the size of the desktop (for
 		 * example when shadowing another session).
@@ -1420,7 +1491,7 @@ public class Rdp {
 	 * @param data Packet containing capability set data at current read
 	 *            position
 	 */
-	static void processGeneralCaps(State state, RdpPacket data) {
+	static void processGeneralCaps(State state, Packet data) {
 		int pad2octetsB; /* rdp5 flags? */
 		data.incrementPosition(10); // in_uint8s(s, 10);
 		pad2octetsB = data.getLittleEndian16(); // in_uint16_le(s, pad2octetsB);
@@ -1428,12 +1499,12 @@ public class Rdp {
 			state.setRDP5(false);
 	}
 
-	static void processShareCaps(State state, RdpPacket data) {
+	static void processShareCaps(State state, Packet data) {
 		state.setServerChannelId(data.getLittleEndian16());
 		logger.info(String.format("Server channel is %d (%04x)", state.getServerChannelId(), state.getServerChannelId()));
 	}
 
-	static void processPointerCaps(State state, RdpPacket data) {
+	static void processPointerCaps(State state, Packet data) {
 		state.setColorPointer(data.getLittleEndian16() == 1);
 		state.setColorPointerCacheSize(data.getLittleEndian16());
 		if (data.size() >= 10)

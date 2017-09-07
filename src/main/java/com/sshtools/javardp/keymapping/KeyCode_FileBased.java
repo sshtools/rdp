@@ -111,8 +111,9 @@ public class KeyCode_FileBased {
 			MapDef def = (MapDef) keysCurrentlyDown.get(new Integer(e.getKeyCode()));
 			registerKeyEvent(e, def);
 			if (e.getID() == KeyEvent.KEY_RELEASED)
-				logger.debug(
-						"Released: " + e.getKeyCode() + " returned scancode: " + ((def != null) ? "" + def.getScancode() : "null"));
+				if (logger.isDebugEnabled())
+					logger.debug("Released: " + e.getKeyCode() + " returned scancode: "
+							+ ((def != null) ? "" + def.getScancode() : "null"));
 			return def;
 		}
 		updateCapsLock(e);
@@ -138,10 +139,13 @@ public class KeyCode_FileBased {
 			}
 		}
 		if (e.getID() == KeyEvent.KEY_PRESSED)
-			logger.debug(
-					"Pressed: " + e.getKeyCode() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
+			if (logger.isDebugEnabled())
+				logger.debug("Pressed: " + e.getKeyCode() + " returned scancode: "
+						+ ((best != null) ? "" + best.getScancode() : "null"));
 		if (e.getID() == KeyEvent.KEY_TYPED)
-			logger.debug("Typed: " + e.getKeyChar() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
+			if (logger.isDebugEnabled())
+				logger.debug(
+						"Typed: " + e.getKeyChar() + " returned scancode: " + ((best != null) ? "" + best.getScancode() : "null"));
 		registerKeyEvent(e, best);
 		return best;
 	}
@@ -163,7 +167,8 @@ public class KeyCode_FileBased {
 		String type = "";
 		if (e.getID() == KeyEvent.KEY_RELEASED) {
 			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Sending CAPSLOCK toggle");
+				if (logger.isDebugEnabled())
+					logger.debug("Sending CAPSLOCK toggle");
 				codes = "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP) + codes;
 			} else {
 				type = "" + ((char) UP);
@@ -171,7 +176,8 @@ public class KeyCode_FileBased {
 			}
 		} else {
 			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Sending CAPSLOCK toggle");
+				if (logger.isDebugEnabled())
+					logger.debug("Sending CAPSLOCK toggle");
 				codes += "" + ((char) 0x3a) + ((char) DOWN) + ((char) 0x3a) + ((char) UP);
 			} else {
 				type = "" + ((char) DOWN);
@@ -429,7 +435,8 @@ public class KeyCode_FileBased {
 		if (e.getID() == KeyEvent.KEY_RELEASED) {
 			keysCurrentlyDown.remove(new Integer(e.getKeyCode()));
 			if ((!options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Turning CAPSLOCK off - key release");
+				if (logger.isDebugEnabled())
+					logger.debug("Turning CAPSLOCK off - key release");
 				capsLockDown = false;
 			}
 			lastEventMatched = false;
@@ -441,10 +448,12 @@ public class KeyCode_FileBased {
 			else
 				lastEventMatched = false;
 			if ((options.isCapsSendsUpAndDown()) && (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK)) {
-				logger.debug("Toggling CAPSLOCK");
+				if (logger.isDebugEnabled())
+					logger.debug("Toggling CAPSLOCK");
 				capsLockDown = !capsLockDown;
 			} else if (e.getKeyCode() == KeyEvent.VK_CAPS_LOCK) {
-				logger.debug("Turning CAPSLOCK on - key press");
+				if (logger.isDebugEnabled())
+					logger.debug("Turning CAPSLOCK on - key press");
 				capsLockDown = true;
 			}
 		}

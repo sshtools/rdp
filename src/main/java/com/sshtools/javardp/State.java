@@ -4,16 +4,21 @@ import java.awt.image.ColorModel;
 import java.awt.image.DirectColorModel;
 import java.io.File;
 import java.net.InetAddress;
+import java.util.List;
 import java.util.StringTokenizer;
+import java.util.UUID;
+import java.util.concurrent.Semaphore;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.CredentialProvider.CredentialType;
+
 public class State {
 	final static Logger LOG = LoggerFactory.getLogger(State.class);
-	private String clientName;
+	private String workstationName;
 	private ColorModel colorModel = new DirectColorModel(24, 0xFF0000, 0x00FF00, 0x0000FF);
 	private boolean colorPointer = true;
 	private int colorPointerCacheSize = 20;
@@ -32,9 +37,13 @@ public class State {
 	private int shareId;
 	private boolean active;
 	private int lastReason;
+	private String clientDomain;
 	private String clientIp;
 	private int clientAddressFamily;
 	private String clientDir;
+	private String cookie;
+	private CredentialProvider credentialProvider;
+	private Semaphore commLock = new Semaphore(1);
 
 	public State(Options options) {
 		this.options = options;
@@ -43,9 +52,9 @@ public class State {
 		 * automatically detected (default)
 		 */
 		try {
-			clientName = options.getClientName();
-			if (StringUtils.isBlank(clientName))
-				clientName = new StringTokenizer(InetAddress.getLocalHost().getHostName(), ".").nextToken().trim();
+			workstationName = options.getWorkstationName();
+			if (StringUtils.isBlank(workstationName))
+				workstationName = new StringTokenizer(InetAddress.getLocalHost().getHostName(), ".").nextToken().trim();
 		} catch (Exception e) {
 		}
 		try {
@@ -54,12 +63,11 @@ public class State {
 				clientIp = InetAddress.getLocalHost().getHostAddress();
 		} catch (Exception e) {
 		}
-		if (clientName == null || clientName.length() == 0)
-			clientName = "localhost";
+		if (workstationName == null || workstationName.length() == 0)
+			workstationName = "localhost";
 		if (clientIp == null || clientIp.length() == 0)
 			clientIp = "127.0.0.1";
-		clientName = clientName.toUpperCase();
-		
+//		workstationName = workstationName.toUpperCase();
 		/* Client dir */
 		clientDir = options.getClientDir();
 		if (StringUtils.isBlank(clientDir)) {
@@ -77,15 +85,39 @@ public class State {
 				clientAddressFamily = Rdp.AF_INET6;
 			}
 		}
+		clientDomain = options.getClientDomain();
+		if (StringUtils.isBlank(clientDomain)) {
+			/* Maybe useful on Windows */
+			clientDomain = System.getenv("USERDOMAIN"); // NTML domain
+			// TODO fqdn is USERDNSDOMAIN
+		}
 		/* Initial state. */
 		width = options.getWidth();
 		height = options.getHeight();
 		serverBpp = options.getBpp();
-		if(options.isSsl()) {
-			//securityType = SecurityType.HYBRID;
-			securityType = SecurityType.SSL;
+		cookie = options.getCookie();
+		if (StringUtils.isBlank(cookie))
+			cookie = UUID.randomUUID().toString();
+		if (!options.getSecurityTypes().isEmpty()) {
+			securityType = options.getSecurityTypes().get(options.getSecurityTypes().size() - 1);
 		}
 		this.rdp5 = options.isRdp5();
+	}
+	
+	public Semaphore getCommLock() {
+		return commLock;
+	}
+
+	public String getCookie() {
+		return cookie;
+	}
+
+	public CredentialProvider getCredentialProvider() {
+		return credentialProvider;
+	}
+
+	public void setCredentialProvider(CredentialProvider credentialProvider) {
+		this.credentialProvider = credentialProvider;
 	}
 
 	public String getClientDir() {
@@ -155,8 +187,8 @@ public class State {
 		return (serverBpp + 7) / 8;
 	}
 
-	public String getClientName() {
-		return clientName;
+	public String getWorkstationName() {
+		return workstationName;
 	}
 
 	public ColorModel getColorModel() {
@@ -266,5 +298,16 @@ public class State {
 
 	public void setLastReason(int lastReason) {
 		this.lastReason = lastReason;
+	}
+
+	public String getCredential(String scope, int attempts, CredentialType type) {
+		if (credentialProvider == null)
+			return null;
+		List<String> l = credentialProvider.getCredentials(scope, attempts, type);
+		return l == null || l.isEmpty() ? null : l.get(0);
+	}
+
+	public String getClientDomain() {
+		return clientDomain;
 	}
 }

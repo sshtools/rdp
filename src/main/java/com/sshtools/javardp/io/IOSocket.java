@@ -15,11 +15,15 @@ public class IOSocket extends Socket {
 	public IOSocket(final IO io) throws IOException {
 		super(new SocketImpl() {
 			Boolean noDelay = Boolean.FALSE;
+			Boolean linger = Boolean.FALSE;
 
 			@Override
 			public Object getOption(int optID) throws SocketException {
 				if (optID == SocketOptions.TCP_NODELAY) {
 					return noDelay;
+				} 
+				else if (optID == SocketOptions.SO_LINGER) {
+					return linger;
 				} else
 					throw new IllegalArgumentException("Unknown option " + optID);
 			}
@@ -28,6 +32,9 @@ public class IOSocket extends Socket {
 			public void setOption(int optID, Object value) throws SocketException {
 				if (optID == SocketOptions.TCP_NODELAY) {
 					this.noDelay = (Boolean) value;
+				}
+				else if (optID == SocketOptions.SO_LINGER) {
+					this.linger= (Boolean) value;
 				} else
 					throw new IllegalArgumentException("Unknown option " + optID);
 			}

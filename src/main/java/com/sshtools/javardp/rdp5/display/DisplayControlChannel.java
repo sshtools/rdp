@@ -1,14 +1,17 @@
 package com.sshtools.javardp.rdp5.display;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.Collection;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 import com.sshtools.javardp.IContext;
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.RdpPacket;
 import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.crypto.CryptoException;
 import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
@@ -59,7 +62,7 @@ public class DisplayControlChannel extends VChannel {
 	}
 
 	@Override
-	public void process(RdpPacket data) throws RdesktopException, IOException, CryptoException {
+	public void process(Packet data) throws RdesktopException, IOException {
 		data.getLittleEndian32();
 		int type = data.getLittleEndian32();
 		switch (type) {
@@ -74,7 +77,8 @@ public class DisplayControlChannel extends VChannel {
 		}
 	}
 
-	public void sendDisplayControlCaps(Collection<MonitorLayout> layout) throws RdesktopException, IOException, CryptoException {
+	public void sendDisplayControlCaps(Collection<MonitorLayout> layout)
+			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 		if (maxNumMonitors == 0)
 			throw new RdesktopException("Never recieved monitor layout from server.");
 		long area = 0;
@@ -85,7 +89,7 @@ public class DisplayControlChannel extends VChannel {
 			throw new RdesktopException(String.format("%s exceeds maximum area supported by server (%d)", area, getMaxArea()));
 		}
 		int totLen = DISPLAYCONTROL_PDU_TYPE_MONITOR_LAYOUT_LEN + (40 * layout.size());
-		RdpPacket p = super.init(totLen);
+		Packet p = super.init(totLen);
 		p.setLittleEndian16(DISPLAYCONTROL_PDU_TYPE_MONITOR_LAYOUT_LEN);
 		p.setLittleEndian32(0);
 		p.setLittleEndian32(DISPLAYCONTROL_PDU_TYPE_MONITOR_LAYOUT);
@@ -95,6 +99,7 @@ public class DisplayControlChannel extends VChannel {
 			l.writer(p);
 		}
 		p.markEnd();
-		context.getSecure().send_to_channel(p, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
+		context.getSecure().send_to_channel(p, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
+				this.mcs_id());
 	}
 }

@@ -12,7 +12,7 @@
 package com.sshtools.javardp.rdp5;
 
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.RdpPacket;
+import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.State;
 
 /**
@@ -42,6 +42,6 @@ public class TestChannel extends VChannel {
 	}
 
 	@Override
-	public void process(RdpPacket data) {
+	public void process(Packet data) {
 	}
 }
