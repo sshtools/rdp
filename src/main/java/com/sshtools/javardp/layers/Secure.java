@@ -28,14 +28,14 @@ import com.sshtools.javardp.OrderException;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopCryptoException;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.Rdp;
 import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.Utilities;
 import com.sshtools.javardp.io.IO;
+import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
 
-public class Secure {
+public class Secure implements Layer<Rdp> {
 	static Logger logger = LoggerFactory.getLogger(Secure.class);
 	/* constants for the secure layer */
 	public static final int SEC_ENCRYPT = 0x0008;
@@ -80,7 +80,6 @@ public class Secure {
 	private MessageDigest md5;
 	private byte[] modulus = null;
 	private Cipher rc4_dec = null;
-	// TODO weridly rc4_enc does not work!!
 	private Cipher rc4_enc = null;
 	private Cipher rc4_update = null;
 	private byte[] sec_crypted_random = null;
@@ -93,6 +92,7 @@ public class Secure {
 	private byte[] server_random = null;
 	private MessageDigest sha1 = null;
 	private State state;
+	private Rdp rdp;
 
 	/**
 	 * Initialise Secure layer of communications
@@ -100,12 +100,12 @@ public class Secure {
 	 * @param channels Virtual channels for this connection
 	 * @throws RdesktopCryptoException
 	 */
-	public Secure(IContext context, State state, VChannels channels) {
+	public Secure(IContext context, State state, VChannels channels, Rdp rdp) {
 		licence = new Licence(state, context, this);
 		this.channels = channels;
 		this.state = state;
-		mcsLayer = new MCS(context, state, channels);
-		context.setMcs(mcsLayer);
+		this.rdp = rdp;
+		mcsLayer = new MCS(context, state, channels, this);
 		try {
 			rc4_enc = Cipher.getInstance("RC4");
 		} catch (NoSuchAlgorithmException nsae) {
@@ -145,6 +145,12 @@ public class Secure {
 		sec_encrypt_update_key = new byte[16]; // changed from 8 - rdesktop
 		// 1.2.0
 		sec_crypted_random = new byte[64];
+		
+		/* Inform all the channels we now have a securelayer so they can be used */
+		for(VChannel ch : rdp.getChannels()) {
+			ch.start(context, state, this);
+		}
+		
 	}
 
 	/**
@@ -262,7 +268,7 @@ public class Secure {
 			return buffer;
 		} catch (InvalidKeyException ike) {
 			throw new RdesktopCryptoException("Failed to update key.", ike);
-		} 
+		}
 	}
 
 	/**
@@ -287,7 +293,7 @@ public class Secure {
 			return buffer;
 		} catch (InvalidKeyException ike) {
 			throw new RdesktopCryptoException("Failed to update key.", ike);
-		} 
+		}
 	}
 
 	public void establishKey() throws RdesktopException, IOException {
@@ -384,13 +390,6 @@ public class Secure {
 		 * catch(NoSuchAlgorithmException
 		 * e){logger.warn("No Such Random Algorithm");}
 		 */
-	}
-
-	/**
-	 * @return MCS user ID
-	 */
-	public int getUserID() {
-		return mcsLayer.getUserID();
 	}
 
 	public byte[] hash16(byte[] in, byte[] salt1, byte[] salt2, int in_position) throws RdesktopCryptoException {
@@ -869,7 +868,7 @@ public class Secure {
 		buffer.setLittleEndian16(state.getHeight());
 		buffer.setLittleEndian16(0xca01);
 		buffer.setLittleEndian16(0xaa03);
-		buffer.setLittleEndian32(state.getOptions().getKeylayout());
+		buffer.setLittleEndian32(state.getOptions().getKeymap().getMapCode());
 		buffer.setLittleEndian32(state.isRDP5() ? 2600 : 419); // or 0ece //
 		// client
 		// build? we
@@ -1098,5 +1097,10 @@ public class Secure {
 			earlyCaps = mcs_data.getLittleEndian32();
 			logger.info("Early server capabilities is " + earlyCaps);
 		}
+	}
+
+	@Override
+	public Rdp getParent() {
+		return rdp;
 	}
 }

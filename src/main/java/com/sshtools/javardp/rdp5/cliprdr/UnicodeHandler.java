@@ -14,13 +14,13 @@ package com.sshtools.javardp.rdp5.cliprdr;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.io.IOException;
 
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class UnicodeHandler extends TypeHandler {
-
 	@Override
 	public boolean formatValid(int format) {
 		return (format == CF_UNICODETEXT);
@@ -34,7 +34,6 @@ public class UnicodeHandler extends TypeHandler {
 			} catch (Exception e) {
 				s = e.toString();
 			}
-
 			// TODO: think of a better way of fixing this
 			s = s.replace('\n', (char) 0x0a);
 			// s = s.replaceAll("" + (char) 0x0a, "" + (char) 0x0d + (char)
@@ -81,17 +80,9 @@ public class UnicodeHandler extends TypeHandler {
 		return CF_UNICODETEXT;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.elusiva.rdp.rdp5.cliprdr.TypeHandler#send_data(java.awt.datatransfer
-	 * .Transferable)
-	 */
 	@Override
-	public void send_data(Transferable in, ClipInterface c) throws RdesktopException {
+	public void send_data(Transferable in, ClipInterface c) throws RdesktopException, IOException {
 		byte[] data = fromTransferable(in);
 		c.send_data(data, data.length);
 	}
-
 }

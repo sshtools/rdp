@@ -28,7 +28,6 @@ import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.SecurityType;
-import com.sshtools.javardp.State;
 import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
@@ -56,9 +55,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 			"CF_MAX" };
 	private IContext context;
 
-	public ClipChannel(IContext context, State state) {
-		super(context, state);
-		this.context = context;
+	public ClipChannel() {
 		this.clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 		// initialise all clipboard format handlers
 		allHandlers = new TypeHandlerList();
@@ -160,7 +157,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	}
 
 	@Override
-	public void send_data(byte[] data, int length) throws RdesktopException {
+	public void send_data(byte[] data, int length) throws RdesktopException, IOException {
 		try {
 			state.getCommLock().acquire();
 			try {
@@ -174,19 +171,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 				all.copyFromByteArray(data, 0, all.getPosition(), length);
 				all.incrementPosition(length);
 				all.setLittleEndian32(0);
-				try {
-					this.send_packet(all);
-				} catch (RdesktopException e) {
-					System.err.println(e.getMessage());
-					e.printStackTrace();
-					if (!context.isUnderApplet())
-						context.exit();
-				} catch (IOException e) {
-					System.err.println(e.getMessage());
-					e.printStackTrace();
-					if (!context.isUnderApplet())
-						context.exit();
-				}
+				this.send_packet(all);
 			} finally {
 				state.getCommLock().release();
 			}
@@ -247,7 +232,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 	}
 
 	void request_clipboard_data(int formatcode) throws RdesktopException, IOException {
-		Packet s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 24);
+		Packet s = secure.init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 24);
 		s.setLittleEndian32(16); // length
 		int flags = VChannels.CHANNEL_FLAG_FIRST | VChannels.CHANNEL_FLAG_LAST;
 		if ((this.flags() & VChannels.CHANNEL_OPTION_SHOW_PROTOCOL) != 0)
@@ -259,8 +244,7 @@ public class ClipChannel extends VChannel implements ClipInterface, ClipboardOwn
 		s.setLittleEndian32(formatcode);
 		s.setLittleEndian32(0); // Unknown. Garbage pad?
 		s.markEnd();
-		context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
-				this.mcs_id());
+		secure.send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 	}
 
 	void send_format_announce() throws RdesktopException, IOException {

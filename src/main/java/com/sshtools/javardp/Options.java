@@ -14,6 +14,9 @@ import javax.security.auth.login.Configuration;
 
 import org.apache.commons.lang3.SystemUtils;
 
+import com.sshtools.javardp.keymapping.KeyCode_FileBased;
+import com.sshtools.javardp.layers.Rdp;
+
 public class Options {
 	public final static int BUFFEREDIMAGE_BITMAP_DECOMPRESSION = 1;
 	public final static int DIRECT_BITMAP_DECOMPRESSION = 0;
@@ -35,14 +38,12 @@ public class Options {
 	private int height = 0; // -g widthxheight
 	private boolean hideDecorations = false;
 	// packets
-	private int keylayout = 0x809; // UK by default
 	private boolean loadLicence = false;
 	private boolean lowLatency = true; // disables bandwidth saving tcp
 	private boolean mapClipboard = true;
 	private boolean orders = true;
 	private boolean owncolmap = false;
 	private boolean packetEncryption = true;
-	private boolean persistentBitmapCaching = false;
 	private boolean polygonEllipseOrders = false;
 	private boolean precacheBitmaps = false;
 	private boolean rdp5 = true;
@@ -68,6 +69,34 @@ public class Options {
 	private String cookie;
 	private List<SecurityType> securityTypes = new ArrayList<>(Arrays.asList(SecurityType.supported()));
 	private int lmCompatibility = 3;
+	private CacheBackend persistentCacheBackend;
+	private KeyCode_FileBased keymap;
+
+	public Options() {
+		if (SystemUtils.IS_OS_WINDOWS_NT && !SystemUtils.IS_OS_WINDOWS_NT && !SystemUtils.IS_OS_WINDOWS_95
+				&& !SystemUtils.IS_OS_WINDOWS_98 && !SystemUtils.IS_OS_WINDOWS_ME) {
+			setBuiltInLicence(true);
+		}
+		if (SystemUtils.IS_OS_MAC) {
+			setCapsSendsUpAndDown(false);
+		}
+	}
+
+	public KeyCode_FileBased getKeymap() {
+		return keymap;
+	}
+
+	public void setKeymap(KeyCode_FileBased keymap) {
+		this.keymap = keymap;
+	}
+
+	public CacheBackend getPersistentCacheBackend() {
+		return persistentCacheBackend;
+	}
+
+	public void setPersistentCacheBackend(CacheBackend persistentCacheBackend) {
+		this.persistentCacheBackend = persistentCacheBackend;
+	}
 
 	public String getClientDomain() {
 		return clientDomain;
@@ -165,10 +194,6 @@ public class Options {
 		return height;
 	}
 
-	public int getKeylayout() {
-		return keylayout;
-	}
-
 	public int getRdp5PerformanceFlags() {
 		return rdp5PerformanceFlags;
 	}
@@ -239,10 +264,6 @@ public class Options {
 
 	public boolean isPacketEncryption() {
 		return packetEncryption;
-	}
-
-	public boolean isPersistentBitmapCaching() {
-		return persistentBitmapCaching;
 	}
 
 	public boolean isPolygonEllipseOrders() {
@@ -329,10 +350,6 @@ public class Options {
 		this.hideDecorations = hideDecorations;
 	}
 
-	public void setKeylayout(int keylayout) {
-		this.keylayout = keylayout;
-	}
-
 	public void setLoadLicence(boolean loadLicence) {
 		this.loadLicence = loadLicence;
 	}
@@ -355,10 +372,6 @@ public class Options {
 
 	public void setPacketEncryption(boolean packetEncryption) {
 		this.packetEncryption = packetEncryption;
-	}
-
-	public void setPersistentBitmapCaching(boolean persistentBitmapCaching) {
-		this.persistentBitmapCaching = persistentBitmapCaching;
 	}
 
 	public void setPolygonEllipseOrders(boolean polygonEllipseOrders) {
@@ -461,6 +474,6 @@ public class Options {
 	}
 
 	public void setLMCompatibility(int lmCompatibility) {
-		this.lmCompatibility  = lmCompatibility;
+		this.lmCompatibility = lmCompatibility;
 	}
 }

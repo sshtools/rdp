@@ -22,6 +22,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -29,17 +31,13 @@ import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.Constants;
 import com.sshtools.javardp.IContext;
-import com.sshtools.javardp.Rdp;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.graphics.RdesktopCanvas;
-import com.sshtools.javardp.keymapping.KeyCode_FileBased;
-import com.sshtools.javardp.layers.MCS;
-import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
 
 //import javax.swing.Box;
@@ -47,7 +45,6 @@ public class RdesktopFrame extends Frame implements IContext {
 	static Logger logger = LoggerFactory.getLogger(RdesktopFrame.class);
 	public RdesktopCanvas canvas = null;
 	public RdpMenu menu = null;
-	public Rdp rdp = null;
 	/**
 	 * @deprecated ActionListener should be used instead.
 	 */
@@ -58,18 +55,8 @@ public class RdesktopFrame extends Frame implements IContext {
 	@Deprecated
 	protected boolean inFullscreen = false;
 	private boolean loggedOn;
-
-	private MCS mcs;
-
 	private boolean menuVisible = false;
-
-	private boolean readyToSend;
-
-	private Secure secure;
-
 	private State state;
-
-	private boolean underApplet;
 
 	/**
 	 * Create a new RdesktopFrame. Size defined by Options.width and
@@ -80,10 +67,18 @@ public class RdesktopFrame extends Frame implements IContext {
 		setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
 		menu = new RdpMenu(this);
 		setMenuBar(menu);
-		new RdesktopCanvas(this, state);
+		canvas = new RdesktopCanvas(this, state);
+		canvas.getDisplay().addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if (e.getY() != 0) {
+					hideMenu();
+				}
+			}
+		});
 		add((JComponent) this.canvas.getDisplay());
 		setTitle(state.getOptions().getWindowTitle());
-		if (Constants.OS == Constants.WINDOWS)
+		if (SystemUtils.IS_OS_WINDOWS)
 			setResizable(false);
 		// Windows has to setResizable(false) before pack,
 		// else draws on the frame
@@ -98,12 +93,12 @@ public class RdesktopFrame extends Frame implements IContext {
 		logger.info("canvas:" + ((JComponent) this.canvas.getDisplay()).getSize());
 		logger.info("frame: " + getSize());
 		logger.info("insets:" + getInsets());
-		if (Constants.OS != Constants.WINDOWS)
+		if (SystemUtils.IS_OS_WINDOWS)
 			setResizable(false);
 		// Linux Java 1.3 needs pack() before setResizeable
 		addWindowListener(new RdesktopWindowAdapter());
 		((JComponent) this.canvas.getDisplay()).addFocusListener(new RdesktopFocusListener());
-		if (Constants.OS == Constants.WINDOWS) {
+		if (SystemUtils.IS_OS_WINDOWS) {
 			// redraws screen on window move
 			addComponentListener(new RdesktopComponentAdapter());
 		}
@@ -116,6 +111,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	public void centreWindow() {
 		centreWindow(this);
 	}
+
 	/**
 	 * Displays details of the Exception e in an error dialog via the
 	 * RdesktopFrame window and reports this through the logger, then prints a
@@ -130,22 +126,11 @@ public class RdesktopFrame extends Frame implements IContext {
 	 */
 	@Override
 	public void error(Exception e, boolean sysexit) {
-		try {
-			String msg1 = e.getClass().getName();
-			String msg2 = e.getMessage();
-			logger.error(msg1 + ": " + msg2);
-			String[] msg = { msg1, msg2 };
-			Rdesktop.showErrorDialog(msg);
-			// e.printStackTrace(System.err);
-		} catch (Exception ex) {
-			logger.warn("Exception in Rdesktop.error: " + ex.getClass().getName() + ": " + ex.getMessage());
-		}
-		Rdesktop.exit(0, this, sysexit);
+		logger.error("Error occured.", e);
+		if (sysexit)
+			dispose();
 	}
-	@Override
-	public void exit() {
-		// TODO Auto-generated method stub
-	}
+
 	/**
 	 * Retrieve the canvas contained within this frame
 	 * 
@@ -153,25 +138,6 @@ public class RdesktopFrame extends Frame implements IContext {
 	 */
 	public RdesktopCanvas getCanvas() {
 		return this.canvas;
-	}
-	@Override
-	public boolean getLockingKeyState(int vk) {
-		return Toolkit.getDefaultToolkit().getLockingKeyState(vk);
-	}
-
-	@Override
-	public MCS getMcs() {
-		return mcs;
-	}
-
-	@Override
-	public Rdp getRdp() {
-		return rdp;
-	}
-
-	@Override
-	public Secure getSecure() {
-		return secure;
 	}
 
 	public void goFullScreen() {
@@ -196,28 +162,12 @@ public class RdesktopFrame extends Frame implements IContext {
 	/**
 	 * Hide the menu bar
 	 */
-	@Override
 	public void hideMenu() {
 		if (menuVisible)
 			this.setMenuBar(null);
 		// canvas.setSize(this.WIDTH, this.HEIGHT);
 		canvas.getDisplay().repaint();
 		menuVisible = false;
-	}
-
-	@Override
-	public void init(RdesktopCanvas canvas) {
-		this.canvas = canvas;
-	}
-
-	@Override
-	public boolean isReadyToSend() {
-		return readyToSend;
-	}
-
-	@Override
-	public boolean isUnderApplet() {
-		return underApplet;
 	}
 
 	public void leaveFullScreen() {
@@ -241,30 +191,6 @@ public class RdesktopFrame extends Frame implements IContext {
 	public byte[] loadLicense() throws IOException {
 		Preferences prefs = Preferences.userNodeForPackage(this.getClass());
 		return prefs.getByteArray("licence." + state.getWorkstationName(), null);
-	}
-
-	/**
-	 * Register the RDP communications layer with this frame
-	 * 
-	 * @param rdp Rdp object encapsulating the RDP comms layer
-	 */
-	public void registerCommLayer(Rdp rdp) {
-		this.rdp = rdp;
-		canvas.registerCommLayer(rdp);
-	}
-
-	@Override
-	public void registerDrawingSurface() {
-		rdp.registerDrawingSurface(canvas);
-	}
-
-	/**
-	 * Register keymap
-	 * 
-	 * @param keys Keymapping object for use in handling keyboard events
-	 */
-	public void registerKeyboard(KeyCode_FileBased keys) {
-		canvas.registerKeyboard(keys);
 	}
 
 	@Override
@@ -293,23 +219,9 @@ public class RdesktopFrame extends Frame implements IContext {
 	}
 
 	@Override
-	public void setMcs(MCS mcs) {
-		this.mcs = mcs;
-	}
-
-	@Override
-	public void setRdp(Rdp rdp) {
-		this.rdp = rdp;
-	}
-
-	@Override
-	public void setReadyToSend() {
-		readyToSend = true;
-	}
-
-	@Override
-	public void setSecure(Secure secure) {
-		this.secure = secure;
+	public void readyToSend() {
+		this.setVisible(true);
+		canvas.triggerReadyToSend();
 	}
 
 	/**
@@ -346,15 +258,6 @@ public class RdesktopFrame extends Frame implements IContext {
 			hideMenu();
 	}
 
-	/**
-	 * Notify the canvas that the connection is ready for sending messages
-	 */
-	@Override
-	public void triggerReadyToSend() {
-		this.show();
-		canvas.triggerReadyToSend();
-	}
-
 	protected void fullscreen() {
 		setUndecorated(true);
 		setExtendedState(Frame.MAXIMIZED_BOTH);
@@ -388,7 +291,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	class RdesktopFocusListener implements FocusListener {
 		@Override
 		public void focusGained(FocusEvent arg0) {
-			if (Constants.OS == Constants.WINDOWS) {
+			if (SystemUtils.IS_OS_WINDOWS) {
 				// canvas.repaint();
 				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
 			}
@@ -406,7 +309,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	class RdesktopWindowAdapter extends WindowAdapter {
 		@Override
 		public void windowActivated(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
+			if (SystemUtils.IS_OS_WINDOWS) {
 				// canvas.repaint();
 				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
 			}
@@ -415,14 +318,8 @@ public class RdesktopFrame extends Frame implements IContext {
 		}
 
 		@Override
-		public void windowClosing(WindowEvent e) {
-			hide();
-			Rdesktop.exit(0, RdesktopFrame.this, true);
-		}
-
-		@Override
 		public void windowDeiconified(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
+			if (SystemUtils.IS_OS_WINDOWS) {
 				// canvas.repaint();
 				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
 			}
@@ -431,7 +328,7 @@ public class RdesktopFrame extends Frame implements IContext {
 
 		@Override
 		public void windowGainedFocus(WindowEvent e) {
-			if (Constants.OS == Constants.WINDOWS) {
+			if (SystemUtils.IS_OS_WINDOWS) {
 				// canvas.repaint();
 				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
 			}

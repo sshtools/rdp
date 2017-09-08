@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import com.sshtools.javardp.graphics.RdesktopCanvas;
 import com.sshtools.javardp.keymapping.KeyCode;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
-import com.sshtools.javardp.keymapping.KeyMapException;
 
 public class Input {
 	protected static final int KBD_FLAG_DOWN = 0x4000;
@@ -71,11 +70,9 @@ public class Input {
 	protected long last_mousemove = 0;
 	protected boolean numLockOn = false;
 	protected Vector pressedKeys;
-	protected Rdp rdp = null;
 	protected boolean scrollLockOn = false;
 	protected boolean serverAltDown = false;
 	KeyCode keys = null;
-	KeyCode_FileBased newKeyMapper = null;
 	private RdesktopKeyAdapter keyListener;
 	private RdesktopMouseAdapter mouseListener;
 	private RdesktopMouseMotionAdapter mouseMotionListener;
@@ -88,38 +85,10 @@ public class Input {
 	 * @param r Rdp layer on which to send input messages
 	 * @param k Key map to use in handling keyboard events
 	 */
-	public Input(IContext context, State state, RdesktopCanvas c, Rdp r, KeyCode_FileBased k) {
-		newKeyMapper = k;
+	public Input(IContext context, State state, RdesktopCanvas canvas) {
 		this.context = context;
 		this.state = state;
-		canvas = c;
-		rdp = r;
-		addInputListeners();
-		pressedKeys = new Vector();
-		KeyboardFocusManager.getCurrentKeyboardFocusManager()
-				.setDefaultFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, Collections.EMPTY_SET);
-		KeyboardFocusManager.getCurrentKeyboardFocusManager()
-				.setDefaultFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, Collections.EMPTY_SET);
-	}
-
-	/**
-	 * Create a new Input object, using a keymap generated from a specified file
-	 * 
-	 * @param c Canvas on which to listen for input events
-	 * @param r Rdp layer on which to send input messages
-	 * @param keymapFile Path to file containing keymap data
-	 */
-	public Input(IContext context, State state, RdesktopCanvas c, Rdp r, String keymapFile) {
-		try {
-			newKeyMapper = new KeyCode_FileBased(state.getOptions(), keymapFile);
-		} catch (KeyMapException kmEx) {
-			System.err.println(kmEx.getMessage());
-			if (!context.isUnderApplet())
-				System.exit(-1);
-		}
-		this.state = state;
-		canvas = c;
-		rdp = r;
+		this.canvas = canvas;
 		addInputListeners();
 		pressedKeys = new Vector();
 		KeyboardFocusManager.getCurrentKeyboardFocusManager()
@@ -370,14 +339,14 @@ public class Input {
 			return false;
 		case KeyEvent.VK_PAUSE: // untested
 			if (pressed) { // E1 1D 45 E1 9D C5
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xe1, 0);
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x1d, 0);
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x45, 0);
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xe1, 0);
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x9d, 0);
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xc5, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xe1, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x1d, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x45, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xe1, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0x9d, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYPRESS, 0xc5, 0);
 			} else { // release left ctrl
-				rdp.sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYRELEASE, 0x1d, 0);
+				state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, RDP_KEYRELEASE, 0x1d, 0);
 			}
 			break;
 		// Removed, as java on MacOS send the option key as VK_META
@@ -496,9 +465,10 @@ public class Input {
 			}
 		}
 		if ((scancode & KeyCode.SCANCODE_EXTENDED) != 0) {
-			rdp.sendInput((int) time, RDP_INPUT_SCANCODE, flags | KBD_FLAG_EXT, scancode & ~KeyCode.SCANCODE_EXTENDED, 0);
+			state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, flags | KBD_FLAG_EXT, scancode & ~KeyCode.SCANCODE_EXTENDED,
+					0);
 		} else
-			rdp.sendInput((int) time, RDP_INPUT_SCANCODE, flags, scancode, 0);
+			state.getRdp().sendInput((int) time, RDP_INPUT_SCANCODE, flags, scancode, 0);
 	}
 
 	/**
@@ -533,21 +503,21 @@ public class Input {
 	protected void doLockKeys() {
 		if (logger.isDebugEnabled())
 			logger.debug("doLockKeys");
-		if (context.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) != capsLockOn) {
+		if (canvas.getDisplay().getLockingKeyState(KeyEvent.VK_CAPS_LOCK) != capsLockOn) {
 			capsLockOn = !capsLockOn;
 			if (logger.isDebugEnabled())
 				logger.debug("CAPS LOCK toggle");
 			sendScancode(getTime(), RDP_KEYPRESS, 0x3a);
 			sendScancode(getTime(), RDP_KEYRELEASE, 0x3a);
 		}
-		if (context.getLockingKeyState(KeyEvent.VK_NUM_LOCK) != numLockOn) {
+		if (canvas.getDisplay().getLockingKeyState(KeyEvent.VK_NUM_LOCK) != numLockOn) {
 			numLockOn = !numLockOn;
 			if (logger.isDebugEnabled())
 				logger.debug("NUM LOCK toggle");
 			sendScancode(getTime(), RDP_KEYPRESS, 0x45);
 			sendScancode(getTime(), RDP_KEYRELEASE, 0x45);
 		}
-		if (context.getLockingKeyState(KeyEvent.VK_SCROLL_LOCK) != scrollLockOn) {
+		if (canvas.getDisplay().getLockingKeyState(KeyEvent.VK_SCROLL_LOCK) != scrollLockOn) {
 			scrollLockOn = !scrollLockOn;
 			if (logger.isDebugEnabled())
 				logger.debug("SCROLL LOCK toggle");
@@ -576,7 +546,7 @@ public class Input {
 		 * sendScancode(getTime(), RDP_KEYRELEASE, 0x3a); // caps lock }
 		 * canvas.unsetBusyCursor(); } else
 		 */
-		rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON3 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
+		state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON3 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
 	}
 
 	/**
@@ -588,7 +558,7 @@ public class Input {
 	 */
 	protected void middleButtonReleased(MouseEvent e) {
 		/* if (!Options.paste_hack || !ctrlDown) */
-		rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON3, e.getX(), e.getY());
+		state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON3, e.getX(), e.getY());
 	}
 
 	/**
@@ -627,9 +597,9 @@ public class Input {
 			if (logger.isDebugEnabled())
 				logger.debug("PRESSED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
 						+ ((char) e.getKeyCode()) + "'");
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if (!handleSpecialKeys(time, e, true)) {
-					sendKeyPresses(newKeyMapper.getKeyStrokes(e));
+					sendKeyPresses(state.getOptions().getKeymap().getKeyStrokes(e));
 				}
 				// sendScancode(time, RDP_KEYPRESS, keys.getScancode(e));
 			}
@@ -655,9 +625,9 @@ public class Input {
 			if (logger.isDebugEnabled())
 				logger.debug("RELEASED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode())
 						+ " char='" + ((char) e.getKeyCode()) + "'");
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if (!handleSpecialKeys(time, e, false))
-					sendKeyPresses(newKeyMapper.getKeyStrokes(e));
+					sendKeyPresses(state.getOptions().getKeymap().getKeyStrokes(e));
 				// sendScancode(time, RDP_KEYRELEASE, keys.getScancode(e));
 			}
 		}
@@ -677,9 +647,9 @@ public class Input {
 			if (logger.isDebugEnabled())
 				logger.debug("TYPED keychar='" + e.getKeyChar() + "' keycode=0x" + Integer.toHexString(e.getKeyCode()) + " char='"
 						+ ((char) e.getKeyCode()) + "'");
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if (!handleSpecialKeys(time, e, true))
-					sendKeyPresses(newKeyMapper.getKeyStrokes(e));
+					sendKeyPresses(state.getOptions().getKeymap().getKeyStrokes(e));
 				// sendScancode(time, RDP_KEYPRESS, keys.getScancode(e));
 			}
 		}
@@ -692,19 +662,16 @@ public class Input {
 
 		@Override
 		public void mousePressed(MouseEvent e) {
-			if (e.getY() != 0) {
-				context.hideMenu();
-			}
 			int time = getTime();
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if ((e.getModifiers() & InputEvent.BUTTON1_MASK) == InputEvent.BUTTON1_MASK) {
 					if (logger.isDebugEnabled())
 						logger.debug("Mouse Button 1 Pressed.");
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON1 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON1 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
 				} else if ((e.getModifiers() & InputEvent.BUTTON3_MASK) == InputEvent.BUTTON3_MASK) {
 					if (logger.isDebugEnabled())
 						logger.debug("Mouse Button 3 Pressed.");
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON2 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON2 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
 				} else if ((e.getModifiers() & InputEvent.BUTTON2_MASK) == InputEvent.BUTTON2_MASK) {
 					if (logger.isDebugEnabled())
 						logger.debug("Middle Mouse Button Pressed.");
@@ -716,11 +683,11 @@ public class Input {
 		@Override
 		public void mouseReleased(MouseEvent e) {
 			int time = getTime();
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if ((e.getModifiers() & InputEvent.BUTTON1_MASK) == InputEvent.BUTTON1_MASK) {
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON1, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON1, e.getX(), e.getY());
 				} else if ((e.getModifiers() & InputEvent.BUTTON3_MASK) == InputEvent.BUTTON3_MASK) {
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON2, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON2, e.getX(), e.getY());
 				} else if ((e.getModifiers() & InputEvent.BUTTON2_MASK) == InputEvent.BUTTON2_MASK) {
 					middleButtonReleased(e);
 				}
@@ -738,8 +705,8 @@ public class Input {
 			int time = getTime();
 			// if(logger.isInfoEnabled()) logger.info("mouseMoved to
 			// "+e.getX()+", "+e.getY()+" at "+time);
-			if (rdp != null) {
-				rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_MOVE, e.getX(), e.getY());
+			if (state.getRdp() != null) {
+				state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_MOVE, e.getX(), e.getY());
 			}
 		}
 
@@ -759,8 +726,8 @@ public class Input {
 			 * canvas.getParent()).showMenu(); else ((RdesktopFrame_Localised)
 			 * canvas.getParent()).hideMenu();
 			 */
-			if (rdp != null) {
-				rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_MOVE, e.getX(), e.getY());
+			if (state.getRdp() != null) {
+				state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_MOVE, e.getX(), e.getY());
 			}
 		}
 	}
@@ -770,11 +737,11 @@ public class Input {
 		public void mouseWheelMoved(MouseWheelEvent e) {
 			int time = getTime();
 			// if(logger.isInfoEnabled()) logger.info("mousePressed at "+time);
-			if (rdp != null) {
+			if (state.getRdp() != null) {
 				if (e.getWheelRotation() < 0) { // up
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON4 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON4 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
 				} else { // down
-					rdp.sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON5 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
+					state.getRdp().sendInput(time, RDP_INPUT_MOUSE, MOUSE_FLAG_BUTTON5 | MOUSE_FLAG_DOWN, e.getX(), e.getY());
 				}
 			}
 		}

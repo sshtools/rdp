@@ -13,6 +13,7 @@ package com.sshtools.javardp.rdp5.cliprdr;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.io.IOException;
 
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
@@ -71,5 +72,5 @@ public abstract class TypeHandler {
 
 	public abstract int preferredFormat();
 
-	public abstract void send_data(Transferable in, ClipInterface c) throws RdesktopException;
+	public abstract void send_data(Transferable in, ClipInterface c) throws RdesktopException, IOException;
 }

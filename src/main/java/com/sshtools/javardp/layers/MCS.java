@@ -11,7 +11,6 @@
  */
 package com.sshtools.javardp.layers;
 
-
 import java.io.EOFException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -30,7 +29,7 @@ import com.sshtools.javardp.State;
 import com.sshtools.javardp.io.IO;
 import com.sshtools.javardp.rdp5.VChannels;
 
-public class MCS {
+public class MCS implements Layer<Secure> {
 	public static final int MCS_GLOBAL_CHANNEL = 1003;
 	public static final int MCS_USERCHANNEL_BASE = 1001;
 	static Logger logger = LoggerFactory.getLogger(MCS.class);
@@ -53,17 +52,20 @@ public class MCS {
 	private VChannels channels;
 	private IContext context;
 	private ISO isoLayer = null;
-	private int McsUserID;
+	private State state;
+	private Secure secure;
 
 	/**
 	 * Initialise the MCS layer (and lower layers) with provided channels
 	 * 
 	 * @param channels Set of available MCS channels
 	 */
-	public MCS(IContext context, State state, VChannels channels) {
+	public MCS(IContext context, State state, VChannels channels, Secure secure) {
+		this.secure = secure;
+		this.state = state;
 		this.channels = channels;
 		this.context = context;
-		isoLayer = new ISO(context, state);
+		isoLayer = new ISO(context, state, this);
 	}
 
 	/**
@@ -119,8 +121,9 @@ public class MCS {
 			logger.debug("connect response received");
 		send_edrq();
 		send_aurq();
-		this.McsUserID = receive_aucf();
-		send_cjrq(this.McsUserID + MCS_USERCHANNEL_BASE);
+		int McsUserID = receive_aucf();
+		state.setMcsUserId(McsUserID);
+		send_cjrq(McsUserID + MCS_USERCHANNEL_BASE);
 		receive_cjcf();
 		send_cjrq(MCS_GLOBAL_CHANNEL);
 		receive_cjcf();
@@ -138,15 +141,6 @@ public class MCS {
 		isoLayer.disconnect();
 		// in=null;
 		// out=null;
-	}
-
-	/**
-	 * Retrieve the user ID stored by this MCS object
-	 * 
-	 * @return User ID
-	 */
-	public int getUserID() {
-		return this.McsUserID;
 	}
 
 	/**
@@ -209,8 +203,8 @@ public class MCS {
 		channel[0] = buffer.getBigEndian16(); // Get ChannelID
 		buffer.incrementPosition(1); // Skip Flags
 		length = buffer.get8();
-		if(logger.isDebugEnabled())
-		logger.debug("Channel ID = " + channel[0] + ", length = " + length);
+		if (logger.isDebugEnabled())
+			logger.debug("Channel ID = " + channel[0] + ", length = " + length);
 		if ((length & 0x80) != 0) {
 			buffer.incrementPosition(1);
 		}
@@ -284,13 +278,13 @@ public class MCS {
 	 * @throws IOException
 	 * @throws RdesktopException
 	 * @throws OrderException
-	 * @throws InvalidKeyException 
-	 * @throws BadPaddingException 
-	 * @throws IllegalBlockSizeException 
+	 * @throws InvalidKeyException
+	 * @throws BadPaddingException
+	 * @throws IllegalBlockSizeException
 	 */
 	public void receiveConnectResponse(Packet data) throws IOException, RdesktopException {
-
-		if(logger.isDebugEnabled())logger.debug("MCS.receiveConnectResponse");
+		if (logger.isDebugEnabled())
+			logger.debug("MCS.receiveConnectResponse");
 		String[] connect_results = { "Successful", "Domain Merging", "Domain not Hierarchical", "No Such Channel", "No Such Domain",
 				"No Such User", "Not Admitted", "Other User ID", "Parameters Unacceptable", "Token Not Available",
 				"Token Not Possessed", "Too Many Channels", "Too Many Tokens", "Too Many Users", "Unspecified Failure",
@@ -298,8 +292,8 @@ public class MCS {
 		int result = 0;
 		int length = 0;
 		Packet buffer = isoLayer.receive();
-		if(logger.isDebugEnabled())
-		logger.debug("Received buffer");
+		if (logger.isDebugEnabled())
+			logger.debug("Received buffer");
 		length = berParseHeader(buffer, CONNECT_RESPONSE);
 		length = berParseHeader(buffer, BER_TAG_RESULT);
 		result = buffer.get8();
@@ -310,7 +304,7 @@ public class MCS {
 		length = buffer.get8(); // connect id
 		parseDomainParams(buffer);
 		length = berParseHeader(buffer, BER_TAG_OCTET_STRING);
-		context.getSecure().processMcsData(buffer);
+		secure.processMcsData(buffer);
 		/*
 		 * if (length > data.size()) {
 		 * logger.warn("MCS Datalength exceeds size!"+length);
@@ -371,7 +365,7 @@ public class MCS {
 	public void send_cjrq(int channelid) throws IOException, RdesktopException {
 		Packet buffer = isoLayer.init(5);
 		buffer.set8(CJRQ << 2);
-		buffer.setBigEndian16(this.McsUserID); // height
+		buffer.setBigEndian16(state.getMcsUserId()); // height
 		buffer.setBigEndian16(channelid); // interval
 		buffer.markEnd();
 		isoLayer.send(buffer);
@@ -384,8 +378,8 @@ public class MCS {
 	 * @throws RdesktopException
 	 */
 	public void send_edrq() throws IOException, RdesktopException {
-		if(logger.isDebugEnabled())
-		logger.debug("send_edrq");
+		if (logger.isDebugEnabled())
+			logger.debug("send_edrq");
 		Packet buffer = isoLayer.init(5);
 		buffer.set8(EDRQ << 2);
 		buffer.setBigEndian16(1); // height
@@ -408,7 +402,7 @@ public class MCS {
 		length = buffer.getEnd() - buffer.getHeader(Packet.MCS_HEADER) - 8;
 		length |= 0x8000;
 		buffer.set8((SDRQ << 2));
-		buffer.setBigEndian16(this.McsUserID);
+		buffer.setBigEndian16(state.getMcsUserId());
 		buffer.setBigEndian16(channel);
 		buffer.set8(0x70); // Flags
 		buffer.setBigEndian16(length);
@@ -482,7 +476,7 @@ public class MCS {
 			isoLayer.send(buffer);
 			return;
 		}
-		if(logger.isDebugEnabled())
+		if (logger.isDebugEnabled())
 			logger.debug("MCS.sendConnectInitial");
 		int datalen = data.getEnd();
 		int length = 9 + domainParamSize(34, 2, 0, 0xffff) + domainParamSize(1, 1, 1, 0x420)
@@ -582,5 +576,10 @@ public class MCS {
 		int endSize = BERIntSize(max_channels) + BERIntSize(max_users) + BERIntSize(max_tokens) + BERIntSize(1) + BERIntSize(0)
 				+ BERIntSize(1) + BERIntSize(max_pdusize) + BERIntSize(2);
 		return berHeaderSize(TAG_DOMAIN_PARAMS, endSize) + endSize;
+	}
+
+	@Override
+	public Secure getParent() {
+		return secure;
 	}
 }

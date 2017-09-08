@@ -91,7 +91,7 @@ public class Licence {
 	 * @param client_key Array in which to store client key
 	 * @param server_key Array in which to store server key
 	 * @param client_rsa Array in which to store RSA data
-	 * @throws RdesktopCryptoException 
+	 * @throws RdesktopCryptoException
 	 */
 	public void generate_keys(byte[] client_key, byte[] server_key, byte[] client_rsa) throws RdesktopCryptoException {
 		byte[] session_key = new byte[48];
@@ -271,14 +271,11 @@ public class Licence {
 			System.arraycopy(decrypt_token, 0, sealed_buffer, 0, LICENCE_TOKEN_SIZE);
 			System.arraycopy(hwid, 0, sealed_buffer, LICENCE_TOKEN_SIZE, LICENCE_HWID_SIZE);
 			out_sig = secure.sign(this.licence_sign_key, 16, 16, sealed_buffer, sealed_buffer.length);
-			/* deliberately break signature if licencing disabled */
-			if (!Constants.licence) {
-				out_sig = new byte[LICENCE_SIGNATURE_SIZE]; // set to 0
-			}
+			out_sig = new byte[LICENCE_SIGNATURE_SIZE]; // set to 0
 			/* now crypt the hwid */
 			System.arraycopy(this.licence_key, 0, crypt_key, 0, this.licence_key.length);
 			rc4_licence.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(crypt_key, "RC4"));
-			rc4_licence.doFinal(hwid, 0, LICENCE_HWID_SIZE, crypt_hwid, 0);
+			rc4_licence.update(hwid, 0, LICENCE_HWID_SIZE, crypt_hwid, 0);
 			this.sendResponse(out_token, crypt_hwid, out_sig);
 		} catch (InvalidKeyException ike) {
 			throw new RdesktopCryptoException("Failed to process license.", ike);

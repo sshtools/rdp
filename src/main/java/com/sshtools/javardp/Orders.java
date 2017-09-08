@@ -35,7 +35,6 @@ import com.sshtools.javardp.orders.Text2Order;
 import com.sshtools.javardp.orders.TriBltOrder;
 
 public class Orders {
-	public static Cache cache = null;
 	static Logger logger = LoggerFactory.getLogger(Orders.class);
 	private static final int BUFSIZE_MASK = 0x3FFF; /* or 0x1FFF? */
 	private static final int FLAG_51_UNKNOWN = 0x0800;
@@ -79,7 +78,6 @@ public class Orders {
 	private OrderState os = null;
 	private int rect_colour;
 	private State state;
-	private RdesktopCanvas surface = null;
 
 	public Orders(State state) {
 		this.state = state;
@@ -130,7 +128,7 @@ public class Orders {
 					if ((order_flags & RDP_ORDER_LASTBOUNDS) == 0) {
 						this.parseBounds(data, os.getBounds());
 					}
-					surface.setClip(os.getBounds());
+					state.getCanvas().setClip(os.getBounds());
 				}
 				delta = ((order_flags & RDP_ORDER_DELTA) != 0);
 				switch (os.getOrderType()) {
@@ -189,7 +187,7 @@ public class Orders {
 					return;
 				}
 				if ((order_flags & RDP_ORDER_BOUNDS) != 0) {
-					surface.resetClip();
+					state.getCanvas().resetClip();
 					if (logger.isDebugEnabled())
 						logger.debug("Reset clip");
 				}
@@ -199,26 +197,6 @@ public class Orders {
 		if (data.getPosition() != next_packet) {
 			throw new OrderException("End not reached!");
 		}
-	}
-
-	/**
-	 * Set current cache
-	 * 
-	 * @param cache Cache object to set as current global cache
-	 */
-	public void registerCache(Cache cache) {
-		Orders.cache = cache;
-	}
-
-	/**
-	 * Register an RdesktopCanvas with this Orders object. This surface is where
-	 * all drawing orders will be carried out.
-	 * 
-	 * @param surface Surface to register
-	 */
-	public void registerDrawingSurface(RdesktopCanvas surface) {
-		this.surface = surface;
-		surface.registerCache(cache);
 	}
 
 	public void resetOrderState() {
@@ -247,9 +225,9 @@ public class Orders {
 		int x = text2.getX();
 		int y = text2.getY();
 		if (boxcx > 1) {
-			surface.fillRectangle(text2.getBoxLeft(), text2.getBoxTop(), boxcx, boxcy, text2.getBackgroundColor());
+			state.getCanvas().fillRectangle(text2.getBoxLeft(), text2.getBoxTop(), boxcx, boxcy, text2.getBackgroundColor());
 		} else if (text2.getMixmode() == MIX_OPAQUE) {
-			surface.fillRectangle(text2.getClipLeft(), text2.getClipTop(), clipcx, clipcy, text2.getBackgroundColor());
+			state.getCanvas().fillRectangle(text2.getClipLeft(), text2.getClipTop(), clipcx, clipcy, text2.getBackgroundColor());
 		}
 		/*
 		 * logger.debug("X: " + text2.getX() + " Y: " + text2.getY() +
@@ -271,7 +249,7 @@ public class Orders {
 					byte[] data = new byte[text[ptext + i + 2] & 0x000000ff];
 					System.arraycopy(text, ptext, data, 0, text[ptext + i + 2] & 0x000000ff);
 					DataBlob db = new DataBlob(text[ptext + i + 2] & 0x000000ff, data);
-					cache.putText(text[ptext + i + 1] & 0x000000ff, db);
+					state.getCache().putText(text[ptext + i + 1] & 0x000000ff, db);
 				} else {
 					throw new RdesktopException();
 				}
@@ -280,7 +258,7 @@ public class Orders {
 				i = 0;
 				break;
 			case (0xfe):
-				entry = cache.getText(text[ptext + i + 1] & 0x000000ff);
+				entry = state.getCache().getText(text[ptext + i + 1] & 0x000000ff);
 				if (entry != null) {
 					if ((entry.getData()[1] == 0) && ((text2.getFlags() & TEXT2_IMPLICIT_X) == 0)) {
 						if ((text2.getFlags() & 0x04) != 0) {
@@ -301,7 +279,7 @@ public class Orders {
 				// break;
 				byte[] data = entry.getData();
 				for (int j = 0; j < entry.getSize(); j++) {
-					glyph = cache.getFont(text2.getFont(), data[j] & 0x000000ff);
+					glyph = state.getCache().getFont(text2.getFont(), data[j] & 0x000000ff);
 					if ((text2.getFlags() & TEXT2_IMPLICIT_X) == 0) {
 						offset = data[++j] & 0x000000ff;
 						if ((offset & 0x80) != 0) {
@@ -327,7 +305,7 @@ public class Orders {
 						// logger.info("Drawing glyph: (" + (x +
 						// (short)glyph.getOffset()) + ", " + (y +
 						// (short)glyph.getBaseLine()) + ")" );
-						surface.drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
+						state.getCanvas().drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
 								glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
 								text2.getForegroundColor());
 						if ((text2.getFlags() & TEXT2_IMPLICIT_X) != 0) {
@@ -337,7 +315,7 @@ public class Orders {
 				}
 				break;
 			default:
-				glyph = cache.getFont(text2.getFont(), text[ptext + i] & 0x000000ff);
+				glyph = state.getCache().getFont(text2.getFont(), text[ptext + i] & 0x000000ff);
 				if ((text2.getFlags() & TEXT2_IMPLICIT_X) == 0) {
 					offset = text[ptext + (++i)] & 0x000000ff;
 					if ((offset & 0x80) != 0) {
@@ -364,7 +342,7 @@ public class Orders {
 					}
 				}
 				if (glyph != null) {
-					surface.drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
+					state.getCanvas().drawGlyph(text2.getMixmode(), x + (short) glyph.getOffset(), y + (short) glyph.getBaseLine(),
 							glyph.getWidth(), glyph.getHeight(), glyph.getFontData(), text2.getBackgroundColor(),
 							text2.getForegroundColor());
 					if ((text2.getFlags() & TEXT2_IMPLICIT_X) != 0)
@@ -532,10 +510,14 @@ public class Orders {
 		}
 		// bitmap = ui_create_bitmap(width, height, bmpdata);
 		if (bitmap != null) {
-			cache.putBitmap(cache_id, cache_idx, bitmap, 0);
+			state.getCache().putBitmap(cache_id, cache_idx, bitmap, 0);
 			// cache_put_bitmap(cache_id, cache_idx, bitmap, 0);
 			if ((flags & PERSIST) != 0)
-				PstCache.pstcache_put_bitmap(state, cache_id, cache_idx, bitmap_id, width, height, width * height * Bpp, bmpdata);
+				if (state.getOptions().getPersistentCacheBackend() == null)
+					logger.warn("Wanted to persist bitmap but no cache backend set.");
+				else
+					state.getOptions().getPersistentCacheBackend().pstcache_put_bitmap(state, cache_id, cache_idx, bitmap_id, width,
+							height, width * height * Bpp, bmpdata);
 		} else {
 			logger.error("process_bmpcache2: ui_create_bitmap failed");
 		}
@@ -591,13 +573,14 @@ public class Orders {
 		if (Bpp == 1) {
 			byte[] pixel = Bitmap.decompress(width, height, size, data, Bpp);
 			if (pixel != null)
-				cache.putBitmap(cache_id, cache_idx, new Bitmap(Bitmap.convertImage(state, pixel, Bpp), width, height, 0, 0), 0);
+				state.getCache().putBitmap(cache_id, cache_idx,
+						new Bitmap(Bitmap.convertImage(state, pixel, Bpp), width, height, 0, 0), 0);
 			else
 				logger.warn("Failed to decompress bitmap");
 		} else {
 			int[] pixel = Bitmap.decompressInt(state, width, height, size, data, Bpp);
 			if (pixel != null)
-				cache.putBitmap(cache_id, cache_idx, new Bitmap(pixel, width, height, 0, 0), 0);
+				state.getCache().putBitmap(cache_id, cache_idx, new Bitmap(pixel, width, height, 0, 0), 0);
 			else
 				logger.warn("Failed to decompress bitmap");
 		}
@@ -632,7 +615,7 @@ public class Orders {
 			j += 4;
 		}
 		IndexColorModel cm = new IndexColorModel(8, n_colors, red, green, blue);
-		cache.put_colourmap(cache_id, cm);
+		state.getCache().put_colourmap(cache_id, cm);
 		// surface.registerPalette(cm);
 	}
 
@@ -670,11 +653,11 @@ public class Orders {
 		width = desksave.getRight() - desksave.getLeft() + 1;
 		height = desksave.getBottom() - desksave.getTop() + 1;
 		if (desksave.getAction() == 0) {
-			int[] pixel = surface.getImage(desksave.getLeft(), desksave.getTop(), width, height);
-			cache.putDesktop(desksave.getOffset(), width, height, pixel);
+			int[] pixel = state.getCanvas().getImage(desksave.getLeft(), desksave.getTop(), width, height);
+			state.getCache().putDesktop(desksave.getOffset(), width, height, pixel);
 		} else {
-			int[] pixel = cache.getDesktopInt(desksave.getOffset(), width, height);
-			surface.putImage(desksave.getLeft(), desksave.getTop(), width, height, pixel);
+			int[] pixel = state.getCache().getDesktopInt(desksave.getOffset(), width, height);
+			state.getCanvas().putImage(desksave.getLeft(), desksave.getTop(), width, height, pixel);
 		}
 	}
 
@@ -700,7 +683,7 @@ public class Orders {
 			destblt.setOpcode(ROP2_S(data.get8()));
 		// if(logger.isInfoEnabled())
 		// logger.info("opcode="+destblt.getOpcode());
-		surface.drawDestBltOrder(destblt);
+		state.getCanvas().drawDestBltOrder(destblt);
 	}
 
 	/**
@@ -729,7 +712,7 @@ public class Orders {
 			data.copyToByteArray(fontdata, 0, data.getPosition(), datasize);
 			data.incrementPosition(datasize);
 			glyph = new Glyph(font, character, offset, baseline, width, height, fontdata);
-			cache.putFont(glyph);
+			state.getCache().putFont(glyph);
 		}
 	}
 
@@ -766,7 +749,7 @@ public class Orders {
 			return;
 		}
 		// now draw the line
-		surface.drawLineOrder(line);
+		state.getCanvas().drawLineOrder(line);
 	}
 
 	/**
@@ -802,7 +785,7 @@ public class Orders {
 			memblt.setCacheIDX(data.getLittleEndian16());
 		// if(logger.isInfoEnabled()) logger.info("Memblt
 		// opcode="+memblt.getOpcode());
-		surface.drawMemBltOrder(memblt);
+		state.getCanvas().drawMemBltOrder(memblt);
 	}
 
 	/**
@@ -831,7 +814,7 @@ public class Orders {
 			patblt.setForegroundColor(setColor(data));
 		parseBrush(data, patblt.getBrush(), present >> 7);
 		// if(logger.isInfoEnabled()) logger.info("opcode="+patblt.getOpcode());
-		surface.drawPatBltOrder(patblt);
+		state.getCanvas().drawPatBltOrder(patblt);
 	}
 
 	/**
@@ -867,7 +850,7 @@ public class Orders {
 		// ("+line.getStartX()+","+line.getStartY()+") to
 		// ("+line.getEndX()+","+line.getEndY()+")");
 		// now draw the line
-		surface.drawPolyLineOrder(polyline);
+		state.getCanvas().drawPolyLineOrder(polyline);
 	}
 
 	/**
@@ -896,7 +879,8 @@ public class Orders {
 			pinverted -= width * Bpp;
 			pdata += width * Bpp;
 		}
-		cache.putBitmap(cache_id, cache_idx, new Bitmap(Bitmap.convertImage(state, inverted, Bpp), width, height, 0, 0), 0);
+		state.getCache().putBitmap(cache_id, cache_idx, new Bitmap(Bitmap.convertImage(state, inverted, Bpp), width, height, 0, 0),
+				0);
 	}
 
 	/**
@@ -925,7 +909,7 @@ public class Orders {
 		if ((present & 0x40) != 0)
 			this.rect_colour = (this.rect_colour & 0xff00ffff) | (data.get8() << 16);
 		rect.setColor(this.rect_colour);
-		surface.drawRectangleOrder(rect);
+		state.getCanvas().drawRectangleOrder(rect);
 	}
 
 	/**
@@ -954,7 +938,7 @@ public class Orders {
 			screenblt.setSrcY(setCoordinate(data, screenblt.getSrcY(), delta));
 		// if(logger.isInfoEnabled())
 		// logger.info("opcode="+screenblt.getOpcode());
-		surface.drawScreenBltOrder(screenblt);
+		state.getCanvas().drawScreenBltOrder(screenblt);
 	}
 
 	/**
@@ -1151,7 +1135,7 @@ public class Orders {
 			triblt.setCacheIDX(data.getLittleEndian16());
 		if ((present & 0x10000) != 0)
 			triblt.setUnknown(data.getLittleEndian16());
-		surface.drawTriBltOrder(triblt);
+		state.getCanvas().drawTriBltOrder(triblt);
 	}
 
 	private int ROP2_P(int rop3) {

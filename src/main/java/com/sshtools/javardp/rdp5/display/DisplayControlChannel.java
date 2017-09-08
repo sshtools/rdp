@@ -7,11 +7,9 @@ import java.util.Collection;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
-import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.SecurityType;
-import com.sshtools.javardp.State;
 import com.sshtools.javardp.layers.Secure;
 import com.sshtools.javardp.rdp5.VChannel;
 import com.sshtools.javardp.rdp5.VChannels;
@@ -24,10 +22,6 @@ public class DisplayControlChannel extends VChannel {
 	private int maxMonitorAreaFactorA;
 	private int maxMonitorAreaFactorB;
 	private int maxNumMonitors;
-
-	public DisplayControlChannel(IContext context, State state) {
-		super(context, state);
-	}
 
 	@Override
 	public int flags() {
@@ -99,7 +93,6 @@ public class DisplayControlChannel extends VChannel {
 			l.writer(p);
 		}
 		p.markEnd();
-		context.getSecure().send_to_channel(p, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
-				this.mcs_id());
+		secure.send_to_channel(p, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 	}
 }

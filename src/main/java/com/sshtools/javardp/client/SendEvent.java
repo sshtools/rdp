@@ -20,7 +20,7 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 import com.sshtools.javardp.Input;
-import com.sshtools.javardp.Rdp;
+import com.sshtools.javardp.layers.Rdp;
 
 public class SendEvent extends JFrame {
 

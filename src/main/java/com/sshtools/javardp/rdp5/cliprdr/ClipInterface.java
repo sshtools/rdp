@@ -12,14 +12,14 @@
 package com.sshtools.javardp.rdp5.cliprdr;
 
 import java.awt.datatransfer.Transferable;
+import java.io.IOException;
 
 import com.sshtools.javardp.RdesktopException;
 
 public interface ClipInterface {
+	void copyToClipboard(Transferable t);
 
-	public void copyToClipboard(Transferable t);
+	void send_data(byte[] data, int length) throws RdesktopException, IOException;
 
-	public void send_data(byte[] data, int length) throws RdesktopException;
-
-	public void send_null(int type, int status);
+	void send_null(int type, int status);
 }

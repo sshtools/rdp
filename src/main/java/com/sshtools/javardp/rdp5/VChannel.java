@@ -27,11 +27,17 @@ public abstract class VChannel {
 	static Logger logger = LoggerFactory.getLogger(VChannel.class);
 	protected IContext context;
 	protected State state;
+	protected Secure secure;
 	private int mcs_id = 0;
 
-	public VChannel(IContext context, State state) {
+	public final void start(IContext context, State state, Secure secure) {
 		this.state = state;
+		this.secure = secure;
 		this.context = context;
+		onStart();
+	}
+
+	protected void onStart() {
 	}
 
 	/**
@@ -50,7 +56,7 @@ public abstract class VChannel {
 	 */
 	public Packet init(int length) throws RdesktopException {
 		Packet s;
-		s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, length + 8);
+		s = secure.init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, length + 8);
 		s.setHeader(Packet.CHANNEL_HEADER);
 		s.incrementPosition(8);
 		return s;
@@ -84,7 +90,7 @@ public abstract class VChannel {
 	 * @throws IOException
 	 */
 	public void send_packet(Packet data) throws RdesktopException, IOException {
-		if (context.getSecure() == null)
+		if (secure == null)
 			return;
 		int length = data.size();
 		int data_offset = 0;
@@ -92,8 +98,7 @@ public abstract class VChannel {
 		num_packets += length - (VChannels.CHANNEL_CHUNK_LENGTH) * num_packets;
 		while (data_offset < length) {
 			int thisLength = Math.min(VChannels.CHANNEL_CHUNK_LENGTH, length - data_offset);
-			Packet s = context.getSecure().init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
-					8 + thisLength);
+			Packet s = secure.init(state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, 8 + thisLength);
 			s.setLittleEndian32(length);
 			int flags = ((data_offset == 0) ? VChannels.CHANNEL_FLAG_FIRST : 0);
 			if (data_offset + thisLength >= length)
@@ -105,9 +110,7 @@ public abstract class VChannel {
 			s.incrementPosition(thisLength);
 			s.markEnd();
 			data_offset += thisLength;
-			if (context.getSecure() != null)
-				context.getSecure().send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0,
-						this.mcs_id());
+			secure.send_to_channel(s, state.getSecurityType() == SecurityType.STANDARD ? Secure.SEC_ENCRYPT : 0, this.mcs_id());
 		}
 	}
 

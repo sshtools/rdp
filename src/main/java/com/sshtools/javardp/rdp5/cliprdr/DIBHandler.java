@@ -28,9 +28,7 @@ import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class DIBHandler extends TypeHandler implements ImageObserver {
-	
 	static Logger logger = LoggerFactory.getLogger(DIBHandler.class);
-	
 	private IContext context;
 
 	public DIBHandler(IContext context) {
@@ -81,9 +79,7 @@ public class DIBHandler extends TypeHandler implements ImageObserver {
 				try {
 					mediaTracker.waitForID(0);
 				} catch (InterruptedException ie) {
-					System.err.println(ie);
-					if (!context.isUnderApplet())
-						System.exit(1);
+					throw new RdesktopException("Interrupted waiting for bitmap.", ie);
 				}
 				if (img == null)
 					return;

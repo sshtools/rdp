@@ -45,7 +45,7 @@ public class RdpMenu extends MenuBar {
 		item.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				parent.exit();
+				parent.dispose();
 			}
 		});
 		m.add(item);

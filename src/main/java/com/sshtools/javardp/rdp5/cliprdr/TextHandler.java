@@ -14,13 +14,13 @@ package com.sshtools.javardp.rdp5.cliprdr;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.io.IOException;
 
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.Utilities;
 
 public class TextHandler extends TypeHandler {
-
 	@Override
 	public boolean formatValid(int format) {
 		return (format == CF_TEXT);
@@ -34,7 +34,6 @@ public class TextHandler extends TypeHandler {
 			} catch (Exception e) {
 				s = e.toString();
 			}
-
 			// TODO: think of a better way of fixing this
 			s = s.replace('\n', (char) 0x0a);
 			// s = s.replaceAll("" + (char) 0x0a, "" + (char) 0x0d + (char)
@@ -58,9 +57,8 @@ public class TextHandler extends TypeHandler {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see
-	 * com.elusiva.rdp.rdp5.cliprdr.TypeHandler#handleData(com.elusiva.rdp.RdpPacket
-	 * , int, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
+	 * @see com.elusiva.rdp.rdp5.cliprdr.TypeHandler#handleData(com.elusiva.rdp.
+	 * RdpPacket , int, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
 	 */
 	@Override
 	public void handleData(Packet data, int length, ClipInterface c) {
@@ -88,15 +86,8 @@ public class TextHandler extends TypeHandler {
 		return CF_TEXT;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.elusiva.rdp.rdp5.cliprdr.TypeHandler#send_data(java.awt.datatransfer
-	 * .Transferable, com.elusiva.rdp.rdp5.cliprdr.ClipInterface)
-	 */
 	@Override
-	public void send_data(Transferable in, ClipInterface c) throws RdesktopException {
+	public void send_data(Transferable in, ClipInterface c) throws RdesktopException, IOException {
 		String s;
 		if (in != null) {
 			try {
@@ -104,16 +95,13 @@ public class TextHandler extends TypeHandler {
 			} catch (Exception e) {
 				s = e.toString();
 			}
-
 			// TODO: think of a better way of fixing this
 			s = s.replace('\n', (char) 0x0a);
 			// s = s.replaceAll("" + (char) 0x0a, "" + (char) 0x0d + (char)
 			// 0x0a);
 			s = Utilities.strReplaceAll(s, "" + (char) 0x0a, "" + (char) 0x0d + (char) 0x0a);
-
 			// return s.getBytes();
 			c.send_data(s.getBytes(), s.length());
 		}
 	}
-
 }

@@ -25,11 +25,10 @@ import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.Input;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
-import com.sshtools.javardp.Rdp;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.WrappedImage;
 import com.sshtools.javardp.keymapping.KeyCode;
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
+import com.sshtools.javardp.layers.Rdp;
 import com.sshtools.javardp.orders.BoundsOrder;
 import com.sshtools.javardp.orders.Brush;
 import com.sshtools.javardp.orders.DestBltOrder;
@@ -53,7 +52,6 @@ public class RdesktopCanvas {
 	private static final int ROP2_XOR = 0x6;
 	private static final int TEXT2_IMPLICIT_X = 0x20;
 	private static final int TEXT2_VERTICAL = 0x04;
-	public KeyCode_FileBased fbKeys = null;
 	public KeyCode keys = null;
 	public Rdp rdp = null;
 	public String sKeys = null;
@@ -61,7 +59,6 @@ public class RdesktopCanvas {
 	protected IndexColorModel colormap = null;
 	Display backstore;
 	private int bottom = 0;
-	private Cache cache = null;
 	private IContext context;
 	private int height;
 	// unsetBusyCursor
@@ -112,7 +109,8 @@ public class RdesktopCanvas {
 		this.backstore = backstore;
 		// now do input listeners in registerCommLayer() / registerKeyboard()
 		backstore.init(this);
-		context.init(this);
+		state.setCanvas(this);
+		input = new Input(context, state, this);
 	}
 
 	public void backingStoreResize(int width, int height, boolean clientInitiated) {
@@ -644,7 +642,7 @@ public class RdesktopCanvas {
 			logger.debug("MEMBLT x=" + x + " y=" + y + " cx=" + cx + " cy=" + cy + " srcx=" + srcx + " srcy=" + srcy + " opcode="
 					+ memblt.getOpcode());
 		try {
-			Bitmap bitmap = cache.getBitmap(memblt.getCacheID(), memblt.getCacheIDX());
+			Bitmap bitmap = state.getCache().getBitmap(memblt.getCacheID(), memblt.getCacheIDX());
 			// IndexColorModel cm = cache.get_colourmap(memblt.getColorTable());
 			// should use the colormap, but requires high color backstore...
 			if (x + cx > backstore.getDisplayWidth() || y + cy > backstore.getDisplayHeight()) {
@@ -793,7 +791,7 @@ public class RdesktopCanvas {
 			y = this.top;
 		cy = clipbottom - y + 1;
 		try {
-			Bitmap bitmap = cache.getBitmap(triblt.getCacheID(), triblt.getCacheIDX());
+			Bitmap bitmap = state.getCache().getBitmap(triblt.getCacheID(), triblt.getCacheIDX());
 			switch (triblt.getOpcode()) {
 			case 0x69: // PDSxxn
 				rop.do_array(ROP2_XOR, backstore, this.width, x, y, cx, cy, bitmap.getBitmapData(), bitmap.getWidth(), srcx, srcy);
@@ -1010,42 +1008,6 @@ public class RdesktopCanvas {
 				// offset needed
 				cx);
 		backstore.repaint(x, y, cx, cy);
-	}
-
-	/**
-	 * Set cache for this session
-	 * 
-	 * @param cache Cache to be used in this session
-	 */
-	public void registerCache(Cache cache) {
-		this.cache = cache;
-	}
-
-	/**
-	 * Register the Rdp layer to act as the communications interface to this
-	 * canvas
-	 * 
-	 * @param rdp Rdp object controlling Rdp layer communication
-	 */
-	public void registerCommLayer(Rdp rdp) {
-		this.rdp = rdp;
-		if (fbKeys != null)
-			input = new Input(context, state, this, rdp, fbKeys);
-	}
-
-	/**
-	 * Register keymap
-	 * 
-	 * @param keys Keymapping object for use in handling keyboard events
-	 */
-	public void registerKeyboard(KeyCode_FileBased keys) {
-		this.fbKeys = keys;
-		if (rdp != null) {
-			// rdp and keys have been registered...
-			if (input != null)
-				input.removeInputListeners();
-			input = new Input(context, state, this, rdp, keys);
-		}
 	}
 
 	// @Override

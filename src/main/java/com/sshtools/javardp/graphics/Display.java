@@ -102,4 +102,6 @@ public interface Display {
 	 */
 	void setRGBNoConversion(int x, int y, int cx, int cy, int[] data, int offset, int w);
 
+	boolean getLockingKeyState(int vk);
+
 }

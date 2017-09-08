@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.CredentialProvider.CredentialType;
+import com.sshtools.javardp.graphics.RdesktopCanvas;
+import com.sshtools.javardp.layers.Rdp;
 
 public class State {
 	final static Logger LOG = LoggerFactory.getLogger(State.class);
@@ -44,6 +46,10 @@ public class State {
 	private String cookie;
 	private CredentialProvider credentialProvider;
 	private Semaphore commLock = new Semaphore(1);
+	private int mcsUserId;
+	private Cache cache;
+	private Rdp rdp;
+	private RdesktopCanvas canvas;
 
 	public State(Options options) {
 		this.options = options;
@@ -67,7 +73,7 @@ public class State {
 			workstationName = "localhost";
 		if (clientIp == null || clientIp.length() == 0)
 			clientIp = "127.0.0.1";
-//		workstationName = workstationName.toUpperCase();
+		// workstationName = workstationName.toUpperCase();
 		/* Client dir */
 		clientDir = options.getClientDir();
 		if (StringUtils.isBlank(clientDir)) {
@@ -91,6 +97,8 @@ public class State {
 			clientDomain = System.getenv("USERDOMAIN"); // NTML domain
 			// TODO fqdn is USERDNSDOMAIN
 		}
+		/* Cache */
+		cache = new Cache(this);
 		/* Initial state. */
 		width = options.getWidth();
 		height = options.getHeight();
@@ -103,7 +111,35 @@ public class State {
 		}
 		this.rdp5 = options.isRdp5();
 	}
-	
+
+	public Rdp getRdp() {
+		return rdp;
+	}
+
+	public void setRdp(Rdp rdp) {
+		this.rdp = rdp;
+	}
+
+	public RdesktopCanvas getCanvas() {
+		return canvas;
+	}
+
+	public void setCanvas(RdesktopCanvas canvas) {
+		this.canvas = canvas;
+	}
+
+	public Cache getCache() {
+		return cache;
+	}
+
+	public int getMcsUserId() {
+		return mcsUserId;
+	}
+
+	public void setMcsUserId(int mcsUserId) {
+		this.mcsUserId = mcsUserId;
+	}
+
 	public Semaphore getCommLock() {
 		return commLock;
 	}

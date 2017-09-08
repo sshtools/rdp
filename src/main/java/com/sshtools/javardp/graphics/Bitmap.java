@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.State;
-import com.sshtools.javardp.WrappedImage;
 
 public class Bitmap {
 	

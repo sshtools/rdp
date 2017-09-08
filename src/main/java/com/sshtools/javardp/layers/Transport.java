@@ -28,7 +28,7 @@ import com.sshtools.javardp.io.IOSocket;
 import com.sshtools.javardp.io.SocketIO;
 import com.sshtools.javardp.layers.nla.NLA;
 
-public class Transport {
+public class Transport implements Layer<ISO> {
 	static Logger logger = LoggerFactory.getLogger(Transport.class);
 	public static final String[] CIPHERS = { "SSL_RSA_WITH_RC4_128_MD5", "SSL_RSA_WITH_RC4_128_SHA",
 			"TLS_DHE_RSA_WITH_AES_128_CBC_SHA", "TLS_DHE_DSS_WITH_AES_128_CBC_SHA", "SSL_RSA_WITH_3DES_EDE_CBC_SHA",
@@ -39,9 +39,11 @@ public class Transport {
 	private DataInputStream in = null;
 	private IO io;
 	private DataOutputStream out = null;
+	private ISO iso;
 
-	public Transport(State state) {
+	public Transport(State state, ISO iso) {
 		this.state = state;
+		this.iso = iso;
 	}
 
 	public void sendPacket(Packet buffer) throws IOException {
@@ -191,5 +193,10 @@ public class Transport {
 				io = null;
 			}
 		}
+	}
+
+	@Override
+	public ISO getParent() {
+		return iso;
 	}
 }

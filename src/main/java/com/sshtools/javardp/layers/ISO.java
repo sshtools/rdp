@@ -18,7 +18,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.HexDump;
 import com.sshtools.javardp.IContext;
 import com.sshtools.javardp.OrderException;
 import com.sshtools.javardp.Packet;
@@ -27,7 +26,7 @@ import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.io.IO;
 
-public class ISO {
+public class ISO implements Layer<MCS> {
 	static Logger logger = LoggerFactory.getLogger(ISO.class);
 	private static final int CONNECTION_CONFIRM = 0xD0;
 	/* this for the ISO Layer */
@@ -40,14 +39,16 @@ public class ISO {
 	private IContext context;
 	private State state;
 	private Transport transport;
+	private MCS mcs;
 
 	/**
 	 * Construct ISO object, initialises hex dump
 	 */
-	public ISO(IContext context, State state) {
+	public ISO(IContext context, State state, MCS mcs) {
 		this.context = context;
 		this.state = state;
-		transport = new Transport(state);
+		this.mcs = mcs;
+		transport = new Transport(state, this);
 	}
 
 	/**
@@ -271,7 +272,7 @@ public class ISO {
 			if ((version & 3) == 0) {
 				if (logger.isDebugEnabled())
 					logger.debug("Processing rdp5 packet of " + length);
-				context.getRdp().rdp5_process(s, (version & 0x80) != 0);
+				mcs.getParent().getParent().rdp5_process(s, (version & 0x80) != 0);
 				continue next_packet;
 			} else
 				break;
@@ -308,5 +309,10 @@ public class ISO {
 		// address we use 0
 		buffer.set8(0); // service class
 		transport.sendPacket(buffer);
+	}
+
+	@Override
+	public MCS getParent() {
+		return mcs;
 	}
 }

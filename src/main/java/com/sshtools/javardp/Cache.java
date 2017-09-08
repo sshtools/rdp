@@ -22,26 +22,19 @@ import com.sshtools.javardp.graphics.Glyph;
 import com.sshtools.javardp.graphics.RdpCursor;
 
 public class Cache {
-
 	static Logger logger = LoggerFactory.getLogger(Cache.class);
-
 	private static final int RDPCACHE_COLOURMAPSIZE = 0x06; // unified patch
-
 	private Bitmap[][] bitmapcache = new Bitmap[3][600];
-
 	private IndexColorModel[] colourcache = new IndexColorModel[RDPCACHE_COLOURMAPSIZE];
-
 	private RdpCursor[] cursorcache = new RdpCursor[32];
-
 	private Glyph[][] fontcache = new Glyph[12][256];
-
 	private int[] highdeskcache = new int[921600];
-
 	private int num_bitmaps_in_memory[] = new int[3];
-
 	private DataBlob[] textcache = new DataBlob[256];
+	private State state;
 
-	public Cache() {
+	public Cache(State state) {
+		this.state = state;
 	}
 
 	/**
@@ -70,9 +63,7 @@ public class Cache {
 	 * @throws RdesktopException
 	 */
 	public Bitmap getBitmap(int cache_id, int cache_idx) throws RdesktopException {
-
 		Bitmap bitmap = null;
-
 		if ((cache_id < bitmapcache.length) && (cache_idx < bitmapcache[0].length)) {
 			bitmap = bitmapcache[cache_id][cache_idx];
 			/*
@@ -85,7 +76,6 @@ public class Cache {
 			if (bitmap != null)
 				return bitmap;
 		}
-
 		throw new RdesktopException("Could not get Bitmap!");
 	}
 
@@ -98,7 +88,6 @@ public class Cache {
 	 */
 	public RdpCursor getCursor(int cache_idx) throws RdesktopException {
 		RdpCursor cursor = null;
-
 		if (cache_idx < cursorcache.length) {
 			cursor = cursorcache[cache_idx];
 			if (cursor != null) {
@@ -121,10 +110,8 @@ public class Cache {
 		int length = cx * cy;
 		int pdata = 0;
 		int[] data = new int[length];
-
 		if (offset > highdeskcache.length)
 			offset = 0;
-
 		if (offset + length <= highdeskcache.length) {
 			for (int i = 0; i < cy; i++) {
 				System.arraycopy(highdeskcache, offset, data, pdata, cx);
@@ -145,7 +132,6 @@ public class Cache {
 	 * @throws RdesktopException
 	 */
 	public Glyph getFont(int font, int character) throws RdesktopException {
-
 		if ((font < fontcache.length) && (character < fontcache[0].length)) {
 			Glyph glyph = fontcache[font][character];
 			if (glyph != null) {
@@ -172,7 +158,6 @@ public class Cache {
 				}
 			}
 		}
-
 		throw new RdesktopException("Could not get Text:" + cache_id);
 	}
 
@@ -201,9 +186,7 @@ public class Cache {
 	 * @throws RdesktopException
 	 */
 	public void putBitmap(int cache_id, int cache_idx, Bitmap bitmap, int stamp) throws RdesktopException {
-
 		// Bitmap old;
-
 		if ((cache_id < bitmapcache.length) && (cache_idx < bitmapcache[0].length)) {
 			bitmapcache[cache_id][cache_idx] = bitmap;
 			/*
@@ -226,7 +209,6 @@ public class Cache {
 	 * @throws RdesktopException
 	 */
 	public void putCursor(int cache_idx, RdpCursor cursor) throws RdesktopException {
-
 		if (cache_idx < cursorcache.length) {
 			cursorcache[cache_idx] = cursor;
 		} else {
@@ -244,13 +226,10 @@ public class Cache {
 	 * @throws RdesktopException
 	 */
 	public void putDesktop(int offset, int cx, int cy, int[] data) throws RdesktopException {
-
 		int length = cx * cy;
 		int pdata = 0;
-
 		if (offset > highdeskcache.length)
 			offset = 0;
-
 		if (offset + length <= highdeskcache.length) {
 			for (int i = 0; i < cy; i++) {
 				System.arraycopy(data, pdata, highdeskcache, offset, cx);
@@ -296,11 +275,11 @@ public class Cache {
 	 */
 	public void saveState() {
 		int id, idx;
-
 		for (id = 0; id < bitmapcache.length; id++)
-			if (PstCache.IS_PERSISTENT(id))
+			if (state.getOptions().getPersistentCacheBackend() != null
+					&& state.getOptions().getPersistentCacheBackend().IS_PERSISTENT(id))
 				for (idx = 0; idx < bitmapcache[id].length; idx++)
-					PstCache.touchBitmap(id, idx, bitmapcache[id][idx].usage);
+					state.getOptions().getPersistentCacheBackend().touchBitmap(id, idx, bitmapcache[id][idx].usage);
 	}
 
 	/**
@@ -312,21 +291,18 @@ public class Cache {
 		int i;
 		int cache_idx = 0;
 		int m = 0xffffffff;
-
 		for (i = 0; i < bitmapcache[cache_id].length; i++) {
 			if ((bitmapcache[cache_id][i] != null) && (bitmapcache[cache_id][i].getBitmapData() != null)
-				&& (bitmapcache[cache_id][i].usage < m)) {
+					&& (bitmapcache[cache_id][i].usage < m)) {
 				cache_idx = i;
 				m = bitmapcache[cache_id][i].usage;
 			}
 		}
-
 		bitmapcache[cache_id][cache_idx] = null;
 		--num_bitmaps_in_memory[cache_id];
 	}
 
 	void TOUCH(int id, int idx) {
-		bitmapcache[id][idx].usage = ++PstCache.g_stamp;
+		bitmapcache[id][idx].usage = state.getOptions().getPersistentCacheBackend().nextSeq();
 	}
-
 }

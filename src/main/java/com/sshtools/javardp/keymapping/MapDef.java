@@ -16,7 +16,8 @@ import java.io.PrintStream;
 import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
-import com.sshtools.javardp.Constants;
+import org.apache.commons.lang3.SystemUtils;
+
 import com.sshtools.javardp.Options;
 
 public class MapDef {
@@ -280,7 +281,7 @@ public class MapDef {
 	}
 
 	protected boolean appliesToTyped(KeyEvent e, boolean capslock) {
-		if (Constants.OS == Constants.MAC) {
+		if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_MAC) {
 			// Remap the hash key to �
 			// TODO not sure what this should actually be
 			// if (options.remap_hash && (e.getKeyChar() == '')) {
