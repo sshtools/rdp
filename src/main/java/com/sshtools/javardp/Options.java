@@ -10,12 +10,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
 
+import javax.net.ssl.X509TrustManager;
 import javax.security.auth.login.Configuration;
 
 import org.apache.commons.lang3.SystemUtils;
 
 import com.sshtools.javardp.keymapping.KeyCode_FileBased;
 import com.sshtools.javardp.layers.Rdp;
+import com.sshtools.javardp.layers.Secure;
 
 public class Options {
 	public final static int BUFFEREDIMAGE_BITMAP_DECOMPRESSION = 1;
@@ -71,6 +73,8 @@ public class Options {
 	private int lmCompatibility = 3;
 	private CacheBackend persistentCacheBackend;
 	private KeyCode_FileBased keymap;
+	private X509TrustManager trustManager;
+	private int sessionKeyEncryptionMethod = Secure.SEC_40BIT_ENCRYPTION | Secure.SEC_128BIT_ENCRYPTION | Secure.SEC_56BIT_ENCRYPTION;
 
 	public Options() {
 		if (SystemUtils.IS_OS_WINDOWS_NT && !SystemUtils.IS_OS_WINDOWS_NT && !SystemUtils.IS_OS_WINDOWS_95
@@ -80,6 +84,14 @@ public class Options {
 		if (SystemUtils.IS_OS_MAC) {
 			setCapsSendsUpAndDown(false);
 		}
+	}
+
+	public X509TrustManager getTrustManager() {
+		return trustManager;
+	}
+
+	public void setTrustManager(X509TrustManager trustManager) {
+		this.trustManager = trustManager;
 	}
 
 	public KeyCode_FileBased getKeymap() {
@@ -475,5 +487,25 @@ public class Options {
 
 	public void setLMCompatibility(int lmCompatibility) {
 		this.lmCompatibility = lmCompatibility;
+	}
+
+	public void setSessionKeyEncryptionMethod(int sessionKeyEncryptionMethod) {
+		this.sessionKeyEncryptionMethod = sessionKeyEncryptionMethod;
+	}
+
+	public int getSessionKeyEncryptionMethod() {
+		return sessionKeyEncryptionMethod;
+	}
+	
+	public int getBestSessionKeyEncryptionMethod() {
+		if((sessionKeyEncryptionMethod & Secure.SEC_FIPS_ENCRYPTION) != 0)
+			return Secure.SEC_FIPS_ENCRYPTION;
+		if((sessionKeyEncryptionMethod & Secure.SEC_128BIT_ENCRYPTION) != 0)
+			return Secure.SEC_128BIT_ENCRYPTION;
+		if((sessionKeyEncryptionMethod & Secure.SEC_56BIT_ENCRYPTION) != 0)
+			return Secure.SEC_56BIT_ENCRYPTION;
+		if((sessionKeyEncryptionMethod & Secure.SEC_40BIT_ENCRYPTION) != 0)
+			return Secure.SEC_40BIT_ENCRYPTION;
+		return 0;
 	}
 }

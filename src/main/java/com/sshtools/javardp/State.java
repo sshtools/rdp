@@ -50,6 +50,8 @@ public class State {
 	private Cache cache;
 	private Rdp rdp;
 	private RdesktopCanvas canvas;
+	private int serverStatus;
+	private int sessionKeyEncryptionMethod;
 
 	public State(Options options) {
 		this.options = options;
@@ -100,8 +102,8 @@ public class State {
 		/* Cache */
 		cache = new Cache(this);
 		/* Initial state. */
-		width = options.getWidth();
-		height = options.getHeight();
+		width = options.getWidth() == 0 ? 1024 : options.getWidth();
+		height = options.getHeight() == 0 ? 768 : options.getHeight();
 		serverBpp = options.getBpp();
 		cookie = options.getCookie();
 		if (StringUtils.isBlank(cookie))
@@ -110,6 +112,14 @@ public class State {
 			securityType = options.getSecurityTypes().get(options.getSecurityTypes().size() - 1);
 		}
 		this.rdp5 = options.isRdp5();
+	}
+
+	public int getServerStatus() {
+		return serverStatus;
+	}
+
+	public void setServerStatus(int serverStatus) {
+		this.serverStatus = serverStatus;
 	}
 
 	public Rdp getRdp() {
@@ -300,7 +310,13 @@ public class State {
 	}
 
 	public void setRDP5(boolean rdp5) {
-		this.rdp5 = rdp5;
+		if (this.rdp5 != rdp5) {
+			this.rdp5 = rdp5;
+			if (rdp5)
+				LOG.info("Activating RDP5+");
+		} else {
+			LOG.info("Activating RDP4");
+		}
 	}
 
 	public void setServerBpp(int serverBpp) {
@@ -345,5 +361,13 @@ public class State {
 
 	public String getClientDomain() {
 		return clientDomain;
+	}
+
+	public int getSessionKeyEncryptionMethod() {
+		return sessionKeyEncryptionMethod;
+	}
+
+	public void setSessionKeyEncryptionMethod(int sessionKeyEncryptionMethod) {
+		this.sessionKeyEncryptionMethod = sessionKeyEncryptionMethod;
 	}
 }

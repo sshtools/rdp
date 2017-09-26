@@ -11,7 +11,7 @@ import org.openmuc.jasn1.ber.types.BerType;
 import com.sshtools.javardp.layers.nla.NLA.TSCredentials;
 
 public class TSRequest implements BerPayload {
-	private int version = 2;
+	private int version = 3;
 	private byte[] negoData = null;
 	private TSCredentials authInfo = null;
 	private byte[] pubKeyAuth = null;
@@ -63,6 +63,10 @@ public class TSRequest implements BerPayload {
 
 	public void read(BerType type) throws IOException {
 		BerSequence seq = (BerSequence) type;
+		BerInteger errBer = seq.get(BerInteger.class, 4);
+		if (errBer != null) {
+			throw new HResultException(errBer.intValue());
+		}
 		version = seq.get(BerInteger.class, 0).intValue();
 		BerSequence negoTokens = seq.get(BerSequence.class, 1);
 		BerSequence negoSeqs = negoTokens.get(BerSequence.class, 0);

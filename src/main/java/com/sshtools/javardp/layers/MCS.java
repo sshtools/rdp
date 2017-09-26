@@ -76,6 +76,7 @@ public class MCS implements Layer<Secure> {
 	 * @return Length of following data
 	 * @throws RdesktopException
 	 */
+	@Deprecated
 	public int berParseHeader(Packet data, int tagval) throws RdesktopException {
 		int tag = 0;
 		int length = 0;
@@ -416,6 +417,7 @@ public class MCS implements Layer<Secure> {
 	 * @param tagval Data type for header
 	 * @param length Length of data header precedes
 	 */
+	@Deprecated
 	public void sendBerHeader(Packet buffer, int tagval, int length) {
 		if (tagval > 0xff) {
 			buffer.setBigEndian16(tagval);
@@ -436,6 +438,7 @@ public class MCS implements Layer<Secure> {
 	 * @param buffer Packet in which to store encoded value
 	 * @param value Integer value to store
 	 */
+	@Deprecated
 	public void sendBerInteger(Packet buffer, int value) {
 		int len = 1;
 		if (value > 0xff)
@@ -534,6 +537,7 @@ public class MCS implements Layer<Secure> {
 	 * @param length Length of data header will precede
 	 * @return
 	 */
+	@Deprecated
 	private int berHeaderSize(int tagval, int length) {
 		int total = 0;
 		if (tagval > 0xff) {
@@ -555,6 +559,7 @@ public class MCS implements Layer<Secure> {
 	 * @param value Value of integer
 	 * @return Number of bytes the encoded data would occupy
 	 */
+	@Deprecated
 	private int BERIntSize(int value) {
 		if (value > 0xff)
 			return 4;

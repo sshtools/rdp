@@ -101,4 +101,10 @@ public class Utilities {
 	public static byte[] intToBytes(int val) {
 		return new byte[] { (byte) (val & 0xFF), (byte) (val >> 8 & 0xFF), (byte) (val >> 16 & 0xFF), (byte) (val >> 24 & 0xFF) };
 	}
+
+	public static byte[] slice(byte[] arr, int start, int end) {
+		byte[] a = new byte[end - start];
+		System.arraycopy(arr, start, a, 0, a.length);
+		return a;
+	}
 }

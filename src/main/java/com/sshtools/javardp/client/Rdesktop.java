@@ -43,7 +43,7 @@ import com.sshtools.javardp.rdp5.VChannels;
 import com.sshtools.javardp.rdp5.cliprdr.ClipChannel;
 
 public class Rdesktop {
-	static Logger logger = LoggerFactory.getLogger(Rdesktop.class);
+	static Logger logger;
 	private static final String keyMapPath = "keymaps/";
 	private static String mapFile = "en-gb";
 	private static boolean showTools;
@@ -90,9 +90,18 @@ public class Rdesktop {
 		cliOptions.addOption("p", "password", true, "Password");
 		cliOptions.addOption("u", "username", true, "Username");
 		cliOptions.addOption("t", "port", true, "Port");
+		cliOptions.addOption("l", "log", true, "Log level");
+		cliOptions.addOption("K", "skencmethod", true, "Session key encryption method (1=40 bit|2=128 bit|8=56 bit|16=FIPS)");
 		PosixParser parser = new PosixParser();
 		try {
 			CommandLine cli = parser.parse(cliOptions, args);
+			// Debug level
+			String level = "warn";
+			if (cli.hasOption("log")) {
+				level = cli.getOptionValue("log");
+			}
+			System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", level);
+			logger = LoggerFactory.getLogger(Rdesktop.class);
 			if (cli.hasOption("debugHex")) {
 				options.setDebugHexdump(true);
 			}
@@ -204,6 +213,9 @@ public class Rdesktop {
 			if (fKdeHack) {
 				options.setHeight(options.getHeight() - 46);
 			}
+			if(cli.hasOption('K')) {
+				options.setSessionKeyEncryptionMethod(Integer.parseInt(cli.getOptionValue('K')));
+			}
 			@SuppressWarnings("unchecked")
 			List<String> remainingArgs = cli.getArgList();
 			if (remainingArgs.size() == 1) {
@@ -261,7 +273,6 @@ public class Rdesktop {
 			if (options.isMapClipboard())
 				channels.register(clipChannel);
 		}
-
 		final RdesktopFrame window = new RdesktopFrame(state);
 		window.addWindowListener(new WindowAdapter() {
 			@Override

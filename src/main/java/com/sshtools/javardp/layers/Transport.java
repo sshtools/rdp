@@ -109,7 +109,15 @@ public class Transport implements Layer<ISO> {
 			logger.debug("receivePacket");
 		Packet buffer = null;
 		byte[] packet = new byte[length];
-		in.readFully(packet, 0, length);
+		try {
+			in.readFully(packet, 0, length);
+		} catch (IOException ioe) {
+			if (logger.isDebugEnabled()) {
+				logger.debug(String.format("I/O error reading packet. Expected up to %d bytes.", length));
+				HexDump.encode(packet, "Packet payload (read so far) contains");
+			}
+			throw ioe;
+		}
 		if (state.getOptions().isDebugHexdump())
 			HexDump.encode(packet, "RECEIVE" /* System.out */);
 		if (p == null) {
@@ -130,7 +138,23 @@ public class Transport implements Layer<ISO> {
 
 	protected IO negotiateSSL(IO io) throws Exception {
 		Socket socket = new IOSocket(io);
-		X509TrustManager tm = new X509TrustManager() {
+		X509TrustManager tm = state.getOptions().getTrustManager() == null ? createDefaultTrustManager()
+				: state.getOptions().getTrustManager();
+		SSLContext sc = SSLContext.getInstance("TLS");
+		sc.init(null, new X509TrustManager[] { tm }, null);
+		SSLSocketFactory socketFactory = sc.getSocketFactory();
+		logger.info("Initialising SSL");
+		SSLSocket sslSocket = (SSLSocket) socketFactory.createSocket(socket, socket.getInetAddress().getHostName(),
+				socket.getPort(), true);
+		sslSocket.setEnabledCipherSuites(CIPHERS);
+		logger.info("Starting SSL handshake");
+		sslSocket.startHandshake();
+		logger.info("Completed SSL handshake");
+		return new SocketIO(sslSocket);
+	}
+
+	private X509TrustManager createDefaultTrustManager() {
+		return new X509TrustManager() {
 			LinkedList<X509Certificate> listCert = new LinkedList<>();
 
 			@Override
@@ -153,17 +177,6 @@ public class Transport implements Layer<ISO> {
 				return this.listCert.toArray(new X509Certificate[this.listCert.size()]);
 			}
 		};
-		SSLContext sc = SSLContext.getInstance("TLS");
-		sc.init(null, new X509TrustManager[] { tm }, null);
-		SSLSocketFactory socketFactory = sc.getSocketFactory();
-		logger.info("Initialising SSL");
-		SSLSocket sslSocket = (SSLSocket) socketFactory.createSocket(socket, socket.getInetAddress().getHostName(),
-				socket.getPort(), true);
-		sslSocket.setEnabledCipherSuites(CIPHERS);
-		logger.info("Starting SSL handshake");
-		sslSocket.startHandshake();
-		logger.info("Completed SSL handshake");
-		return new SocketIO(sslSocket);
 	}
 
 	public boolean isConnected() {

@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.Cache;
 import com.sshtools.javardp.IContext;
+import com.sshtools.javardp.IContext.ReadyType;
 import com.sshtools.javardp.Input;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopException;
@@ -1081,8 +1082,12 @@ public class RdesktopCanvas {
 	 * Notify the input classes that the connection is ready for sending
 	 * messages
 	 */
-	public void triggerReadyToSend() {
-		input.triggerReadyToSend();
+	public void triggerReady(ReadyType type) {
+		if(type == ReadyType.INPUT) {
+			input.triggerReadyToSend();
+		}
+		else
+			logger.info("Graphics ready to be sent");
 	}
 
 	/**

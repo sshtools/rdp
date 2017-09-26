@@ -105,6 +105,6 @@ public class IOSocket extends Socket {
 			protected void sendUrgentData(int data) throws IOException {
 			}
 		});
-		connect(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+		connect(new InetSocketAddress(io.getAddress(), 0));
 	}
 }

@@ -20,7 +20,7 @@ public class FileCacheBackend implements CacheBackend {
 	int g_stamp;
 	private State state;
 
-	public FileCacheBackend(State state) {
+	public void start(State state) {
 		this.state = state;
 	}
 

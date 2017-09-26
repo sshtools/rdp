@@ -69,12 +69,11 @@ public class Secure implements Layer<Rdp> {
 	// private String hostname=null;
 	// private String username=null;
 	private VChannels channels;
-	private byte[] client_random = new byte[SEC_RANDOM_SIZE];
+	private byte[] clientRandom = new byte[SEC_RANDOM_SIZE];
 	private int dec_count = 0;
 	private int earlyCaps;
 	private int enc_count = 0;
 	private byte[] exponent = null;
-	private int keylength = 0;
 	private Licence licence;
 	private MCS mcsLayer = null;
 	private MessageDigest md5;
@@ -83,16 +82,18 @@ public class Secure implements Layer<Rdp> {
 	private Cipher rc4_enc = null;
 	private Cipher rc4_update = null;
 	private byte[] sec_crypted_random = null;
-	private byte[] sec_decrypt_key = null;
-	private byte[] sec_decrypt_update_key = null;
-	private byte[] sec_encrypt_key = null;
-	private byte[] sec_encrypt_update_key = null;
-	private byte[] sec_sign_key = null;
+//	private byte[] sec_decrypt_key = null;
+//	private byte[] sec_decrypt_update_key = null;
+//	private byte[] sec_encrypt_key = null;
+//	private byte[] sec_encrypt_update_key = null;
+	private byte[] macKey = null;
 	private int server_public_key_len = 0;
-	private byte[] server_random = null;
+	private byte[] serverRandom = null;
 	private MessageDigest sha1 = null;
 	private State state;
 	private Rdp rdp;
+	private byte[] preMasterSecret;
+	private byte[] masterSecret;
 
 	/**
 	 * Initialise Secure layer of communications
@@ -137,20 +138,20 @@ public class Secure implements Layer<Rdp> {
 		} catch (NoSuchAlgorithmException nsae) {
 			throw new IllegalStateException("Cannot initialise MD5.", nsae);
 		}
-		sec_sign_key = new byte[16]; // changed from 8 - rdesktop 1.2.0
-		sec_decrypt_key = new byte[16];
-		sec_encrypt_key = new byte[16];
-		sec_decrypt_update_key = new byte[16]; // changed from 8 - rdesktop
-		// 1.2.0
-		sec_encrypt_update_key = new byte[16]; // changed from 8 - rdesktop
+		macKey = new byte[16]; // changed from 8 - rdesktop 1.2.0
+//		sec_decrypt_key = new byte[16];
+//		sec_encrypt_key = new byte[16];
+//		sec_decrypt_update_key = new byte[16]; // changed from 8 - rdesktop
+//		// 1.2.0
+//		sec_encrypt_update_key = new byte[16]; // changed from 8 - rdesktop
 		// 1.2.0
 		sec_crypted_random = new byte[64];
-		
-		/* Inform all the channels we now have a securelayer so they can be used */
-		for(VChannel ch : rdp.getChannels()) {
+		/*
+		 * Inform all the channels we now have a securelayer so they can be used
+		 */
+		for (VChannel ch : rdp.getChannels()) {
 			ch.start(context, state, this);
 		}
-		
 	}
 
 	/**
@@ -167,6 +168,7 @@ public class Secure implements Layer<Rdp> {
 	 */
 	public void connect(IO io) throws UnknownHostException, IOException, RdesktopException, SocketException, OrderException {
 		Packet mcs_data = this.sendMcsData();
+		logger.info(String.format("Requested server bpp is %d", state.getServerBpp()));
 		mcsLayer.connect(io, mcs_data);
 		this.processMcsData(mcs_data);
 		if (state.getSecurityType() == SecurityType.STANDARD) {
@@ -187,21 +189,26 @@ public class Secure implements Layer<Rdp> {
 	public byte[] decrypt(byte[] data) throws RdesktopCryptoException {
 		try {
 			byte[] buffer = null;
+			if(logger.isDebugEnabled())
+				logger.debug(String.format("Decrypting %d bytes", data.length));
 			if (this.dec_count == 4096) {
-				sec_decrypt_key = this.update(this.sec_decrypt_key, this.sec_decrypt_update_key);
-				byte[] key = new byte[this.keylength];
-				System.arraycopy(this.sec_decrypt_key, 0, key, 0, this.keylength);
-				this.rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "RC4"));
-				// logger.debug("Packet dec_count="+dec_count);
-				this.dec_count = 0;
+				throw new RdesktopCryptoException("Key update not supported yet");
+//				sec_decrypt_key = this.update(this.sec_decrypt_key, this.sec_decrypt_update_key);
+//				byte[] key = new byte[this.keylength];
+//				System.arraycopy(this.sec_decrypt_key, 0, key, 0, this.keylength);
+//				this.rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "RC4"));
+//				// logger.debug("Packet dec_count="+dec_count);
+//				this.dec_count = 0;
 			}
 			// this.rc4.engineInitDecrypt(this.rc4_decrypt_key);
 			buffer = this.rc4_dec.doFinal(data);
 			this.dec_count++;
 			return buffer;
-		} catch (InvalidKeyException ike) {
-			throw new RdesktopCryptoException("Failed to update key.", ike);
-		} catch (IllegalBlockSizeException e) {
+		} 
+//		catch (InvalidKeyException ike) {
+//			throw new RdesktopCryptoException("Failed to update key.", ike);
+//		} 
+		catch (IllegalBlockSizeException e) {
 			throw new RdesktopCryptoException("Failed to update key.", e);
 		} catch (BadPaddingException e) {
 			throw new RdesktopCryptoException("Failed to update key.", e);
@@ -221,20 +228,23 @@ public class Secure implements Layer<Rdp> {
 		try {
 			byte[] buffer = null;
 			if (this.dec_count == 4096) {
-				sec_decrypt_key = this.update(this.sec_decrypt_key, this.sec_decrypt_update_key);
-				byte[] key = new byte[this.keylength];
-				System.arraycopy(this.sec_decrypt_key, 0, key, 0, this.keylength);
-				this.rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "RC4"));
-				// logger.debug("Packet dec_count="+dec_count);
-				this.dec_count = 0;
+				throw new RdesktopCryptoException("Key update not supported yet");
+//				sec_decrypt_key = this.update(this.sec_decrypt_key, this.sec_decrypt_update_key);
+//				byte[] key = new byte[this.keylength];
+//				System.arraycopy(this.sec_decrypt_key, 0, key, 0, this.keylength);
+//				this.rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "RC4"));
+//				// logger.debug("Packet dec_count="+dec_count);
+//				this.dec_count = 0;
 			}
 			// this.rc4.engineInitDecrypt(this.rc4_decrypt_key);
 			buffer = this.rc4_dec.doFinal(data, 0, length);
 			this.dec_count++;
 			return buffer;
-		} catch (InvalidKeyException ike) {
-			throw new RdesktopCryptoException("Failed to update key.", ike);
-		} catch (IllegalBlockSizeException e) {
+		} 
+//		catch (InvalidKeyException ike) {
+//			throw new RdesktopCryptoException("Failed to update key.", ike);
+//		} 
+		catch (IllegalBlockSizeException e) {
 			throw new RdesktopCryptoException("Failed to update key.", e);
 		} catch (BadPaddingException e) {
 			throw new RdesktopCryptoException("Failed to update key.", e);
@@ -256,19 +266,20 @@ public class Secure implements Layer<Rdp> {
 	 * @throws RdesktopCryptoException
 	 */
 	public byte[] encrypt(byte[] data) throws RdesktopCryptoException {
-		try {
+//		try {
 			byte[] buffer = null;
 			if (this.enc_count == 4096) {
-				sec_encrypt_key = this.update(this.sec_encrypt_key, this.sec_encrypt_update_key);
-				this.rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_encrypt_key, keylength), "RC4"));
-				this.enc_count = 0;
+				throw new RdesktopCryptoException("Key update not supported yet");
+//				sec_encrypt_key = this.update(this.sec_encrypt_key, this.sec_encrypt_update_key);
+//				this.rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_encrypt_key, keylength), "RC4"));
+//				this.enc_count = 0;
 			}
 			buffer = this.rc4_enc.update(data);
 			this.enc_count++;
 			return buffer;
-		} catch (InvalidKeyException ike) {
-			throw new RdesktopCryptoException("Failed to update key.", ike);
-		}
+//		} catch (InvalidKeyException ike) {
+//			throw new RdesktopCryptoException("Failed to update key.", ike);
+//		}
 	}
 
 	/**
@@ -280,20 +291,21 @@ public class Secure implements Layer<Rdp> {
 	 * @throws RdesktopCryptoException
 	 */
 	public byte[] encrypt(byte[] data, int length) throws RdesktopCryptoException {
-		try {
+//		try {
 			byte[] buffer = null;
 			if (this.enc_count == 4096) {
-				sec_encrypt_key = this.update(this.sec_encrypt_key, this.sec_encrypt_update_key);
-				this.rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_encrypt_key, keylength), "RC4"));
-				this.enc_count = 0;
+				throw new RdesktopCryptoException("Key update not supported yet");
+//				sec_encrypt_key = this.update(this.sec_encrypt_key, this.sec_encrypt_update_key);
+//				this.rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_encrypt_key, keylength), "RC4"));
+//				this.enc_count = 0;
 			}
 			// this.rc4.engineInitEncrypt(this.rc4_encrypt_key);
 			buffer = this.rc4_enc.update(data, 0, length);
 			this.enc_count++;
 			return buffer;
-		} catch (InvalidKeyException ike) {
-			throw new RdesktopCryptoException("Failed to update key.", ike);
-		}
+//		} catch (InvalidKeyException ike) {
+//			throw new RdesktopCryptoException("Failed to update key.", ike);
+//		}
 	}
 
 	public void establishKey() throws RdesktopException, IOException {
@@ -322,52 +334,61 @@ public class Secure implements Layer<Rdp> {
 	/**
 	 * Generate encryption keys of applicable size for connection
 	 * 
-	 * @param rc4_key_size Size of keys to generate (1 if 40-bit encryption,
-	 *            otherwise 128-bit)
+	 * @param sessionKeyEncryptionMethod Size of keys to generate (1 if 40-bit
+	 *            encryption, 2 for 128-bit, 4 for 56-bit, 16 for FIPS)
 	 * @throws RdesktopCryptoException
 	 */
-	public void generate_keys(int rc4_key_size) throws RdesktopCryptoException {
-		byte[] session_key = new byte[48];
-		byte[] temp_hash = new byte[48];
-		byte[] input = new byte[48];
-		System.arraycopy(this.client_random, 0, input, 0, 24);
-		System.arraycopy(this.server_random, 0, input, 24, 24);
-		temp_hash = this.hash48(input, this.client_random, this.server_random, 65);
-		session_key = this.hash48(temp_hash, this.client_random, this.server_random, 88);
-		System.arraycopy(session_key, 0, this.sec_sign_key, 0, 16); // changed
-		// from 8 -
-		// rdesktop
-		// 1.2.0
-		this.sec_decrypt_key = this.hash16(session_key, this.client_random, this.server_random, 16);
-		this.sec_encrypt_key = this.hash16(session_key, this.client_random, this.server_random, 32);
-		if (rc4_key_size == 1) {
+	public void generateInitialKeys() throws RdesktopCryptoException {
+		int sessionKeyEncryptionMethod = state.getSessionKeyEncryptionMethod();
+		
+		// MS-RDPBCGR 5.3.5
+		if(sessionKeyEncryptionMethod == Secure.SEC_FIPS_ENCRYPTION)
+			throw new RdesktopCryptoException("FIPS not supported.");
+		
+		preMasterSecret = Utilities.concatenateBytes(Utilities.padBytes(clientRandom, 24), Utilities.padBytes(serverRandom, 24));
+		masterSecret = Utilities.concatenateBytes(Utilities.padBytes(preMasterHash(new byte[] { 0x41 }), 16), Utilities.padBytes(preMasterHash(new byte[] { 0x42,0x42 }), 16), Utilities.padBytes(preMasterHash(new byte[] { 0x43,0x43 }), 16));
+
+		byte[] sessionKeyBlob = Utilities.concatenateBytes(Utilities.padBytes(masterHash(new byte[] { 0x58 }), 16), Utilities.padBytes(preMasterHash(new byte[] { 0x59,0x59 }), 16), Utilities.padBytes(preMasterHash(new byte[] { 0x5A,0x5A,0x5A }), 16));
+		byte[] macKey128 = Utilities.padBytes(sessionKeyBlob, 16);
+		
+		byte[] decryptKey = finalHash(Utilities.slice(sessionKeyBlob, 16, 32));
+		byte[] encryptKey = finalHash(Utilities.slice(sessionKeyBlob, 32, 48));
+		
+		
+		if (sessionKeyEncryptionMethod == Secure.SEC_40BIT_ENCRYPTION) {
 			logger.info("40 Bit Encryption enabled");
-			this.make40bit(this.sec_sign_key);
-			this.make40bit(this.sec_decrypt_key);
-			this.make40bit(this.sec_encrypt_key);
-			this.keylength = 8;
-		} else {
+			macKey = reduceEntropy40Bit(macKey128);
+			decryptKey = reduceEntropy40Bit(decryptKey);
+			encryptKey = reduceEntropy40Bit(encryptKey);
+		} else if (sessionKeyEncryptionMethod == Secure.SEC_56BIT_ENCRYPTION) {
+			logger.info("56 Bit Encryption enabled");
+			macKey = reduceEntropy56Bit(macKey128);
+			decryptKey = reduceEntropy56Bit(decryptKey);
+			encryptKey = reduceEntropy56Bit(encryptKey);
+		} else if (sessionKeyEncryptionMethod == Secure.SEC_128BIT_ENCRYPTION) {
+			macKey = macKey128;
 			logger.info("128 Bit Encryption enabled");
-			this.keylength = 16;
+		} else {
+			throw new RdesktopCryptoException("TODO FIPS not supported.");
 		}
-		System.arraycopy(this.sec_decrypt_key, 0, this.sec_decrypt_update_key, 0, 16); // changed
-																						// from
-																						// 8
-																						// -
-																						// rdesktop
-																						// 1.2.0
-		System.arraycopy(this.sec_encrypt_key, 0, this.sec_encrypt_update_key, 0, 16); // changed
-																						// from
-																						// 8
-																						// -
-																						// rdesktop
+//		
+//		System.arraycopy(this.sec_decrypt_key, 0, this.sec_decrypt_update_key, 0, 16); 
+//		System.arraycopy(this.sec_encrypt_key, 0, this.sec_encrypt_update_key, 0, 16); 
+//		
 		try {
-			// 1.2.0
-			rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_encrypt_key, keylength), "RC4"));
-			rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(Utilities.padBytes(sec_decrypt_key, keylength), "RC4"));
+			rc4_enc.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptKey, "RC4"));
+			rc4_dec.init(Cipher.DECRYPT_MODE, new SecretKeySpec(decryptKey, "RC4"));
 		} catch (InvalidKeyException ike) {
 			throw new RdesktopCryptoException("Failed to update key.", ike);
 		}
+	}
+
+	private byte[] reduceEntropy40Bit(byte[] d) {
+		return Utilities.concatenateBytes(new byte[] { (byte)0xd1, 0x26, (byte)0x9e}, Utilities.slice(Utilities.padBytes(d, 8), 3, 8) );
+	}
+
+	private byte[] reduceEntropy56Bit(byte[] d) {
+		return Utilities.concatenateBytes(new byte[] { (byte)0xd1}, Utilities.slice(Utilities.padBytes(d, 8), 1, 8) );
 	}
 
 	/*
@@ -392,13 +413,40 @@ public class Secure implements Layer<Rdp> {
 		 */
 	}
 
+	@Deprecated
 	public byte[] hash16(byte[] in, byte[] salt1, byte[] salt2, int in_position) throws RdesktopCryptoException {
 		md5.update(in, in_position, 16);
 		md5.update(salt1, 0, 32);
 		md5.update(salt2, 0, 32);
 		return md5.digest();
 	}
+	
+	private byte[] finalHash(byte[] k) {
+		md5.update(k);
+		md5.update(clientRandom);
+		md5.update(serverRandom);
+		return md5.digest();
+	}
+	
+	private byte[] masterHash(byte[] i) {
+		return saltedHash(masterSecret, i);
+	}
+	
+	private byte[] preMasterHash(byte[] i) {
+		return saltedHash(preMasterSecret, i);
+	}
+	
+	private byte[] saltedHash(byte[] s, byte[] i) {
+		sha1.update(i);
+		sha1.update(s);
+		sha1.update(this.clientRandom);
+		sha1.update(this.serverRandom);
+		md5.update(s);
+		md5.update(sha1.digest());
+		return md5.digest();
+	}
 
+	@Deprecated
 	public byte[] hash48(byte[] in, byte[] salt1, byte[] salt2, int salt) throws RdesktopCryptoException {
 		byte[] shasig = new byte[20];
 		byte[] pad = new byte[4];
@@ -413,7 +461,6 @@ public class Secure implements Layer<Rdp> {
 			sha1.update(salt1, 0, 32);
 			sha1.update(salt2, 0, 32);
 			shasig = sha1.digest();
-			sha1.reset();
 			md5.update(in, 0, 48);
 			md5.update(shasig, 0, 20);
 			System.arraycopy(md5.digest(), 0, out, i * 16, 16);
@@ -445,48 +492,80 @@ public class Secure implements Layer<Rdp> {
 	}
 
 	/**
-	 * Generate a 40-bit key and store in the parameter key.
-	 * 
-	 * @param key
-	 */
-	public void make40bit(byte[] key) {
-		key[0] = (byte) 0xd1;
-		key[1] = (byte) 0x26;
-		key[2] = (byte) 0x9e;
-	}
-
-	/**
 	 * Read encryption information from a Secure layer PDU, obtaining and
 	 * storing level of encryption and any keys received
 	 * 
+	 * MS-RDPBCGR 2.2.1.4.3 Server Security Data (TS_UD_SC_SEC1)
+	 * 
 	 * @param data Packet to read encryption information from
-	 * @return Size of RC4 key
+	 * @return Session Key Encryption Method
 	 * @throws RdesktopException
+	 * 
 	 */
-	public int parseCryptInfo(Packet data) throws RdesktopException {
+	private void parseServerSecurityData(Packet data) throws RdesktopException {
 		logger.debug("Secure.parseCryptInfo");
-		int encryption_level = 0, random_length = 0, RSA_info_length = 0;
+		int random_length = 0, RSA_info_length = 0;
 		int tag = 0, length = 0;
 		int next_tag = 0, end = 0;
-		int rc4_key_size = 0;
-		rc4_key_size = data.getLittleEndian32(); // 1 = 40-Bit 2 = 128 Bit
-		encryption_level = data.getLittleEndian32(); // 1 = low, 2 = medium, 3 =
-		// high
-		if (encryption_level == 0) { // no encryption
-			return 0;
+		int serverSessionKeyEncryptionMethod = 0;
+		serverSessionKeyEncryptionMethod = data.getLittleEndian32(); // 0 = None
+																		// (Enhanced),
+																		// 1 =
+																		// 40-Bit,
+																		// 2 =
+																		// 128
+																		// Bit,
+																		// 8 =
+																		// 56
+																		// bits,
+																		// 16 =
+																		// FIPS
+		int encryptionLevel = data.getLittleEndian32(); // 1 = low, 2 = medium,
+														// 3 = high, 4 = FIPS
+
+		state.setSessionKeyEncryptionMethod(0);
+		
+		logger.debug(String.format("Key size %d, encryption level %d", serverSessionKeyEncryptionMethod, encryptionLevel));
+		if (encryptionLevel == 0) { // no encryption
+			return;
 		}
+		//
+		// 1. Low: All data sent from the client to the server is protected by
+		// encryption based on the maximum
+		// key strength supported by the client.
+		// 2. Client Compatible: All data sent between the client and the server
+		// is protected by encryption
+		// based on the maximum key strength supported by the client.
+		// 3. High: All data sent between the client and server is protected by
+		// encryption based on the server's
+		// maximum key strength.
+		// 4. FIPS: All data sent between the client and server is protected
+		// using Federal Information
+		// Processing Standard 140-1 validated encryption methods.
+		int sessionKeyEncryptionMethod = state.getOptions().getBestSessionKeyEncryptionMethod();
+		if (encryptionLevel == 3) {
+			sessionKeyEncryptionMethod = serverSessionKeyEncryptionMethod;
+		}
+		if(encryptionLevel > 1) {
+			logger.info("Server will be sending encrypted packets");
+		}
+		if(encryptionLevel > 0) {
+			logger.info("Client will be sending encrypted packets");
+		}
+		
+		
 		random_length = data.getLittleEndian32();
 		RSA_info_length = data.getLittleEndian32();
 		if (random_length != SEC_RANDOM_SIZE) {
 			throw new RdesktopException("Wrong Size of Random! Got" + random_length + "expected" + SEC_RANDOM_SIZE);
 		}
-		this.server_random = new byte[random_length];
-		data.copyToByteArray(this.server_random, 0, data.getPosition(), random_length);
+		this.serverRandom = new byte[random_length];
+		data.copyToByteArray(this.serverRandom, 0, data.getPosition(), random_length);
 		data.incrementPosition(random_length);
 		end = data.getPosition() + RSA_info_length;
 		if (end > data.getEnd()) {
 			logger.debug("Reached end of crypt info prematurely ");
-			return 0;
+			return;
 		}
 		// data.incrementPosition(12); // unknown bytes
 		int flags = data.getLittleEndian32(); // in_uint32_le(s, flags); // 1 =
@@ -503,7 +582,7 @@ public class Secure implements Layer<Rdp> {
 				switch (tag) {
 				case (Secure.SEC_TAG_PUBKEY):
 					if (!parsePublicKey(data)) {
-						return 0;
+						return;
 					}
 					break;
 				case (Secure.SEC_TAG_KEYSIG):
@@ -515,19 +594,19 @@ public class Secure implements Layer<Rdp> {
 				data.setPosition(next_tag);
 			}
 			if (data.getPosition() == data.getEnd()) {
-				return rc4_key_size;
+				state.setSessionKeyEncryptionMethod(sessionKeyEncryptionMethod);
 			} else {
 				logger.warn("End not reached!");
-				return 0;
 			}
 		} else {
-			data.getLittleEndian32(); // number of certificates
+			int nocerts = data.getLittleEndian32(); // number of certificates
+			logger.debug(String.format("We're going for the RDP5-style encryption (%d certfificates)", nocerts));
 			int cacert_len = data.getLittleEndian32();
 			data.incrementPosition(cacert_len);
 			int cert_len = data.getLittleEndian32();
 			data.incrementPosition(cert_len);
 			state.setReadCert(true);
-			return rc4_key_size;
+			state.setSessionKeyEncryptionMethod(sessionKeyEncryptionMethod);
 		}
 	}
 
@@ -565,10 +644,9 @@ public class Secure implements Layer<Rdp> {
 		}
 	}
 
-	public void processCryptInfo(Packet data) throws RdesktopException {
-		int rc4_key_size = 0;
-		rc4_key_size = this.parseCryptInfo(data);
-		if (rc4_key_size == 0) {
+	private void processServerSecurityData(Packet data) throws RdesktopException {
+		parseServerSecurityData(data);
+		if (state.getSessionKeyEncryptionMethod() == 0) {
 			if (state.getSecurityType() == SecurityType.STANDARD) {
 				logger.info("Disabling encryption, server is not using it.");
 				state.setSecurityType(SecurityType.NONE);
@@ -604,7 +682,7 @@ public class Secure implements Layer<Rdp> {
 			this.generateRandom();
 			this.RSAEncrypt(SEC_RANDOM_SIZE, server_public_key_len);
 		}
-		this.generate_keys(rc4_key_size);
+		this.generateInitialKeys();
 	}
 
 	/**
@@ -632,7 +710,7 @@ public class Secure implements Layer<Rdp> {
 				processSrvInfo(mcs_data);
 				break;
 			case (Secure.SEC_TAG_SRV_CRYPT):
-				this.processCryptInfo(mcs_data);
+				this.processServerSecurityData(mcs_data);
 			case (Secure.SEC_TAG_SRV_CHANNELS):
 				/*
 				 * FIXME: We should parse this information and use it to map
@@ -738,7 +816,7 @@ public class Secure implements Layer<Rdp> {
 		BigInteger x = null;
 		this.reverse(this.exponent);
 		this.reverse(this.modulus);
-		System.arraycopy(this.client_random, 0, inr, 0, length);
+		System.arraycopy(this.clientRandom, 0, inr, 0, length);
 		this.reverse(inr);
 		if ((this.modulus[0] & 0x80) != 0) {
 			byte[] temp = new byte[this.modulus.length + 1];
@@ -821,7 +899,7 @@ public class Secure implements Layer<Rdp> {
 			data = new byte[datalength];
 			buffer = null;
 			sec_data.copyToByteArray(data, 0, sec_data.getPosition() + 8, datalength);
-			signature = this.sign(this.sec_sign_key, 8, this.keylength, data, datalength);
+			signature = this.sign(this.macKey, 8, this.macKey.length, data, datalength);
 			buffer = this.encrypt(data, datalength);
 			sec_data.copyFromByteArray(signature, 0, sec_data.getPosition(), 8);
 			sec_data.copyFromByteArray(buffer, 0, sec_data.getPosition() + 8, datalength);
@@ -911,6 +989,8 @@ public class Secure implements Layer<Rdp> {
 			// early caps
 			// RNS_UD_CS_SUPPORT_ERRINFO_PDU Indicates that the client supports
 			// the Set Error Info 0x0001
+			// RNS_UD_CS_SUPPORT_STATUSINFO_PDU Indicates that the client
+			// supports the Server Status Info PDU (section 2.2.5.2). 0x0004
 			// RNS_UD_CS_SUPPORT_MONITOR_LAYOUT_PDU 0x0040 - TODO
 			// RNS_UD_CS_VALID_CONNECTION_TYPE 0x0020
 			// RNS_UD_CS_SUPPORT_NETCHAR_AUTODETECT 0x0080 - TODO
@@ -919,7 +999,7 @@ public class Secure implements Layer<Rdp> {
 			// support autodetect PDUs;
 			// int earlyCaps = 0x0001 | 0x0040 | 0x0020 | 0x0080;
 			// int earlyCaps = 0x0001 | 0x0020;
-			int earlyCaps = 0x0001;
+			int earlyCaps = 0x0001 | 0x0004;
 			if (thirtyTwoBitColor)
 				earlyCaps = earlyCaps | 0x0002;
 			buffer.setLittleEndian16(earlyCaps);
@@ -970,9 +1050,10 @@ public class Secure implements Layer<Rdp> {
 	}
 
 	private void sendClientSecurityData(Packet buffer) {
+		logger.debug(String.format("Request encryption method %d for session keys", state.getOptions().getSessionKeyEncryptionMethod()));
 		buffer.setLittleEndian16(SEC_TAG_CLI_CRYPT);
 		buffer.setLittleEndian16(12); // length
-		buffer.setLittleEndian32(SEC_40BIT_ENCRYPTION | SEC_128BIT_ENCRYPTION | SEC_56BIT_ENCRYPTION);
+		buffer.setLittleEndian32(state.getOptions().getSessionKeyEncryptionMethod());
 		buffer.setLittleEndian32(0);
 		// Client encryption settings //
 		// buffer.setLittleEndian16(SEC_TAG_CLI_CRYPT);
@@ -1042,41 +1123,42 @@ public class Secure implements Layer<Rdp> {
 	 * @return
 	 * @throws RdesktopCryptoException
 	 */
-	public byte[] update(byte[] key, byte[] update_key) throws RdesktopCryptoException {
-		byte[] shasig = new byte[20];
-		byte[] update = new byte[this.keylength]; // changed from 8 - rdesktop
-		// 1.2.0
-		byte[] thekey = new byte[key.length];
-		sha1.reset();
-		sha1.update(update_key, 0, keylength);
-		sha1.update(pad_54, 0, 40);
-		sha1.update(key, 0, keylength); // changed from 8 - rdesktop 1.2.0
-		shasig = sha1.digest();
-		sha1.reset();
-		md5.reset();
-		md5.update(update_key, 0, keylength); // changed from 8 - rdesktop
-		// 1.2.0
-		md5.update(pad_92, 0, 48);
-		md5.update(shasig, 0, 20);
-		thekey = md5.digest();
-		md5.reset();
-		System.arraycopy(thekey, 0, update, 0, this.keylength);
-		try {
-			rc4_update.init(Cipher.DECRYPT_MODE, new SecretKeySpec(update, "RC4"));
-			// added
-			thekey = rc4_update.doFinal(thekey, 0, this.keylength);
-			if (this.keylength == 8) {
-				this.make40bit(thekey);
-			}
-			return thekey;
-		} catch (InvalidKeyException ike) {
-			throw new RdesktopCryptoException("Failed to update key.", ike);
-		} catch (IllegalBlockSizeException e) {
-			throw new RdesktopCryptoException("Failed to update key.", e);
-		} catch (BadPaddingException e) {
-			throw new RdesktopCryptoException("Failed to update key.", e);
-		}
-	}
+//	public byte[] update(byte[] key, byte[] update_key) throws RdesktopCryptoException {
+//		int keylength = key.length;
+//		byte[] shasig = new byte[20];
+//		byte[] update = new byte[keylength]; // changed from 8 - rdesktop
+//		// 1.2.0
+//		byte[] thekey = new byte[key.length];
+//		sha1.reset();
+//		sha1.update(update_key, 0, keylength);
+//		sha1.update(pad_54, 0, 40);
+//		sha1.update(key, 0, keylength); // changed from 8 - rdesktop 1.2.0
+//		shasig = sha1.digest();
+//		sha1.reset();
+//		md5.reset();
+//		md5.update(update_key, 0, keylength); // changed from 8 - rdesktop
+//		// 1.2.0
+//		md5.update(pad_92, 0, 48);
+//		md5.update(shasig, 0, 20);
+//		thekey = md5.digest();
+//		md5.reset();
+//		System.arraycopy(thekey, 0, update, 0, keylength);
+//		try {
+//			rc4_update.init(Cipher.DECRYPT_MODE, new SecretKeySpec(update, "RC4"));
+//			// added
+//			thekey = rc4_update.doFinal(thekey, 0, keylength);
+//			if (keylength == 8) {
+//				this.make40bit(thekey);
+//			}
+//			return thekey;
+//		} catch (InvalidKeyException ike) {
+//			throw new RdesktopCryptoException("Failed to update key.", ike);
+//		} catch (IllegalBlockSizeException e) {
+//			throw new RdesktopCryptoException("Failed to update key.", e);
+//		} catch (BadPaddingException e) {
+//			throw new RdesktopCryptoException("Failed to update key.", e);
+//		}
+//	}
 
 	/**
 	 * Read server info from packet, specifically the RDP version of the server
@@ -1103,4 +1185,5 @@ public class Secure implements Layer<Rdp> {
 	public Rdp getParent() {
 		return rdp;
 	}
+
 }
