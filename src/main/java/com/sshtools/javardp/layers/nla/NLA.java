@@ -1,5 +1,6 @@
 package com.sshtools.javardp.layers.nla;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -98,32 +99,28 @@ public class NLA {
 		logger.info("Received NTLM Response");
 		HexDump.encode(responseData, "NTLM Response");
 		response.read(new NTLMPacket(responseData).setPosition(0));
-
-		/* Configure targetInfo block for response */
-		ntlm.getAvPairs().setFlags(0x02);
-		ntlm.getAvPairs().setChannelHash(new byte[16]);
-		ntlm.getAvPairs().setTargetName("TERMSRV/" + transport.getIo().getAddress());
-		
 		/*
 		 * Build the authentication response but don't set it yet as we may need
 		 * to create a signature and then set the MIC
 		 */
 		NTLMAuthenticate auth = new NTLMAuthenticate(ntlm);
 		byte[] authData = auth.write().getBytes();
-		/* Sign */
-		if ((ntlm.getFlags() & NTLM.NTLMSSP_NEGOTIATE_SIGN) == NTLM.NTLMSSP_NEGOTIATE_SIGN) {
+		/* Configure targetInfo block for response */
+		if (ntlm.getAvPairs().getTimestamp() > 0) {
+			ntlm.getAvPairs().setFlags(ntlm.getAvPairs().getFlags() | 0x02);
 			/* MIC */
 			try {
 				Mac mac = Mac.getInstance("HmacMD5");
-				SecretKeySpec secretKeySpec = new SecretKeySpec(ntlm.getExchangedKey(), "HmacMD5");
-				mac.init(secretKeySpec);
+				mac.init(new SecretKeySpec(ntlm.getExportedSessionKey(), "HmacMD5"));
 				mac.update(authData);
 				mac.update(negotiateData);
 				mac.update(responseData);
 				byte[] mic = mac.doFinal();
 				auth.setMIC(mic);
 				/* Public Key */
-				req.setPubKeyAuth(ntlm.encryptMessage(transport.getIo().getPublicKey()));
+				byte[] publicKey = transport.getIo().getPublicKey();
+				if (publicKey != null)
+					req.setPubKeyAuth(ntlm.encryptMessage(ntlm.getClientSealKey(), publicKey, ntlm.getClientSeal()));
 				/* Replace existing authData with a new one that has a MIC */
 				authData = auth.write().getBytes();
 			} catch (NoSuchAlgorithmException nsae) {
@@ -132,14 +129,30 @@ public class NLA {
 				throw new RdesktopCryptoException("Failed to create MIC.", e);
 			}
 		}
+		else {
+			ntlm.getAvPairs().setTimestamp(System.currentTimeMillis());
+		}
+		ntlm.getAvPairs().setChannelHash(new byte[16]);
+		ntlm.getAvPairs().setTargetName("TERMSRV/" + transport.getIo().getAddress());
 		req.setNegoData(authData);
 		send = req.write();
 		bos = new BerByteArrayOutputStream();
 		send.encode(bos, true);
 		logger.info("Sending NTLM Authenticate");
-		transport.sendPacket(new Packet(bos.getArray()));
+		byte[] authPacketData = bos.getArray();
+		HexDump.encode(authPacketData, "AUTH PACKET DATA");
+		transport.sendPacket(new Packet(authPacketData));
 		logger.info("Receiving NTLM Response");
-		req.read(new BerInputStream(transport.getIn()).next());
-		response.read(new NTLMPacket(responseData).setPosition(0));
+//		ByteArrayOutputStream bbos = new ByteArrayOutputStream();
+//		try {
+//			int r;
+//			while ((r = transport.getIn().read()) != -1) {
+//				bbos.write(r);
+//			}
+//		} catch (IOException ioe) {
+//		}
+//		HexDump.encode(bbos.toByteArray(), "GOT BACK");
+		 req.read(new BerInputStream(transport.getIn()).next());
+		 response.read(new NTLMPacket(responseData).setPosition(0));
 	}
 }

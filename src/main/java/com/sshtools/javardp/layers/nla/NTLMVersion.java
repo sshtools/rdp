@@ -5,6 +5,15 @@ import java.io.IOException;
 import com.sshtools.javardp.Packet;
 
 public class NTLMVersion implements PacketPayload {
+	public static final int NTLMSSP_REVISION_W2K3 = 0x0F;
+	public static final int WINDOWS_MAJOR_VERSION_5 = 0x05;
+	public static final int WINDOWS_MAJOR_VERSION_6 = 0x06;
+	public static final int WINDOWS_MAJOR_VERSION_10 = 0x0A;
+	public static final int WINDOWS_MINOR_VERSION_0 = 0x00;
+	public static final int WINDOWS_MINOR_VERSION_1 = 0x01;
+	public static final int WINDOWS_MINOR_VERSION_2 = 0x02;
+	public static final int WINDOWS_MINOR_VERSION_3 = 0x03;
+	
 	private int major = 6;
 	private int minor = 1;
 	private int build = 7601;

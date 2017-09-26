@@ -16,16 +16,27 @@ public class NTLMNegotiate implements PacketPayload {
 
 	@Override
 	public Packet write() throws IOException {
-		String domain = state.getState().getCredential("ntlm", 0, CredentialType.DOMAIN);
-		String client = state.getState().getWorkstationName();
-		byte[] domainBytes = domain == null ? NTLM.NULL_BYTES : domain.getBytes(NTLMState.STANDARD_ENCODING);
-		byte[] clientBytes = client == null ? NTLM.NULL_BYTES : client.getBytes(NTLMState.STANDARD_ENCODING);
+		String domain = "";
+		String workstation = "";
+		if ((state.getFlags() & NTLM.NTLMSSP_NEGOTIATE_VERSION) == 0) {
+			/*
+			 * If the NTLMSSP_NEGOTIATE_VERSION flag is set by the client
+			 * application, the Version field MUST be set to the current version
+			 * (section 2.2.2.10), the DomainName field MUST be set to a
+			 * zero-length string, and the Workstation field MUST be set to a
+			 * zero-length string.
+			 */
+			domain = state.getState().getCredential("ntlm", 0, CredentialType.DOMAIN);
+			workstation = state.getState().getWorkstationName();
+		}
+		byte[] domainBytes = NTLM.NULL_BYTES;
+		byte[] clientBytes = NTLM.NULL_BYTES;
 		int flags = state.getFlags();
 		if (StringUtils.isNotBlank(domain)) {
 			flags |= NTLM.NTLMSSP_NEGOTIATE_OEM_DOMAIN_SUPPLIED;
 		} else
 			flags &= (NTLM.NTLMSSP_NEGOTIATE_OEM_DOMAIN_SUPPLIED ^ 0xffffffff);
-		if (StringUtils.isNotBlank(client)) {
+		if (StringUtils.isNotBlank(workstation)) {
 			flags |= NTLM.NTLMSSP_NEGOTIATE_OEM_WORKSTATION_SUPPLIED;
 		} else
 			flags &= (NTLM.NTLMSSP_NEGOTIATE_OEM_WORKSTATION_SUPPLIED ^ 0xffffffff);

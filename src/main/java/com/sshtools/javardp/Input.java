@@ -493,6 +493,7 @@ public class Input {
 	 * Turn off any locking key, check states if available
 	 */
 	public void triggerReadyToSend() {
+		logger.info("Input ready to send");
 		// rdp.sendInput(0, RDP_INPUT_SYNCHRONIZE, 0, 0, 0);
 		capsLockOn = false;
 		numLockOn = false;

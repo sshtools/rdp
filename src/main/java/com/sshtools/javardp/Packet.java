@@ -46,7 +46,7 @@ public class Packet {
 		size = data.length;
 		bb.put(data);
 	}
-	
+
 	public byte[] getBytes() {
 		byte[] packet = new byte[getEnd()];
 		copyToByteArray(packet, 0, 0, packet.length);
@@ -611,9 +611,8 @@ public class Packet {
 	 */
 	public Packet setPosition(int position) {
 		if (position > bb.capacity() || position < 0) {
-			logger.warn("stream position =" + getPosition() + " end =" + getEnd() + " capacity =" + capacity());
-			logger.warn("setPosition(" + position + ") failed");
-			throw new ArrayIndexOutOfBoundsException();
+			throw new ArrayIndexOutOfBoundsException(
+					String.format("Set position to %d failed in a capacity of %d", position, bb.capacity()));
 		}
 		bb.position(position);
 		return this;

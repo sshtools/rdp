@@ -23,7 +23,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sshtools.javardp.HexDump;
 import com.sshtools.javardp.Packet;
 import com.sshtools.javardp.RdesktopCryptoException;
 import com.sshtools.javardp.State;
@@ -46,21 +45,35 @@ public class NTLMState implements NTLM {
 	private NTLMAVPairs avPairs;
 	private byte[] kexKey;
 	private byte[] randomSessionKey;
-	private byte[] exchangedKey;
+	private byte[] exportedSessionKey;
+	private byte[] encryptedRandomSessionKey;
+	private byte[] sessionBaseKey = NTLM.NULL_BYTES;
 	private byte[] clientSignKey;
-	private int sequence;
-	private Cipher seal;
 	private byte[] clientSealKey;
+	private byte[] serverSignKey;
+	private byte[] serverSealKey;
+	private int sequence;
+	private Cipher clientSeal;
+	private Cipher serverSeal;
 	private static final byte[] S8 = { (byte) 0x4b, (byte) 0x47, (byte) 0x53, (byte) 0x21, (byte) 0x40, (byte) 0x23, (byte) 0x24,
 			(byte) 0x25 };
 	static final long MILLISECONDS_BETWEEN_1970_AND_1601 = 11644473600000L;
 
 	public NTLMState(State state) {
 		this(state,
-				NTLMSSP_NEGOTIATE_56 | NTLMSSP_NEGOTIATE_KEY_EXCH | NTLMSSP_NEGOTIATE_128 | NTLMSSP_NEGOTIATE_VERSION
-						| NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY | NTLMSSP_NEGOTIATE_ALWAYS_SIGN | NTLMSSP_NEGOTIATE_NTLM
-						| NTLMSSP_NEGOTIATE_LM_KEY | NTLMSSP_NEGOTIATE_SEAL | NTLMSSP_NEGOTIATE_SIGN | NTLMSSP_REQUEST_TARGET
-						| NTLM_NEGOTIATE_OEM | NTLMSSP_NEGOTIATE_UNICODE);
+				NTLMSSP_NEGOTIATE_56 
+				| NTLMSSP_NEGOTIATE_KEY_EXCH 
+				| NTLMSSP_NEGOTIATE_128 
+				| NTLMSSP_NEGOTIATE_VERSION
+				| NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY 
+				| NTLMSSP_NEGOTIATE_ALWAYS_SIGN 
+				| NTLMSSP_NEGOTIATE_NTLM
+				| NTLMSSP_NEGOTIATE_LM_KEY 
+				| NTLMSSP_NEGOTIATE_SEAL 
+				| NTLMSSP_NEGOTIATE_SIGN 
+				| NTLMSSP_REQUEST_TARGET
+				| NTLM_NEGOTIATE_OEM 
+				| NTLMSSP_NEGOTIATE_UNICODE);
 	}
 
 	public NTLMState(State state, int flags) {
@@ -70,6 +83,42 @@ public class NTLMState implements NTLM {
 
 	public int nextSequence() {
 		return sequence++;
+	}
+
+	public Cipher getClientSeal() {
+		return clientSeal;
+	}
+
+	public void setClientSeal(Cipher clientSeal) {
+		this.clientSeal = clientSeal;
+	}
+
+	public Cipher getServerSeal() {
+		return serverSeal;
+	}
+
+	public void setServerSeal(Cipher serverSeal) {
+		this.serverSeal = serverSeal;
+	}
+
+	public byte[] getServerSignKey() {
+		return serverSignKey;
+	}
+
+	public void setServerSignKey(byte[] serverSignKey) {
+		this.serverSignKey = serverSignKey;
+	}
+
+	public byte[] getServerSealKey() {
+		return serverSealKey;
+	}
+
+	public void setServerSealKey(byte[] serverSealKey) {
+		this.serverSealKey = serverSealKey;
+	}
+
+	public void setClientSealKey(byte[] clientSealKey) {
+		this.clientSealKey = clientSealKey;
 	}
 
 	public NTLMAVPairs getAvPairs() {
@@ -182,11 +231,19 @@ public class NTLMState implements NTLM {
 				String.format("Flags: %d (decimal) %x (hex) %s (bin) %s (flags)", flags, flags, Integer.toBinaryString(flags), f));
 	}
 
-	public byte[] encryptMessage(byte[] bytes) throws RdesktopCryptoException {
+	public byte[] getExportedSessionKey() {
+		return exportedSessionKey;
+	}
+
+	public void setExportedSessionKey(byte[] exportedSessionKey) {
+		this.exportedSessionKey = exportedSessionKey;
+	}
+
+	public byte[] encryptMessage(byte[] key, byte[] bytes, Cipher seal) throws RdesktopCryptoException {
 		int seq = nextSequence();
 		try {
 			Mac mac = Mac.getInstance("HmacMD5");
-			mac.init(new SecretKeySpec(clientSignKey, "HmacMD5"));
+			mac.init(new SecretKeySpec(key, "HmacMD5"));
 			byte[] seqbytes = Utilities.intToBytes(seq);
 			mac.update(seqbytes);
 			mac.update(bytes);
@@ -200,11 +257,24 @@ public class NTLMState implements NTLM {
 		}
 	}
 
-	public void initSeal(byte[] key) throws RdesktopCryptoException {
+	public Cipher initSeal(byte[] key) throws RdesktopCryptoException {
 		try {
-			seal = Cipher.getInstance("RC4");
+			Cipher seal = Cipher.getInstance("RC4");
 			seal.init(1, new SecretKeySpec(key, "RC4"));
-			this.clientSealKey = key;
+			return seal;
+		} catch (NoSuchPaddingException pspe) {
+			throw new RdesktopCryptoException("Failed to initialise seal.", pspe);
+		} catch (NoSuchAlgorithmException e) {
+			throw new RdesktopCryptoException("Failed to initialise seal.", e);
+		} catch (InvalidKeyException e) {
+			throw new RdesktopCryptoException("Failed to initialise seal.", e);
+		}
+	}
+
+	public void initServerSeal() throws RdesktopCryptoException {
+		try {
+			serverSeal = Cipher.getInstance("RC4");
+			serverSeal.init(1, new SecretKeySpec(getServerSealKey(), "RC4"));
 		} catch (NoSuchPaddingException pspe) {
 			throw new RdesktopCryptoException("Failed to initialise seal.", pspe);
 		} catch (NoSuchAlgorithmException e) {
@@ -226,12 +296,12 @@ public class NTLMState implements NTLM {
 		return clientSealKey;
 	}
 
-	public byte[] getExchangedKey() {
-		return exchangedKey;
+	public byte[] getSessionBaseKey() {
+		return sessionBaseKey;
 	}
 
-	public void setExchangedKey(byte[] exchangedKey) {
-		this.exchangedKey = exchangedKey;
+	public void setSessionBaseKey(byte[] sessionBaseKey) {
+		this.sessionBaseKey = sessionBaseKey;
 	}
 
 	public NTLMVersion getClientVersion() {
@@ -242,7 +312,32 @@ public class NTLMState implements NTLM {
 		this.clientVersion = clientVersion;
 	}
 
-	public byte[] hashNTLM(char[] password) {
+	public byte[] lmowfv1(char[] password, String user, String domain) throws RdesktopCryptoException {
+		try {
+			byte[] passwordBytes = Utilities.padBytes(new String(password).toUpperCase().getBytes(NTLMState.STANDARD_ENCODING), 14);
+			byte[] magic = "KGS!@#$%".getBytes("US-ASCII");
+			Cipher des = Cipher.getInstance("DES");
+			des.init(1, new SecretKeySpec(Utilities.padBytes(Utilities.slice(passwordBytes, 0, 7), 8), "DES"));
+			byte[] d1 = des.doFinal(magic);
+			des.init(1, new SecretKeySpec(Utilities.padBytes(Utilities.slice(passwordBytes, 7, 14), 8), "DES"));
+			byte[] d2 = des.doFinal(magic);
+			return Utilities.concatenateBytes(d1, d2);
+		} catch (UnsupportedEncodingException uoe) {
+			throw new IllegalStateException("Unsupported encoding.", uoe);
+		} catch (NoSuchAlgorithmException nsae) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", nsae);
+		} catch (IllegalBlockSizeException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (BadPaddingException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (NoSuchPaddingException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (InvalidKeyException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		}
+	}
+
+	public byte[] ntowf(char[] password) {
 		try {
 			MD4 md4 = new MD4();
 			md4.update((password == null ? "" : new String(password)).getBytes(UNICODE_ENCODING));
@@ -252,16 +347,40 @@ public class NTLMState implements NTLM {
 		}
 	}
 
-	public byte[] hashNTLMV2(String domain, String user, char[] password) {
+	public byte[] ntowfv2(String domain, String user, char[] password) {
 		try {
 			Mac mac = Mac.getInstance("HmacMD5");
-			SecretKeySpec secretKeySpec = new SecretKeySpec(hashNTLM(password), "HmacMD5");
+			SecretKeySpec secretKeySpec = new SecretKeySpec(ntowf(password), "HmacMD5");
 			mac.init(secretKeySpec);
 			mac.update((StringUtils.defaultIfBlank(user, "").toUpperCase() + StringUtils.defaultIfBlank(domain, ""))
 					.getBytes(UNICODE_ENCODING));
 			return mac.doFinal();
 		} catch (Exception e) {
 			throw new IllegalStateException("Failed to hash NTLMv2.", e);
+		}
+	}
+
+	public byte[] desl(byte[] key, byte[] data) throws RdesktopCryptoException {
+		try {
+			Cipher des = Cipher.getInstance("DES/ECB/NoPadding");
+			des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(Utilities.slice(key, 0, 7), 8), "DES"));
+			byte[] b1 = des.doFinal(data);
+			des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(Utilities.padBytes(Utilities.slice(key, 7, 14), 8), "DES"));
+			byte[] b2 = des.doFinal(data);
+			des.init(Cipher.ENCRYPT_MODE,
+					new SecretKeySpec(Utilities.concatenateBytes(Utilities.slice(key, 14, 16), new byte[6]), "DES"));
+			byte[] b3 = des.doFinal(data);
+			return Utilities.concatenateBytes(b1, b2, b3);
+		} catch (NoSuchAlgorithmException nsae) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", nsae);
+		} catch (IllegalBlockSizeException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (BadPaddingException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (NoSuchPaddingException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
+		} catch (InvalidKeyException e1) {
+			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
 		}
 	}
 
@@ -353,100 +472,17 @@ public class NTLMState implements NTLM {
 			mac.init(secretKeySpec);
 			mac.update(challenge);
 			mac.update(nonce);
-			byte[] result = mac.doFinal();
-			byte[] response = new byte[24];
-			System.arraycopy(result, 0, response, 0, result.length);
-			System.arraycopy(nonce, 0, response, 16, 8);
-			return response;
+			return Utilities.concatenateBytes(Utilities.padBytes(mac.doFinal(), 16), Utilities.padBytes(nonce, 8));
 		} catch (Exception ex) {
 			throw new IllegalStateException("LMv2 response failed.", ex);
 		}
 	}
 
-	/**
-	 * Generate the Unicode MD4 hash for the password associated with these
-	 * credentials.
-	 * 
-	 * This is from jCIFS (LGPL)
-	 * 
-	 * @throws RdesktopCryptoException
-	 */
-	public byte[] getNTLMResponse(char[] password) throws RdesktopCryptoException {
-		if (password == null)
-			return null;
-		byte[] uni = null;
-		byte[] p21 = new byte[21];
-		byte[] p24 = new byte[24];
-		try {
-			uni = new String(password).getBytes(NTLMState.UNICODE_ENCODING);
-		} catch (UnsupportedEncodingException uee) {
-			throw new RuntimeException("Invalid encoding.", uee);
-		}
-		MD4 md4 = new MD4();
-		md4.update(uni);
-		try {
-			md4.digest(p21, 0, 16);
-		} catch (Exception ex) {
-			throw new RuntimeException("Invalid digest.", ex);
-		}
-		E(p21, challenge, p24);
-		return p24;
-	}
-
-	/**
-	 * Generate the ANSI DES hash for the password associated with these
-	 * credentials.
-	 * 
-	 * This is from jCIFS (LGPL)
-	 * 
-	 * @throws RdesktopCryptoException
-	 */
-	public byte[] getPreNTLMResponse(char[] password) throws RdesktopCryptoException {
-		if (password == null)
-			return null;
-		byte[] p14 = new byte[14];
-		byte[] p21 = new byte[21];
-		byte[] p24 = new byte[24];
-		byte[] passwordBytes;
-		try {
-			passwordBytes = new String(password).toUpperCase().getBytes(NTLMState.STANDARD_ENCODING);
-		} catch (UnsupportedEncodingException uee) {
-			throw new RuntimeException("Invalid encoding.", uee);
-		}
-		int passwordLength = passwordBytes.length;
-		// Only encrypt the first 14 bytes of the password for Pre 0.12 NT LM
-		if (passwordLength > 14) {
-			passwordLength = 14;
-		}
-		System.arraycopy(passwordBytes, 0, p14, 0, passwordLength);
-		E(p14, S8, p21);
-		E(p21, challenge, p24);
-		return p24;
-	}
-
-	public byte[] getNTLM2Response(byte[] nTOWFv1, byte[] clientChallenge) throws RdesktopCryptoException {
-		byte[] sessionHash = new byte[8];
-		try {
-			MessageDigest md5;
-			md5 = MessageDigest.getInstance("MD5");
-			md5.update(challenge);
-			md5.update(clientChallenge, 0, 8);
-			System.arraycopy(md5.digest(), 0, sessionHash, 0, 8);
-		} catch (GeneralSecurityException gse) {
-			throw new RuntimeException("MD5", gse);
-		}
-		byte[] key = new byte[21];
-		System.arraycopy(nTOWFv1, 0, key, 0, 16);
-		byte[] ntResponse = new byte[24];
-		E(key, sessionHash, ntResponse);
-		return ntResponse;
-	}
-
 	public byte[] getNTLMv2Blob(byte[] nonce) throws IOException {
-		long nanos1601 = (System.currentTimeMillis() + MILLISECONDS_BETWEEN_1970_AND_1601) * 10000L;
+		long nanos1601 = ((avPairs.getTimestamp() > 0 ? avPairs.getTimestamp() : System.currentTimeMillis())
+				+ MILLISECONDS_BETWEEN_1970_AND_1601) * 10000L;
 		Packet targetInfo = avPairs == null ? null : avPairs.write();
 		byte[] targetData = targetInfo == null ? NTLM.NULL_BYTES : targetInfo.getBytes();
-		HexDump.encode(targetData, "AV Pairs to send");
 		// Blob
 		Packet p = new Packet(targetData.length + 28 + 4);
 		p.set8(0x01); // resp
@@ -462,57 +498,19 @@ public class NTLMState implements NTLM {
 		return p.getBytes();
 	}
 
-	public byte[] getNTLMv2Response(byte[] responseKeyNT, byte[] ntlmv2Blob) {
-		try {
-			Mac mac = Mac.getInstance("HmacMD5");
-			SecretKeySpec secretKeySpec = new SecretKeySpec(responseKeyNT, "HmacMD5");
-			mac.init(secretKeySpec);
-			mac.update(challenge);
-			mac.update(ntlmv2Blob);
-			return Utilities.concatenateBytes(mac.doFinal(), ntlmv2Blob);
-		} catch (Exception ex) {
-			throw new IllegalStateException("LMv2 response failed.", ex);
-		}
-	}
-
-	/*
-	 * Accepts key multiple of 7 Returns enc multiple of 8 Multiple is the same
-	 * like: 21 byte key gives 24 byte result
-	 * 
-	 * This is from jCIFS (LGPL)
-	 */
-	private static void E(byte[] key, byte[] data, byte[] e) throws RdesktopCryptoException {
-		byte[] key7 = new byte[7];
-		byte[] e8 = new byte[8];
-		try {
-			for (int i = 0; i < key.length / 7; i++) {
-				System.arraycopy(key, i * 7, key7, 0, 7);
-				Cipher des = Cipher.getInstance("DES/ECB/NoPadding");
-				SecretKey dk = new SecretKeySpec(key7, "DES");
-				des.init(1, dk);
-				des.doFinal(data, 0, 8, e8);
-				System.arraycopy(e8, 0, e, i * 8, 8);
-			}
-		} catch (NoSuchAlgorithmException nsae) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", nsae);
-		} catch (ShortBufferException e1) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
-		} catch (IllegalBlockSizeException e1) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
-		} catch (BadPaddingException e1) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
-		} catch (NoSuchPaddingException e1) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
-		} catch (InvalidKeyException e1) {
-			throw new RdesktopCryptoException("Failed to encrypt using DES.", e1);
-		}
-	}
-
 	public String getDecodedString(byte[] data) {
 		try {
 			return new String(data, ((flags & NTLM.NTLMSSP_NEGOTIATE_UNICODE) != 0) ? UNICODE_ENCODING : STANDARD_ENCODING);
 		} catch (UnsupportedEncodingException e) {
 			throw new IllegalStateException("Could not decode string.", e);
 		}
+	}
+
+	public byte[] getEncryptedRandomSessionKey() {
+		return encryptedRandomSessionKey;
+	}
+
+	public void setEncryptedRandomSessionKey(byte[] encryptedRandomSessionKey) {
+		this.encryptedRandomSessionKey = encryptedRandomSessionKey;
 	}
 }

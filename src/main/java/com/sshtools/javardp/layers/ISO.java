@@ -63,6 +63,7 @@ public class ISO implements Layer<MCS> {
 		transport.connect(io);
 		int[] code = new int[1];
 		// this.in = new InputStreamReader(rdpsock.getInputStream());
+		logger.info(String.format("Connecting with %s enabled.", state.getOptions().getSecurityTypes()));
 		send_connection_request();
 		Packet neg = receiveMessage(code);
 		if (code[0] != CONNECTION_CONFIRM) {
@@ -94,7 +95,7 @@ public class ISO implements Layer<MCS> {
 				state.setServerBpp(8);
 			}
 			if (state.getSecurityType().ordinal() > SecurityType.STANDARD.ordinal()) {
-				logger.info("Downgrading security type to %s from %s because no negotiation.");
+				logger.warn(String.format("Downgrading security type to %s from %s because no negotiation.", SecurityType.STANDARD, state.getSecurityType()));
 				state.setSecurityType(SecurityType.STANDARD);
 			}
 		}
@@ -215,7 +216,8 @@ public class ISO implements Layer<MCS> {
 			buffer.set8(0); // 0x01 for admin mode, 0x02 for redirected auth,
 							// 0x08 for correlation info present
 			buffer.setLittleEndian16(8);
-			buffer.setLittleEndian32(state.getSecurityType().getMask());
+			//buffer.setLittleEndian32(state.getSecurityType().getMask());
+			buffer.setLittleEndian32(state.getOptions().getSecurityTypesMask());
 		}
 		/*
 		 * // Authentication request? buffer.setLittleEndian16(0x01);

@@ -219,9 +219,10 @@ public class RdesktopFrame extends Frame implements IContext {
 	}
 
 	@Override
-	public void readyToSend() {
-		this.setVisible(true);
-		canvas.triggerReadyToSend();
+	public void ready(ReadyType ready) {
+		if (ready == ReadyType.DISPLAY)
+			this.setVisible(true);
+		canvas.triggerReady(ready);
 	}
 
 	/**

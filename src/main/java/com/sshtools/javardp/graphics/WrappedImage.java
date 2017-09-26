@@ -215,7 +215,7 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	public void update(Graphics g) {
 		Rectangle r = g.getClipBounds();
 		if (logger.isDebugEnabled())
-			logger.info("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
+			logger.debug("Update " + r + " for " + getDisplayWidth() + "x" + getDisplayHeight());
 		int w = r.width;
 		int h = r.height;
 		if (r.x + w > getDisplayWidth()) {

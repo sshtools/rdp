@@ -6,6 +6,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sshtools.javardp.HexDump;
 import com.sshtools.javardp.Packet;
 
 public class NTLMResponse implements PacketPayload {
@@ -42,7 +43,8 @@ public class NTLMResponse implements PacketPayload {
 		ntlmp.incrementPosition(8);
 		ntlmp.fill(8); // reserved
 		if ((state.getFlags() & NTLM.NTLMSSP_NEGOTIATE_TARGET_INFO) != 0) {
-			state.setAvPairs(data.length == 0 ? null : new NTLMAVPairs(ntlmp.getOffsetArray()));
+			byte[] avBytes = ntlmp.getOffsetArray();
+			state.setAvPairs(data.length == 0 ? null : new NTLMAVPairs(avBytes));
 			logger.debug(String.format("NTLM Target Info : %s", state.getAvPairs()));
 		}
 		if ((state.getFlags() & NTLM.NTLMSSP_NEGOTIATE_VERSION) != 0) {

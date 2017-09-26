@@ -3,6 +3,12 @@ package com.sshtools.javardp;
 import java.io.IOException;
 
 public interface IContext {
+	
+	public enum ReadyType {
+		INPUT, DISPLAY
+	}
+	
+	
 	void dispose();
 
 	void error(Exception e, boolean dispose);
@@ -17,5 +23,5 @@ public interface IContext {
 
 	void toggleFullScreen();
 
-	void readyToSend();
+	void ready(ReadyType ready);
 }

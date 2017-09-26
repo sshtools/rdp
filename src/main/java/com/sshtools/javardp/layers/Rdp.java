@@ -42,6 +42,7 @@ import com.sshtools.javardp.RdesktopException;
 import com.sshtools.javardp.SecurityType;
 import com.sshtools.javardp.State;
 import com.sshtools.javardp.CredentialProvider.CredentialType;
+import com.sshtools.javardp.IContext.ReadyType;
 import com.sshtools.javardp.graphics.Bitmap;
 import com.sshtools.javardp.graphics.RdesktopCanvas;
 import com.sshtools.javardp.graphics.RdpCursor;
@@ -143,9 +144,10 @@ public class Rdp implements Layer<Layer<?>> {
 	private static final int RDP_DATA_PDU_BELL = 34;
 	private static final int RDP_DATA_PDU_CONTROL = 20;
 	private static final int RDP_DATA_PDU_SET_ERROR = 47;
+	private static final int PDUTYPE2_STATUS_INFO_PDU = 54;
 	private static final int RDP_DATA_PDU_FONT2 = 39;
 	private static final int RDP_DATA_PDU_INPUT = 28;
-	private static final int RDP_DATA_PDU_LOGON = 38;
+	private static final int PDUTYPE2_SAVE_SESSION_INFO = 38;
 	private static final int RDP_DATA_PDU_POINTER = 27;
 	private static final int RDP_DATA_PDU_SYNCHRONISE = 31;
 	private static final int RDP_DATA_PDU_UPDATE = 2;
@@ -197,6 +199,17 @@ public class Rdp implements Layer<Layer<?>> {
 	public static final int PERF_ENABLE_DESKTOP_COMPOSITION = 0x100;
 	//
 	private static final int RDP5_FLAG = 0x0030;
+	//
+	public static final int TS_STATUS_FINDING_DESTINATION =  0x00000401;
+	public static final int TS_STATUS_LOADING_DESTINATION =  0x00000402;
+	public static final int TS_STATUS_BRINGING_SESSION_ONLINE =  0x00000403;
+	public static final int TS_STATUS_REDIRECTING_TO_DESTINATION =  0x00000401;
+	public static final int TS_STATUS_VM_LOADING =  0x00000501;
+	public static final int TS_STATUS_VM_WAKING =  0x00000502;
+	public static final int TS_STATUS_VM_STARTING =  0x00000503;
+	public static final int TS_STATUS_VM_STARTING_MONITORING =  0x00000504;
+	public static final int TS_STATUS_VM_RETRYING_MONITORING =  0x00000505;
+	
 	protected Orders orders = null;
 	// MSTSC
 	// encoded
@@ -239,20 +252,11 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @param password Password for log on
 	 * @param command Alternative shell for session
 	 * @param directory Initial working directory for connection
-	 * @throws ConnectionException
-	 * @throws OrderException
-	 * @throws CryptoException
 	 * @throws RdesktopException
 	 * @throws IOException
-	 * @throws SocketException
-	 * @throws UnknownHostException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
 	 */
 	public void connect(IO io, CredentialProvider credentialProvider, String command, String directory)
-			throws ConnectionException, UnknownHostException, SocketException, IOException, RdesktopException, OrderException,
-			InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+			throws IOException, RdesktopException {
 		state.setCredentialProvider(credentialProvider);
 		secureLayer.connect(io);
 		this.connected = true;
@@ -294,8 +298,7 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @throws CryptoException
 	 * @throws ShortBufferException
 	 */
-	public void mainLoop() throws IOException, RdesktopException, OrderException, InvalidKeyException, IllegalBlockSizeException,
-			BadPaddingException, ShortBufferException {
+	public void mainLoop() throws IOException, RdesktopException {
 		int[] type = new int[1];
 		Packet data = null;
 		while (true) {
@@ -306,15 +309,17 @@ public class Rdp implements Layer<Layer<?>> {
 			} catch (EOFException e) {
 				return;
 			} catch (IOException ioe) {
+				logger.debug("IO error during receive.", ioe);
 				if (state.getLastReason() > 0)
 					throw new RdesktopDisconnectException(state.getLastReason());
+				else
+					throw new RdesktopDisconnectException(0, ioe);
 			}
 			processPacket(type, data);
 		}
 	}
 
-	private void processPacket(int[] type, Packet data) throws RdesktopException, IOException, OrderException, InvalidKeyException,
-			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
+	private void processPacket(int[] type, Packet data) throws RdesktopException, IOException {
 		switch (type[0]) {
 		case (Rdp.RDP_PDU_DEMAND_ACTIVE):
 			if (logger.isDebugEnabled())
@@ -326,7 +331,7 @@ public class Rdp implements Layer<Layer<?>> {
 			// before
 			// 1st order
 			logger.info("Past license negotiation");
-			context.readyToSend();
+			context.ready(ReadyType.DISPLAY);
 			state.setActive(true);
 			break;
 		case (Rdp.RDP_PDU_DEACTIVATE_ALL):
@@ -627,6 +632,17 @@ public class Rdp implements Layer<Layer<?>> {
 	}
 
 	/**
+	 * Process save session info PDU (MS-RDPBCGR 2.2.10.1)
+	 * 
+	 * @param data Packet containing session session info PDU at current read position
+	 */
+	protected void processSaveSessionInfo(Packet data) {
+		int infoType = data.getLittleEndian32();
+		context.setLoggedOn();	
+		logger.info("TODO SVE SES INF " + infoType + " : " + data);
+	}
+	
+	/**
 	 * Process a set error PDU
 	 * 
 	 * @param data Packet containing set error PDU at current read position
@@ -636,7 +652,20 @@ public class Rdp implements Layer<Layer<?>> {
 		int v = data.getLittleEndian32();
 		int vv = v & 0xff;
 		if (logger.isDebugEnabled())
-			logger.debug(String.format("Received set error PDU (%d - %d)", v, vv));
+			logger.debug(String.format("Received set error PDU (%d - %d) [%s]", v, vv, data));
+		return v;
+	}
+
+	/**
+	 * Process a server status PDU
+	 * 
+	 * @param data Packet containing server status PDU at current read position
+	 * @return server status code
+	 */
+	protected int processServerStatusPdu(Packet data) {
+		int v = data.getLittleEndian32();
+		if (logger.isDebugEnabled())
+			logger.debug(String.format("Received server status PDU (%d) [%s]", v, data));
 		return v;
 	}
 
@@ -828,13 +857,16 @@ public class Rdp implements Layer<Layer<?>> {
 			Toolkit tx = Toolkit.getDefaultToolkit();
 			tx.beep();
 			break;
-		case (Rdp.RDP_DATA_PDU_LOGON):
+		case (Rdp.PDUTYPE2_SAVE_SESSION_INFO):
 			if (logger.isDebugEnabled())
 				logger.debug("User logged on");
-			context.setLoggedOn();
+			processSaveSessionInfo(data);
 			break;
 		case RDP_DATA_PDU_SET_ERROR:
 			state.setLastReason(processSetErrorPdu(data));
+			break;
+		case PDUTYPE2_STATUS_INFO_PDU:
+			state.setServerStatus(processServerStatusPdu(data));
 			break;
 		default:
 			logger.warn("Unimplemented Data PDU type " + data_type);
@@ -849,14 +881,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @param data Packet containing demand at current read position
 	 * @throws RdesktopException
 	 * @throws IOException
-	 * @throws OrderException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws ShortBufferException
 	 */
-	private void processDemandActive(Packet data) throws RdesktopException, IOException, OrderException, InvalidKeyException,
-			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
+	private void processDemandActive(Packet data) throws RdesktopException, IOException {
 		int type[] = new int[1];
 		state.setShareId(data.getLittleEndian32());
 		logger.info(String.format("Share ID is %d (%04x)", state.getShareId(), state.getShareId()));
@@ -865,16 +891,34 @@ public class Rdp implements Layer<Layer<?>> {
 		data.incrementPosition(len_src_descriptor); // in_uint8s(s,
 													// len_src_descriptor);
 		processServerCaps(data, len_combined_caps);
-		this.sendConfirmActive();
+		this.sendConfirmActive();		
+		
 		this.sendSynchronize();
 		this.sendControl(RDP_CTL_COOPERATE);
 		this.sendControl(RDP_CTL_REQUEST_CONTROL);
+		/*
+		 * TODO
+		 * 
+		 * This message will send details of all the persistent bitmap cache
+		 * items that we know about
+		 * 
+		 * MS-RDPBCGR 2.2.1.17
+		 */
+		// this.sendPersistentKeyList();
 		this.sendFonts(1);
 		this.sendFonts(2);
-		this.receive(type); // Receive RDP_PDU_SYNCHRONIZE
-		this.receive(type); // Receive RDP_CTL_COOPERATE
-		this.receive(type); // Receive RDP_CTL_GRANT_CONTROL
-		this.receive(type); // Receive TS_FONT_MAP_PDU (0x28)
+		Packet p = this.receive(type); // Receive RDP_PDU_SYNCHRONIZE
+		if(logger.isDebugEnabled())
+			logger.debug("RDP_PDU_SYNCHRONIZE " + p);
+		p = this.receive(type); // Receive RDP_CTL_COOPERATE
+		if(logger.isDebugEnabled())
+			logger.debug("RDP_CTL_COOPERATE " + p);
+		p = this.receive(type); // Receive RDP_CTL_GRANT_CONTROL
+		if(logger.isDebugEnabled())
+			logger.debug("RDP_CTL_GRANT_CONTROL " + p);
+		p = this.receive(type); // Receive TS_FONT_MAP_PDU (0x28)
+		if(logger.isDebugEnabled())
+			logger.debug("TS_FONT_MAP_PDU " + p);
 		logger.info("reset order state");
 		this.orders.resetOrderState();
 	}
@@ -941,15 +985,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @return Packet received from RDP layer
 	 * @throws IOException
 	 * @throws RdesktopException
-	 * @throws CryptoException
-	 * @throws OrderException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws ShortBufferException
 	 */
-	private Packet receive(int[] type) throws IOException, RdesktopException, OrderException, InvalidKeyException,
-			IllegalBlockSizeException, BadPaddingException, ShortBufferException {
+	private Packet receive(int[] type) throws IOException, RdesktopException {
 		int length = 0;
 		if ((this.stream == null) || (this.next_packet >= this.stream.getEnd())) {
 			this.stream = secureLayer.receive();
@@ -1053,8 +1090,7 @@ public class Rdp implements Layer<Layer<?>> {
 		data.setLittleEndian16(0); /* pad */
 	}
 
-	private void sendConfirmActive()
-			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+	private void sendConfirmActive() throws RdesktopException, IOException {
 		int caplen = RDP_CAPLEN_GENERAL + // 1
 				RDP_CAPLEN_BITMAP + // 2
 				RDP_CAPLEN_ORDER + // 3
@@ -1115,6 +1151,12 @@ public class Rdp implements Layer<Layer<?>> {
 			logger.debug("confirm active");
 		// this.send(data, RDP_PDU_CONFIRM_ACTIVE);
 		secureLayer.send(data, sec_flags);
+		
+		/*
+		 * MS-RDPCGR 1.3.1.1 - Once the client has sent the Confirm Active PDU,
+		 * it can start sending mouse and keyboard input to the server
+		 */
+		context.ready(ReadyType.INPUT);
 	}
 
 	private void sendControl(int action) throws RdesktopException, IOException {
@@ -1286,8 +1328,7 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @throws InvalidKeyException
 	 * @throws CryptoException
 	 */
-	private void sendLogonInfo(String command, String directory)
-			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+	private void sendLogonInfo(String command, String directory) throws RdesktopException, IOException {
 		int flags = INFO_MOUSE | INFO_DISABLECTRLALTDEL | INFO_UNICODE | INFO_MAXIMIZE_SHELL | INFO_ENABLEWINDOWS_KEY
 				| INFO_MOUSE_HAS_WHEEL;
 		String domain;
@@ -1447,8 +1488,7 @@ public class Rdp implements Layer<Layer<?>> {
 		data.setLittleEndian16(0); /* pad */
 	}
 
-	private void sendSynchronize()
-			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+	private void sendSynchronize() throws RdesktopException, IOException {
 		Packet data = this.initData(4);
 		data.setLittleEndian16(1); // type
 		data.setLittleEndian16(state.getServerChannelId());

@@ -89,12 +89,15 @@ public class VChannels implements Iterable<VChannel> {
 				break;
 			}
 		}
-		if (i >= num_channels)
+		if (i >= num_channels) {
+			logger.warn(String.format("Data from unknown channel %d", mcsChannel));
 			return;
+		}
 		data.getLittleEndian32(); // length
 		flags = data.getLittleEndian32();
 		if (((flags & CHANNEL_FLAG_FIRST) != 0) && ((flags & CHANNEL_FLAG_LAST) != 0)) {
 			// single fragment - pass straight up
+			logger.debug(String.format("%s will process packet", channel));
 			channel.process(data);
 		} else {
 			// append to the defragmentation buffer
@@ -105,6 +108,7 @@ public class VChannels implements Iterable<VChannel> {
 				Packet fullpacket = new Packet(fragment_buffer.length);
 				fullpacket.copyFromByteArray(fragment_buffer, 0, 0, fragment_buffer.length);
 				// process the entire reconstructed packet
+				logger.debug(String.format("%s will process fully constructed packet", channel));
 				channel.process(fullpacket);
 				fragment_buffer = null;
 			}
@@ -181,6 +185,11 @@ public class VChannels implements Iterable<VChannel> {
 			public VChannel next() {
 				idx++;
 				return channels[idx];
+			}
+
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException();
 			}
 		};
 	}

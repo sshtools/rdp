@@ -35,6 +35,8 @@ public class Cache {
 
 	public Cache(State state) {
 		this.state = state;
+		if(state.getOptions().getPersistentCacheBackend() != null)
+			state.getOptions().getPersistentCacheBackend().start(state);
 	}
 
 	/**
