@@ -285,17 +285,17 @@ public class RdesktopFrame extends Frame implements IContext {
 	class RdesktopComponentAdapter extends ComponentAdapter {
 		@Override
 		public void componentMoved(ComponentEvent e) {
-			canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+//			canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
 		}
 	}
 
 	class RdesktopFocusListener implements FocusListener {
 		@Override
 		public void focusGained(FocusEvent arg0) {
-			if (SystemUtils.IS_OS_WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
-			}
+//			if (SystemUtils.IS_OS_WINDOWS) {
+//				// canvas.repaint();
+//				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+//			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
 		}
@@ -310,29 +310,29 @@ public class RdesktopFrame extends Frame implements IContext {
 	class RdesktopWindowAdapter extends WindowAdapter {
 		@Override
 		public void windowActivated(WindowEvent e) {
-			if (SystemUtils.IS_OS_WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
-			}
+//			if (SystemUtils.IS_OS_WINDOWS) {
+//				// canvas.repaint();
+//				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+//			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
 		}
 
 		@Override
 		public void windowDeiconified(WindowEvent e) {
-			if (SystemUtils.IS_OS_WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
-			}
+//			if (SystemUtils.IS_OS_WINDOWS) {
+//				// canvas.repaint();
+//				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+//			}
 			canvas.gainedFocus();
 		}
 
 		@Override
 		public void windowGainedFocus(WindowEvent e) {
-			if (SystemUtils.IS_OS_WINDOWS) {
-				// canvas.repaint();
-				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
-			}
+//			if (SystemUtils.IS_OS_WINDOWS) {
+//				// canvas.repaint();
+//				canvas.getDisplay().repaint(0, 0, state.getWidth(), state.getHeight());
+//			}
 			// gained focus..need to check state of locking keys
 			canvas.gainedFocus();
 		}

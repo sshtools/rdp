@@ -59,6 +59,9 @@ public class NLA {
 
 	@SuppressWarnings("resource")
 	public void start() throws IOException, RdesktopCryptoException {
+		
+		// MS-NLMP - 1.3.1.1 NTLM Connection-Oriented Call Flow
+		
 		/*
 		 * Over the encrypted TLS channel, the SPNEGO, Kerberos, or NTLM
 		 * handshake between the client and server completes authentication and
@@ -85,26 +88,41 @@ public class NLA {
 		 * use
 		 */
 		NTLMState ntlm = new NTLMState(state);
+		
+		
+		
 		byte[] negotiateData = new NTLMNegotiate(ntlm).write().getBytes();
+		HexDump.encode(negotiateData, "NEG DATA");
 		TSRequest req = new TSRequest(negotiateData);
 		BerType send = req.write();
 		BerByteArrayOutputStream bos = new BerByteArrayOutputStream();
 		send.encode(bos, true);
+		
+		// MS-NLMP - 2.2.1.1 NEGOTIATE_MESSAGE		
 		logger.info("Sending NTLM Negotiate");
 		ntlm.dumpFlags();
 		transport.sendPacket(new Packet(bos.getArray()));
+		
+		// MS-NLMP - 2.2.1.2 CHALLENGE_MESSAGE
 		req.read(new BerInputStream(transport.getIn()).next());
 		NTLMResponse response = new NTLMResponse(ntlm);
 		byte[] responseData = req.getNegoData();
-		logger.info("Received NTLM Response");
-		HexDump.encode(responseData, "NTLM Response");
+		logger.info("Received NTLM Challenge");
+		HexDump.encode(responseData, "NTLM Challenge");
 		response.read(new NTLMPacket(responseData).setPosition(0));
+		
 		/*
 		 * Build the authentication response but don't set it yet as we may need
 		 * to create a signature and then set the MIC
+		 * 
+		 * MS-NLMP - 2.2.1.3 AUTHENTICATE_MESSAGE
 		 */
 		NTLMAuthenticate auth = new NTLMAuthenticate(ntlm);
 		byte[] authData = auth.write().getBytes();
+		
+
+		HexDump.encode(authData, "AUTH DATA");
+		
 		/* Configure targetInfo block for response */
 		if (ntlm.getAvPairs().getTimestamp() > 0) {
 			ntlm.getAvPairs().setFlags(ntlm.getAvPairs().getFlags() | 0x02);
@@ -142,16 +160,16 @@ public class NLA {
 		byte[] authPacketData = bos.getArray();
 		HexDump.encode(authPacketData, "AUTH PACKET DATA");
 		transport.sendPacket(new Packet(authPacketData));
-		logger.info("Receiving NTLM Response");
-//		ByteArrayOutputStream bbos = new ByteArrayOutputStream();
-//		try {
-//			int r;
-//			while ((r = transport.getIn().read()) != -1) {
-//				bbos.write(r);
-//			}
-//		} catch (IOException ioe) {
-//		}
-//		HexDump.encode(bbos.toByteArray(), "GOT BACK");
+		logger.info("Receiving NTLM Authenticate Response");
+		ByteArrayOutputStream bbos = new ByteArrayOutputStream();
+		try {
+			int r;
+			while ((r = transport.getIn().read()) != -1) {
+				bbos.write(r);
+			}
+		} catch (IOException ioe) {
+		}
+		HexDump.encode(bbos.toByteArray(), "GOT BACK");
 		 req.read(new BerInputStream(transport.getIn()).next());
 		 response.read(new NTLMPacket(responseData).setPosition(0));
 	}

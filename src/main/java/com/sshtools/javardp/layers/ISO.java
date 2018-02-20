@@ -70,23 +70,43 @@ public class ISO implements Layer<MCS> {
 			throw new RdesktopException("Expected CC got:" + Integer.toHexString(code[0]).toUpperCase());
 		}
 		if (state.isRDP5() && neg.getPosition() < neg.capacity()) {
-			if (neg.get8() != 0x02)
-				throw new RdesktopException("Was expecting negotiation success response");
+			int result = neg.get8();
 			neg.get8(); // negotiation flags
 			neg.incrementPosition(2); // length, always 8
-			int selectedProtocol = neg.getLittleEndian32();
-			state.setNegotiated();
-			List<SecurityType> supportedTypes = Arrays.asList(SecurityType.fromMasks(selectedProtocol));
-			logger.info(String.format("Server supports: %s", supportedTypes));
-			SecurityType wanted = state.getSecurityType();
-			if (!supportedTypes.contains(wanted)) {
-				List<SecurityType> weSupport = new ArrayList<>(state.getOptions().getSecurityTypes());
-				weSupport.retainAll(supportedTypes);
-				if (weSupport.isEmpty())
-					throw new RdesktopException("We do not support any of the security protocols the server wants to use.");
-				SecurityType alt = weSupport.get(weSupport.size() - 1);
-				logger.warn(String.format("Server does not support requested security type %s, downgrading to %s.", wanted, alt));
-				state.setSecurityType(alt);
+			if (result == 0x02) {
+				int selectedProtocol = neg.getLittleEndian32();
+				state.setNegotiated();
+				List<SecurityType> supportedTypes = Arrays.asList(SecurityType.fromMasks(selectedProtocol));
+				logger.info(String.format("Server supports: %s", supportedTypes));
+				SecurityType wanted = state.getSecurityType();
+				if (!supportedTypes.contains(wanted)) {
+					List<SecurityType> weSupport = new ArrayList<>(state.getOptions().getSecurityTypes());
+					weSupport.retainAll(supportedTypes);
+					if (weSupport.isEmpty())
+						throw new RdesktopException("We do not support any of the security protocols the server wants to use.");
+					SecurityType alt = weSupport.get(weSupport.size() - 1);
+					logger.warn(String.format("Server does not support requested security type %s, downgrading to %s.", wanted, alt));
+					state.setSecurityType(alt);
+				}
+			}
+			else {
+				// 2.2.1.2.2 RDP Negotiation Failure (RDP_NEG_FAILURE)
+				switch(neg.getLittleEndian32()) {
+				case 0x0000001:
+					throw new IOException("SSL_REQUIRED_BY_SERVER. The server requires that the client support Enhanced RDP Security (section 5.4) with either TLS 1.0, 1.1 or 1.2 (section 5.4.5.1) or CredSSP (section 5.4.5.2). If only CredSSP was requested then the server only supports TLS. ");
+				case 0x0000002:
+					throw new IOException("SSL_NOT_ALLOWED_BY_SERVER. The server is configured to only use Standard RDP Security mechanisms (section 5.3) and does not support any External Security Protocols (section 5.4.5).");
+				case 0x0000003:
+					throw new IOException("SSL_CERT_NOT_ON_SERVER. The server does not possess a valid authentication certificate and cannot initialize the External Security Protocol Provider (section 5.4.5).");
+				case 0x0000004:
+					throw new IOException("INCONSISTENT_FLAGS. The list of requested security protocols is not consistent with the current security protocol in effect. This error is only possible when the Direct Approach (sections 5.4.2.2 and 1.3.1.2) is used and an External Security Protocol (section 5.4.5) is already being used.");
+				case 0x0000005:
+					throw new IOException("HYBRID_REQUIRED_BY_SERVER. The server requires that the client support Enhanced RDP Security (section 5.4) with CredSSP (section 5.4.5.2).");
+				case 0x0000006:
+					throw new IOException("SSL_WITH_USER_AUTH_REQUIRED_BY_SERVER. The server requires that the client support Enhanced RDP Security (section 5.4) with TLS 1.0, 1.1 or 1.2 (section 5.4.5.1) and certificate-based client authentication.");
+				default:
+					throw new IOException(String.format("Unknown error code 0x%0000000x."));
+				}
 			}
 		} else {
 			if (state.isRDP5()) {
@@ -181,6 +201,8 @@ public class ISO implements Layer<MCS> {
 	/**
 	 * Send the server a connection request, detailing client protocol version
 	 * 
+	 * See MS-RDPBCGR - 2.2.1.1 Client X.224 Connection Request PDU
+	 * 
 	 * @throws IOException
 	 */
 	void send_connection_request() throws IOException {
@@ -210,7 +232,7 @@ public class ISO implements Layer<MCS> {
 			buffer.set8(0x0d); // terminator for cookie 1
 			buffer.set8(0x0a); // terminator for cookie 2
 		}
-		/* Negotiation request */
+		/* Negotiation request. See MS-RDPBCGR - 2.2.1.1.1 RDP Negotiation Request (RDP_NEG_REQ) */
 		if (state.isRDP5()) {
 			buffer.set8(0x01);
 			buffer.set8(0); // 0x01 for admin mode, 0x02 for redirected auth,

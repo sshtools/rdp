@@ -5,6 +5,8 @@ import java.io.IOException;
 import com.sshtools.javardp.Packet;
 
 public class NTLMVersion implements PacketPayload {
+	public final static NTLMVersion NULL_VERSION = new NTLMVersion(0,0,0,0);
+	
 	public static final int NTLMSSP_REVISION_W2K3 = 0x0F;
 	public static final int WINDOWS_MAJOR_VERSION_5 = 0x05;
 	public static final int WINDOWS_MAJOR_VERSION_6 = 0x06;

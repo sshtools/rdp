@@ -7,10 +7,14 @@ import org.openmuc.jasn1.ber.types.BerInteger;
 import org.openmuc.jasn1.ber.types.BerOctetString;
 import org.openmuc.jasn1.ber.types.BerSequence;
 import org.openmuc.jasn1.ber.types.BerType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sshtools.javardp.layers.nla.NLA.TSCredentials;
 
 public class TSRequest implements BerPayload {
+	static Logger logger = LoggerFactory.getLogger(TSRequest.class);
+	
 	private int version = 3;
 	private byte[] negoData = null;
 	private TSCredentials authInfo = null;
@@ -88,6 +92,7 @@ public class TSRequest implements BerPayload {
 			BerContextSpecific negoSeq = new BerContextSpecific(negoToken, 0);
 			BerSequence negoSeqs = new BerSequence(negoSeq);
 			BerSequence negoTokens = new BerSequence(negoSeqs);
+			logger.info(String.format("Added SPNEGO structure"));
 			seq.add(new BerContextSpecific(negoTokens, 1));
 		}
 		if (authInfo != null) {
@@ -98,6 +103,7 @@ public class TSRequest implements BerPayload {
 			 * that is negotiated under the SPNEGO package. The authInfo field
 			 * carries the message signature and then the encrypted data.
 			 */
+			logger.info(String.format("Added TSCredentials structure"));
 			seq.add(new BerContextSpecific(authInfo.write(), 2));
 		}
 		/*
@@ -114,6 +120,7 @@ public class TSRequest implements BerPayload {
 		 * encryption key that is negotiated under SPNEGO.
 		 */
 		if (pubKeyAuth != null) {
+			logger.info(String.format("Added pubkeyAuth structure"));
 			seq.add(new BerContextSpecific(new BerOctetString(pubKeyAuth), 3));
 		}
 		/*
@@ -123,6 +130,7 @@ public class TSRequest implements BerPayload {
 		 * failed and be able to display a descriptive error to the user.<9>
 		 */
 		if (errorCode != null) {
+			logger.info(String.format("Added errorCode structure"));
 			seq.add(new BerContextSpecific(new BerInteger(pubKeyAuth), 4));
 		}
 		return seq;
