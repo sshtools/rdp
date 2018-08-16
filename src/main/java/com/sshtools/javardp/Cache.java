@@ -44,7 +44,7 @@ public class Cache {
 	 * 
 	 * @param cache_id ID of cache from which to retrieve colour model
 	 * @return Indexed colour model for specified cache
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public IndexColorModel get_colourmap(int cache_id) throws RdesktopException {
 		IndexColorModel map = null;
@@ -62,7 +62,7 @@ public class Cache {
 	 * @param cache_id ID of cache from which to retrieve bitmap
 	 * @param cache_idx ID of bitmap to return
 	 * @return Bitmap stored in specified location within the cache
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public Bitmap getBitmap(int cache_id, int cache_idx) throws RdesktopException {
 		Bitmap bitmap = null;
@@ -86,7 +86,7 @@ public class Cache {
 	 * 
 	 * @param cache_idx ID of cache in which the Cursor is stored
 	 * @return Cursor stored in specified cache
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public RdpCursor getCursor(int cache_idx) throws RdesktopException {
 		RdpCursor cursor = null;
@@ -106,7 +106,7 @@ public class Cache {
 	 * @param cx Width of image
 	 * @param cy Height of image
 	 * @return Integer pixel data for image requested
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public int[] getDesktopInt(int offset, int cx, int cy) throws RdesktopException {
 		int length = cx * cy;
@@ -148,7 +148,7 @@ public class Cache {
 	 * 
 	 * @param cache_id ID of cache containing text
 	 * @return Text stored in specified cache, represented as a DataBlob
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public DataBlob getText(int cache_id) throws RdesktopException {
 		DataBlob entry = null;
@@ -168,7 +168,7 @@ public class Cache {
 	 * 
 	 * @param cache_id ID of cache to which the colour map should be added
 	 * @param map Indexed colour model to assign to the cache
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void put_colourmap(int cache_id, IndexColorModel map) throws RdesktopException {
 		if (cache_id < colourcache.length)
@@ -185,7 +185,7 @@ public class Cache {
 	 *            Bitmap
 	 * @param bitmap Bitmap object to store in cache
 	 * @param stamp Timestamp for storage of bitmap
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void putBitmap(int cache_id, int cache_idx, Bitmap bitmap, int stamp) throws RdesktopException {
 		// Bitmap old;
@@ -225,7 +225,7 @@ public class Cache {
 	 * @param cx Width of image to store
 	 * @param cy Height of image to store
 	 * @param data Array of integer pixel values representing image to be stored
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void putDesktop(int offset, int cx, int cy, int[] data) throws RdesktopException {
 		int length = cx * cy;
@@ -262,7 +262,7 @@ public class Cache {
 	 * 
 	 * @param cache_id ID of cache in which to store the text
 	 * @param entry DataBlob representing the text to be stored
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void putText(int cache_id, DataBlob entry) throws RdesktopException {
 		if (cache_id < textcache.length) {

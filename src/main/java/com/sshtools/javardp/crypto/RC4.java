@@ -45,16 +45,12 @@ public final class RC4 { // must be final for security reasons
 	/**
 	 * The state of the cipher when it is ready to encrypt, that is, the state
 	 * it is in right after a call to <code>initEncrypt</code>.
-	 * 
-	 * @see #initEncrypt
 	 */
 	public static final int ENCRYPT = 1;
 
 	/**
 	 * The state of the cipher when it is ready to decrypt, that is, the state
 	 * it is in right after a call to <code>initDecrypt</code>.
-	 * 
-	 * @see #initDecrypt
 	 */
 	public static final int DECRYPT = 2;
 
@@ -114,7 +110,7 @@ public final class RC4 { // must be final for security reasons
 	 * key.
 	 * 
 	 * @param key the key to use for encryption.
-	 * @exception CryptoException if the key is invalid.
+	 * @exception RdesktopCryptoException if the key is invalid.
 	 */
 	public void engineInitEncrypt(byte[] key) throws RdesktopCryptoException {
 		makeKey(key);
@@ -126,7 +122,7 @@ public final class RC4 { // must be final for security reasons
 	 * key.
 	 * 
 	 * @param key the key to use for decryption.
-	 * @exception CryptoException if the key is invalid.
+	 * @exception RdesktopCryptoException if the key is invalid.
 	 */
 	public void engineInitDecrypt(byte[] key) throws RdesktopCryptoException {
 		makeKey(key);
@@ -255,7 +251,6 @@ public final class RC4 { // must be final for security reasons
 
 	/**
 	 * Returns the state of this Cipher object. Possible states are:
-	 * <p>
 	 * <dl>
 	 * <dt>UNINITIALIZED
 	 * <dd>The cipher has not been initialized.

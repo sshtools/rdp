@@ -35,11 +35,11 @@ public class Utilities {
 	 * expression with the given replacement.
 	 * 
 	 * @param in Input string
-	 * @param regex Regular expression describing patterns to match within input
+	 * @param find Regular expression describing patterns to match within input
 	 *            string
 	 * @param replace Patterns matching regular expression within input are
 	 *            replaced with this string
-	 * @return
+	 * @return replaced string
 	 */
 	public static String strReplaceAll(String in, String find, String replace) {
 		return in.replaceAll(find, replace);
@@ -51,6 +51,7 @@ public class Utilities {
 	 * 
 	 * @param arr array of bytes
 	 * @param len maximum length.
+	 * @return bytes
 	 */
 	public static byte[] trimBytes(byte[] arr, int len) {
 		if(arr.length <= len)
@@ -66,6 +67,7 @@ public class Utilities {
 	 * 
 	 * @param arr array of bytes
 	 * @param len maximum length.
+	 * @return bytes
 	 */
 	public static byte[] padBytes(byte[] arr, int len) {
 		byte[] a = new byte[len];

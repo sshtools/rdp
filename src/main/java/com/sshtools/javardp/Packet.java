@@ -227,7 +227,7 @@ public class Packet {
 	 * 
 	 * @param header ID of header type
 	 * @return Location of header, as byte offset from start of packet
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public int getHeader(int header) throws RdesktopException {
 		switch (header) {
@@ -425,7 +425,7 @@ public class Packet {
 	 * 
 	 * @param header ID of header type
 	 * @param increment Required size to be reserved for header
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void pushLayer(int header, int increment) throws RdesktopException {
 		this.setHeader(header);
@@ -517,7 +517,7 @@ public class Packet {
 	 * Set current read/write position as the start of a layer header
 	 * 
 	 * @param header ID of header type
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void setHeader(int header) throws RdesktopException {
 		switch (header) {
@@ -608,6 +608,7 @@ public class Packet {
 	 * Set current read/write position
 	 * 
 	 * @param position New read/write position (as byte offset from start)
+	 * @return packet
 	 */
 	public Packet setPosition(int position) {
 		if (position > bb.capacity() || position < 0) {

@@ -54,10 +54,9 @@ public class ISO implements Layer<MCS> {
 	/**
 	 * Connect to a server
 	 * 
-	 * @param host Address of server
-	 * @param port Port to connect to on server
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @param io IO
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void connect(IO io) throws IOException, RdesktopException {
 		transport.connect(io);

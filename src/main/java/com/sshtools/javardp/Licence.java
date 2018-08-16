@@ -91,7 +91,7 @@ public class Licence {
 	 * @param client_key Array in which to store client key
 	 * @param server_key Array in which to store server key
 	 * @param client_rsa Array in which to store RSA data
-	 * @throws RdesktopCryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public void generate_keys(byte[] client_key, byte[] server_key, byte[] client_rsa) throws RdesktopCryptoException {
 		byte[] session_key = new byte[48];
@@ -108,7 +108,7 @@ public class Licence {
 	 * 
 	 * @param data Packet containing details of request
 	 * @return True if signature is read successfully
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public boolean parse_authreq(Packet data) throws RdesktopException {
 		int tokenlen = 0;
@@ -133,18 +133,17 @@ public class Licence {
 	/**
 	 * Present a licence to the server
 	 * 
-	 * @param client_random
-	 * @param rsa_data
-	 * @param licence_data
-	 * @param licence_size
-	 * @param hwid
-	 * @param signature
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws CryptoException
+	 * @param client_random client random
+	 * @param rsa_data rsa data
+	 * @param licence_data license data
+	 * @param licence_size license size
+	 * @param hwid hwid
+	 * @param signature signature
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
+	 * @throws BadPaddingException on error
+	 * @throws IllegalBlockSizeException on error
+	 * @throws InvalidKeyException on error
 	 */
 	public void present(byte[] client_random, byte[] rsa_data, byte[] licence_data, int licence_size, byte[] hwid, byte[] signature)
 			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
@@ -184,8 +183,8 @@ public class Licence {
 	 * Process and handle licence data from a packet
 	 * 
 	 * @param data Packet containing licence data
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void process(Packet data) throws RdesktopException, IOException {
 		int tag = 0;
@@ -305,13 +304,8 @@ public class Licence {
 	 * request new licence
 	 * 
 	 * @param data Packet containing details of licence demand
-	 * @throws UnsupportedEncodingException
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws InvalidKeyException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws ShortBufferException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void process_demand(Packet data) throws RdesktopException, IOException {
 		byte[] null_data = new byte[Secure.SEC_MODULUS_SIZE];
@@ -363,7 +357,8 @@ public class Licence {
 	 * Options.save_licence
 	 * 
 	 * @param data Packet containing issued licence
-	 * @throws IOException
+	 * @throws RdesktopCryptoException on error
+	 * @throws IOException on error
 	 */
 	public void process_issue(Packet data) throws IOException, RdesktopCryptoException {
 		int length = 0;
@@ -451,16 +446,15 @@ public class Licence {
 	/**
 	 * Send a request for a new licence, or to approve a stored licence
 	 * 
-	 * @param client_random
-	 * @param rsa_data
-	 * @param username
-	 * @param hostname
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws CryptoException
+	 * @param client_random client random
+	 * @param rsa_data rcs data
+	 * @param username username
+	 * @param hostname hostname
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
+	 * @throws BadPaddingException on error
+	 * @throws IllegalBlockSizeException on error
+	 * @throws InvalidKeyException on error
 	 */
 	public void send_request(byte[] client_random, byte[] rsa_data, byte[] username, byte[] hostname)
 			throws RdesktopException, IOException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {

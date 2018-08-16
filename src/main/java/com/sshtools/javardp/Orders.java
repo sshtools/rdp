@@ -90,8 +90,8 @@ public class Orders {
 	 * @param data Packet packet containing orders
 	 * @param next_packet Offset of end of this packet (start of next)
 	 * @param n_orders Number of orders sent in this packet
-	 * @throws OrderException
-	 * @throws RdesktopException
+	 * @throws OrderException on error
+	 * @throws RdesktopException on error
 	 */
 	public void processOrders(Packet data, int next_packet, int n_orders) throws OrderException, RdesktopException {
 		int present = 0;

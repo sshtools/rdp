@@ -81,9 +81,9 @@ public class Input {
 	/**
 	 * Create a new Input object with a given keymap object
 	 * 
-	 * @param c Canvas on which to listen for input events
-	 * @param r Rdp layer on which to send input messages
-	 * @param k Key map to use in handling keyboard events
+	 * @param context context
+	 * @param state state
+	 * @param canvas canvas
 	 */
 	public Input(IContext context, State state, RdesktopCanvas canvas) {
 		this.context = context;
@@ -307,7 +307,7 @@ public class Input {
 	 * @param time Time stamp for key event
 	 * @param e Key event to check for special keys
 	 * @param pressed True if key was pressed, false if released
-	 * @return
+	 * @return handled
 	 */
 	public boolean handleSpecialKeys(long time, KeyEvent e, boolean pressed) {
 		if (handleShortcutKeys(time, e, pressed))
