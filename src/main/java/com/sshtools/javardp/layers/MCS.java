@@ -58,7 +58,10 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Initialise the MCS layer (and lower layers) with provided channels
 	 * 
+	 * @param context context
+	 * @param state state
 	 * @param channels Set of available MCS channels
+	 * @param secure secure
 	 */
 	public MCS(IContext context, State state, VChannels channels, Secure secure) {
 		this.secure = secure;
@@ -74,7 +77,7 @@ public class MCS implements Layer<Secure> {
 	 * @param data Packet containing header at current read position
 	 * @param tagval Tag ID for data type
 	 * @return Length of following data
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	@Deprecated
 	public int berParseHeader(Packet data, int tagval) throws RdesktopException {
@@ -105,12 +108,11 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Connect to a server
 	 * 
-	 * @param host Address of server
-	 * @param port Port to connect to on server
+	 * @param io IO
 	 * @param data Packet to use for sending connection data
 	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public void connect(IO io, Packet data) throws IOException, RdesktopException {
 		if (logger.isDebugEnabled())
@@ -148,8 +150,8 @@ public class MCS implements Layer<Secure> {
 	 * Initialise a packet as an MCS PDU
 	 * 
 	 * @param length Desired length of PDU
-	 * @return
-	 * @throws RdesktopException
+	 * @return packet
+	 * @throws RdesktopException on error
 	 */
 	public Packet init(int length) throws RdesktopException {
 		Packet data = isoLayer.init(length + 8);
@@ -164,7 +166,7 @@ public class MCS implements Layer<Secure> {
 	 * Parse domain parameters sent by server
 	 * 
 	 * @param data Packet containing domain parameters at current read position
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void parseDomainParams(Packet data) throws RdesktopException {
 		int length;
@@ -180,9 +182,9 @@ public class MCS implements Layer<Secure> {
 	 * 
 	 * @param channel ID of channel will be stored in channel[0]
 	 * @return Received packet
-	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public Packet receive(int[] channel) throws IOException, RdesktopException, OrderException {
 		if (logger.isDebugEnabled())
@@ -217,9 +219,9 @@ public class MCS implements Layer<Secure> {
 	 * Receive an AUcf message
 	 * 
 	 * @return UserID specified in message
-	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public int receive_aucf() throws IOException, RdesktopException, OrderException {
 		if (logger.isDebugEnabled())
@@ -246,8 +248,9 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Receive and handle a CJcf message
 	 * 
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public void receive_cjcf() throws IOException, RdesktopException, OrderException {
 		if (logger.isDebugEnabled())
@@ -276,12 +279,8 @@ public class MCS implements Layer<Secure> {
 	 * Receive and handle a connect response from the server
 	 * 
 	 * @param data Packet containing response data
-	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws OrderException
-	 * @throws InvalidKeyException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void receiveConnectResponse(Packet data) throws IOException, RdesktopException {
 		if (logger.isDebugEnabled())
@@ -322,8 +321,8 @@ public class MCS implements Layer<Secure> {
 	 * Send a packet to the global channel
 	 * 
 	 * @param buffer Packet to send
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send(Packet buffer) throws RdesktopException, IOException {
 		send_to_channel(buffer, MCS_GLOBAL_CHANNEL);
@@ -332,8 +331,8 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Transmit an AUcf message
 	 * 
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void send_aucf() throws IOException, RdesktopException {
 		Packet buffer = isoLayer.init(2);
@@ -346,8 +345,8 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Transmit an AUrq mesage
 	 * 
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void send_aurq() throws IOException, RdesktopException {
 		Packet buffer = isoLayer.init(1);
@@ -360,8 +359,8 @@ public class MCS implements Layer<Secure> {
 	 * Transmit a CJrq message
 	 * 
 	 * @param channelid Id of channel to be identified in request
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void send_cjrq(int channelid) throws IOException, RdesktopException {
 		Packet buffer = isoLayer.init(5);
@@ -375,8 +374,8 @@ public class MCS implements Layer<Secure> {
 	/**
 	 * Transmit an EDrq message
 	 * 
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void send_edrq() throws IOException, RdesktopException {
 		if (logger.isDebugEnabled())
@@ -394,8 +393,8 @@ public class MCS implements Layer<Secure> {
 	 * 
 	 * @param buffer Packet to send to channel
 	 * @param channel Id of channel on which to send packet
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send_to_channel(Packet buffer, int channel) throws RdesktopException, IOException {
 		int length = 0;
@@ -456,8 +455,8 @@ public class MCS implements Layer<Secure> {
 	 * Send an MCS_CONNECT_INITIAL message (encoded as ASN.1 Ber)
 	 * 
 	 * @param data Packet in which to send the message
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void sendConnectInitial(Packet data) throws IOException, RdesktopException {
 		if (false) {

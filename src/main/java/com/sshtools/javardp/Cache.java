@@ -131,7 +131,7 @@ public class Cache {
 	 * @param font ID of desired font for Glyph
 	 * @param character ID of desired character
 	 * @return Glyph representing character in font
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public Glyph getFont(int font, int character) throws RdesktopException {
 		if ((font < fontcache.length) && (character < fontcache[0].length)) {
@@ -208,7 +208,7 @@ public class Cache {
 	 * 
 	 * @param cache_idx ID of cache to store Cursor in
 	 * @param cursor Cursor object to assign to cache
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void putCursor(int cache_idx, RdpCursor cursor) throws RdesktopException {
 		if (cache_idx < cursorcache.length) {
@@ -247,7 +247,7 @@ public class Cache {
 	 * Add a font to the cache
 	 * 
 	 * @param glyph Glyph containing references to relevant font
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void putFont(Glyph glyph) throws RdesktopException {
 		if ((glyph.getFont() < fontcache.length) && (glyph.getCharacter() < fontcache[0].length)) {

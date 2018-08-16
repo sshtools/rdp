@@ -43,6 +43,10 @@ public class ISO implements Layer<MCS> {
 
 	/**
 	 * Construct ISO object, initialises hex dump
+	 * 
+	 * @param context context
+	 * @param state state
+	 * @param mcs mcs
 	 */
 	public ISO(IContext context, State state, MCS mcs) {
 		this.context = context;
@@ -159,8 +163,8 @@ public class ISO implements Layer<MCS> {
 	 * Receive a data transfer message from the server
 	 * 
 	 * @return Packet containing message (as ISO PDU)
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException  on error
 	 */
 	public Packet receive() throws IOException, RdesktopException {
 		int[] type = new int[1];
@@ -177,8 +181,8 @@ public class ISO implements Layer<MCS> {
 	 * Send a packet to the server, wrapped in ISO PDU
 	 * 
 	 * @param buffer Packet containing data to send to server
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send(Packet buffer) throws RdesktopException, IOException {
 		if (buffer.getEnd() < 0) {

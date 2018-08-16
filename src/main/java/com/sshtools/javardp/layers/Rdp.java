@@ -245,15 +245,12 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * Connect to a server
 	 * 
-	 * @param username Username for log on
-	 * @param server Server to connect to
-	 * @param flags Flags defining logon type
-	 * @param domain Domain for log on
-	 * @param password Password for log on
+	 * @param io IO
+	 * @param credentialProvider credentials
 	 * @param command Alternative shell for session
 	 * @param directory Initial working directory for connection
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void connect(IO io, CredentialProvider credentialProvider, String command, String directory)
 			throws IOException, RdesktopException {
