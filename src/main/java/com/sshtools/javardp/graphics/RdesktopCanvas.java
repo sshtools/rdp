@@ -80,8 +80,8 @@ public class RdesktopCanvas {
 	 * Initialise this canvas to specified width and height, also initialise
 	 * backstore
 	 * 
-	 * @param width Desired width of canvas
-	 * @param height Desired height of canvas
+	 * @param context context
+	 * @param state state
 	 */
 	public RdesktopCanvas(IContext context, State state) {
 		this(context, state, new WrappedImage(state.getWidth(), state.getHeight(), BufferedImage.TYPE_INT_RGB));
@@ -91,8 +91,9 @@ public class RdesktopCanvas {
 	 * Initialise this canvas to specified width and height, also initialise
 	 * backstore
 	 * 
-	 * @param width Desired width of canvas
-	 * @param height Desired height of canvas
+	 * @param context context
+	 * @param state state
+	 * @param backstore backing store
 	 */
 	public RdesktopCanvas(IContext context, State state, Display backstore) {
 		super();
@@ -270,7 +271,7 @@ public class RdesktopCanvas {
 	 *            position
 	 * @param Bpp Bytes-per-pixel for bitmap
 	 * @param cm Colour model currently in use, if any
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void displayCompressed(int x, int y, int width, int height, int size, Packet data, int Bpp, IndexColorModel cm)
 			throws RdesktopException {
@@ -284,7 +285,7 @@ public class RdesktopCanvas {
 	 * @param img Image to draw to backstore
 	 * @param x x coordinate for drawing location
 	 * @param y y coordinate for drawing location
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void displayImage(Image img, int x, int y) throws RdesktopException {
 		Graphics g = backstore.getDisplayGraphics();
@@ -308,7 +309,7 @@ public class RdesktopCanvas {
 	 * @param y y coordinate for drawing location
 	 * @param cx Width of drawn image (clips, does not scale)
 	 * @param cy Height of drawn image (clips, does not scale)
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public void displayImage(int[] data, int w, int h, int x, int y, int cx, int cy) throws RdesktopException {
 		backstore.setRGB(x, y, cx, cy, data, 0, w);
@@ -894,6 +895,8 @@ public class RdesktopCanvas {
 
 	/**
 	 * return Input instance associated with this canvas.
+	 * 
+	 * @return input
 	 */
 	public Input getInput() {
 		return (input);
@@ -1081,6 +1084,8 @@ public class RdesktopCanvas {
 	/**
 	 * Notify the input classes that the connection is ready for sending
 	 * messages
+	 * 
+	 * @param type type
 	 */
 	public void triggerReady(ReadyType type) {
 		if(type == ReadyType.INPUT) {
@@ -1093,10 +1098,10 @@ public class RdesktopCanvas {
 	/**
 	 * Create an AWT Cursor from an image
 	 * 
-	 * @param wincursor
-	 * @param p
-	 * @param s
-	 * @param cache_idx
+	 * @param wincursor win cursor
+	 * @param p point
+	 * @param s sometime
+	 * @param cache_idx index
 	 * @return Generated Cursor object
 	 */
 	protected RdpCursor createCustomCursor(Image wincursor, Point p, String s, int cache_idx) {
@@ -1114,7 +1119,7 @@ public class RdesktopCanvas {
 	 * 
 	 * @param buffer
 	 * @param offset
-	 * @return
+	 * @return delta
 	 */
 	static int parse_delta(byte[] buffer, int[] offset) {
 		int value = buffer[offset[0]++] & 0xff;

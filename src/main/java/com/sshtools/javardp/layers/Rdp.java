@@ -200,16 +200,15 @@ public class Rdp implements Layer<Layer<?>> {
 	//
 	private static final int RDP5_FLAG = 0x0030;
 	//
-	public static final int TS_STATUS_FINDING_DESTINATION =  0x00000401;
-	public static final int TS_STATUS_LOADING_DESTINATION =  0x00000402;
-	public static final int TS_STATUS_BRINGING_SESSION_ONLINE =  0x00000403;
-	public static final int TS_STATUS_REDIRECTING_TO_DESTINATION =  0x00000401;
-	public static final int TS_STATUS_VM_LOADING =  0x00000501;
-	public static final int TS_STATUS_VM_WAKING =  0x00000502;
-	public static final int TS_STATUS_VM_STARTING =  0x00000503;
-	public static final int TS_STATUS_VM_STARTING_MONITORING =  0x00000504;
-	public static final int TS_STATUS_VM_RETRYING_MONITORING =  0x00000505;
-	
+	public static final int TS_STATUS_FINDING_DESTINATION = 0x00000401;
+	public static final int TS_STATUS_LOADING_DESTINATION = 0x00000402;
+	public static final int TS_STATUS_BRINGING_SESSION_ONLINE = 0x00000403;
+	public static final int TS_STATUS_REDIRECTING_TO_DESTINATION = 0x00000401;
+	public static final int TS_STATUS_VM_LOADING = 0x00000501;
+	public static final int TS_STATUS_VM_WAKING = 0x00000502;
+	public static final int TS_STATUS_VM_STARTING = 0x00000503;
+	public static final int TS_STATUS_VM_STARTING_MONITORING = 0x00000504;
+	public static final int TS_STATUS_VM_RETRYING_MONITORING = 0x00000505;
 	protected Orders orders = null;
 	// MSTSC
 	// encoded
@@ -227,6 +226,8 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * Initialise RDP comms layer, and register virtual channels
 	 * 
+	 * @param context context
+	 * @param state state
 	 * @param channels Virtual channels to be used in connection
 	 */
 	public Rdp(IContext context, State state, VChannels channels) {
@@ -286,14 +287,8 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * RDP receive loop
 	 * 
-	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws OrderException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws CryptoException
-	 * @throws ShortBufferException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	public void mainLoop() throws IOException, RdesktopException {
 		int[] type = new int[1];
@@ -359,8 +354,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * 
 	 * @param s Packet to be processed
 	 * @param e True if packet is encrypted
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public void rdp5_process(Packet s, boolean e) throws RdesktopException, OrderException {
 		rdp5_process(s, e, false);
@@ -372,8 +367,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @param s Packet to be processed
 	 * @param encryption True if packet is encrypted
 	 * @param shortform True if packet is of the "short" form
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public void rdp5_process(Packet s, boolean encryption, boolean shortform) throws RdesktopException, OrderException {
 		if (logger.isDebugEnabled())
@@ -382,7 +377,8 @@ public class Rdp implements Layer<Layer<?>> {
 		int type;
 		int next;
 		if (encryption) {
-			s.incrementPosition(shortform ? 6 : 7 /* XXX HACK */); /* signature */
+			s.incrementPosition(
+					shortform ? 6 : 7 /* XXX HACK */); /* signature */
 			byte[] data = new byte[s.size() - s.getPosition()];
 			s.copyToByteArray(data, 0, s.getPosition(), data.length);
 			byte[] packet = secureLayer.decrypt(data);
@@ -631,14 +627,15 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * Process save session info PDU (MS-RDPBCGR 2.2.10.1)
 	 * 
-	 * @param data Packet containing session session info PDU at current read position
+	 * @param data Packet containing session session info PDU at current read
+	 *            position
 	 */
 	protected void processSaveSessionInfo(Packet data) {
 		int infoType = data.getLittleEndian32();
-		context.setLoggedOn();	
+		context.setLoggedOn();
 		logger.info("TODO SVE SES INF " + infoType + " : " + data);
 	}
-	
+
 	/**
 	 * Process a set error PDU
 	 * 
@@ -784,7 +781,7 @@ public class Rdp implements Layer<Layer<?>> {
 	 * 
 	 * @param size Size of RDP data
 	 * @return Packet initialised for RDP
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	private Packet initData(int size) throws RdesktopException {
 		Packet buffer = null;
@@ -816,9 +813,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * Process a data PDU received from the server
 	 * 
 	 * @param data Packet containing data PDU at current read position
-	 * @return True if disconnect PDU was received
-	 * @throws RdesktopException
-	 * @throws OrderException
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	private void processData(Packet data) throws RdesktopException, OrderException {
 		int data_type;
@@ -876,8 +872,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * negotiation and 1st order)
 	 * 
 	 * @param data Packet containing demand at current read position
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	private void processDemandActive(Packet data) throws RdesktopException, IOException {
 		int type[] = new int[1];
@@ -888,8 +884,7 @@ public class Rdp implements Layer<Layer<?>> {
 		data.incrementPosition(len_src_descriptor); // in_uint8s(s,
 													// len_src_descriptor);
 		processServerCaps(data, len_combined_caps);
-		this.sendConfirmActive();		
-		
+		this.sendConfirmActive();
 		this.sendSynchronize();
 		this.sendControl(RDP_CTL_COOPERATE);
 		this.sendControl(RDP_CTL_REQUEST_CONTROL);
@@ -905,16 +900,16 @@ public class Rdp implements Layer<Layer<?>> {
 		this.sendFonts(1);
 		this.sendFonts(2);
 		Packet p = this.receive(type); // Receive RDP_PDU_SYNCHRONIZE
-		if(logger.isDebugEnabled())
+		if (logger.isDebugEnabled())
 			logger.debug("RDP_PDU_SYNCHRONIZE " + p);
 		p = this.receive(type); // Receive RDP_CTL_COOPERATE
-		if(logger.isDebugEnabled())
+		if (logger.isDebugEnabled())
 			logger.debug("RDP_CTL_COOPERATE " + p);
 		p = this.receive(type); // Receive RDP_CTL_GRANT_CONTROL
-		if(logger.isDebugEnabled())
+		if (logger.isDebugEnabled())
 			logger.debug("RDP_CTL_GRANT_CONTROL " + p);
 		p = this.receive(type); // Receive TS_FONT_MAP_PDU (0x28)
-		if(logger.isDebugEnabled())
+		if (logger.isDebugEnabled())
 			logger.debug("TS_FONT_MAP_PDU " + p);
 		logger.info("reset order state");
 		this.orders.resetOrderState();
@@ -980,8 +975,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * 
 	 * @param type Type of PDU received, stored in type[0]
 	 * @return Packet received from RDP layer
-	 * @throws IOException
-	 * @throws RdesktopException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
 	 */
 	private Packet receive(int[] type) throws IOException, RdesktopException {
 		int length = 0;
@@ -1031,7 +1026,8 @@ public class Rdp implements Layer<Layer<?>> {
 	private void sendBitmapcache2Caps(Packet data) {
 		data.setLittleEndian16(RDP_CAPSET_BMPCACHE2);
 		data.setLittleEndian16(RDP_CAPLEN_BMPCACHE);
-		data.setLittleEndian16(state.getOptions().getPersistentCacheBackend() != null ? 2 : 0); /* version */
+		data.setLittleEndian16(state.getOptions().getPersistentCacheBackend() != null ? 2
+				: 0); /* version */
 		data.setBigEndian16(3); /* number of caches in this set */
 		/* max cell size for cache 0 is 16x16, 1 = 32x32, 2 = 64x64, etc */
 		data.setLittleEndian32(BMPCACHE2_C0_CELLS);
@@ -1148,7 +1144,6 @@ public class Rdp implements Layer<Layer<?>> {
 			logger.debug("confirm active");
 		// this.send(data, RDP_PDU_CONFIRM_ACTIVE);
 		secureLayer.send(data, sec_flags);
-		
 		/*
 		 * MS-RDPCGR 1.3.1.1 - Once the client has sent the Confirm Active PDU,
 		 * it can start sending mouse and keyboard input to the server
@@ -1181,9 +1176,9 @@ public class Rdp implements Layer<Layer<?>> {
 	 * 
 	 * @param data Packet to send
 	 * @param data_pdu_type Type of data
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
+	 * @throws InterruptedException on error
 	 */
 	private void sendData(Packet data, int data_pdu_type) throws RdesktopException, IOException {
 		try {
@@ -1318,12 +1313,8 @@ public class Rdp implements Layer<Layer<?>> {
 	 * @param password Password for logon
 	 * @param command Alternative shell for session
 	 * @param directory Starting working directory for session
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws BadPaddingException
-	 * @throws IllegalBlockSizeException
-	 * @throws InvalidKeyException
-	 * @throws CryptoException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	private void sendLogonInfo(String command, String directory) throws RdesktopException, IOException {
 		int flags = INFO_MOUSE | INFO_DISABLECTRLALTDEL | INFO_UNICODE | INFO_MAXIMIZE_SHELL | INFO_ENABLEWINDOWS_KEY
@@ -1427,19 +1418,25 @@ public class Rdp implements Layer<Layer<?>> {
 		order_caps[0] = 1; /* dest blt */
 		order_caps[1] = 1; /* pat blt */// nb no rectangle orders if this is 0
 		order_caps[2] = 1; /* screen blt */
-		order_caps[3] = (byte) (state.getOptions().isBitmapCaching() ? 1 : 0); /* memblt */
+		order_caps[3] = (byte) (state.getOptions().isBitmapCaching() ? 1
+				: 0); /* memblt */
 		order_caps[4] = 0; /* triblt */
 		order_caps[8] = 1; /* line */
 		order_caps[9] = 1; /* line */
 		order_caps[10] = 1; /* rect */
-		order_caps[11] = state.getOptions().isDesktopSave() ? (byte) 1 : 0; /* desksave */
+		order_caps[11] = state.getOptions().isDesktopSave() ? (byte) 1
+				: 0; /* desksave */
 		order_caps[13] = 1; /* memblt */
 		order_caps[14] = 1; /* triblt */
-		order_caps[20] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1 : 0); /* polygon */
-		order_caps[21] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1 : 0); /* polygon2 */
+		order_caps[20] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1
+				: 0); /* polygon */
+		order_caps[21] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1
+				: 0); /* polygon2 */
 		order_caps[22] = 1; /* polyline */
-		order_caps[25] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1 : 0); /* ellipse */
-		order_caps[26] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1 : 0); /* ellipse2 */
+		order_caps[25] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1
+				: 0); /* ellipse */
+		order_caps[26] = (byte) (state.getOptions().isPolygonEllipseOrders() ? 1
+				: 0); /* ellipse2 */
 		order_caps[27] = 1; /* text2 */
 		data.setLittleEndian16(RDP_CAPSET_ORDER);
 		data.setLittleEndian16(RDP_CAPLEN_ORDER);
@@ -1498,6 +1495,7 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * Process a bitmap capability set
 	 * 
+	 * @param state state
 	 * @param data Packet containing capability set data at current read
 	 *            position
 	 * @return resized
@@ -1532,6 +1530,7 @@ public class Rdp implements Layer<Layer<?>> {
 	/**
 	 * Process a general capability set
 	 *
+	 * @param state state
 	 * @param data Packet containing capability set data at current read
 	 *            position
 	 */

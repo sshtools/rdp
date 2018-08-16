@@ -41,13 +41,14 @@ public class MapDef {
 	/**
 	 * Constructor for a character-defined mapping definition
 	 * 
-	 * @param keyChar
-	 * @param keyLocation
-	 * @param scancode
-	 * @param ctrlDown
-	 * @param shiftDown
-	 * @param altDown
-	 * @param capslockDown
+	 * @param options options
+	 * @param keyChar key character
+	 * @param keyLocation key location
+	 * @param scancode scan code
+	 * @param ctrlDown CTRL down
+	 * @param shiftDown Shift down
+	 * @param altDown Alt down
+	 * @param capslockDown CapsLock down
 	 */
 	public MapDef(Options options, char keyChar, int keyLocation, int scancode, boolean ctrlDown, boolean shiftDown,
 			boolean altDown, boolean capslockDown) {
@@ -65,16 +66,17 @@ public class MapDef {
 	/**
 	 * Constructor for a keycode-defined mapping definition
 	 * 
-	 * @param keyChar
-	 * @param keyLocation
-	 * @param scancode
-	 * @param ctrlDown
-	 * @param shiftDown
-	 * @param altDown
-	 * @param capslockDown
+	 * @param options options
+	 * @param keyCode key code
+	 * @param keyLocation key location
+	 * @param scancode scan code
+	 * @param ctrlDown CTRL down
+	 * @param shiftDown Shift down
+	 * @param altDown Alt down
+	 * @param capslockDown CapsLock down
 	 */
-	public MapDef(Options options, int keyCode, int keyLocation, int scancode, boolean ctrlDown, boolean shiftDown,
-			boolean altDown, boolean capslockDown) {
+	public MapDef(Options options, int keyCode, int keyLocation, int scancode, boolean ctrlDown, boolean shiftDown, boolean altDown,
+			boolean capslockDown) {
 		this.options = options;
 		this.keyCode = keyCode;
 		this.characterDef = false;
@@ -91,6 +93,7 @@ public class MapDef {
 	 * representation (as would be output to a stream by the writeToStream
 	 * method).
 	 * 
+	 * @param options options
 	 * @param definition One-line definition string
 	 * @throws KeyMapException Any parsing errors which may occur
 	 */
@@ -137,7 +140,7 @@ public class MapDef {
 	/**
 	 * Return the scancode associated with this mapping
 	 * 
-	 * @return
+	 * @return scan code
 	 */
 	public int getScancode() {
 		return scancode;
@@ -147,7 +150,7 @@ public class MapDef {
 	 * Return true if the keystroke defined in this mapping requires that the
 	 * Alt key be down
 	 * 
-	 * @return
+	 * @return alt down
 	 */
 	public boolean isAltDown() {
 		return altDown;
@@ -157,7 +160,7 @@ public class MapDef {
 	 * Return true if the keystroke defined in this mapping requires that Caps
 	 * Lock is on
 	 * 
-	 * @return
+	 * @return capslock on
 	 */
 	public boolean isCapslockOn() {
 		return capslockDown;
@@ -166,7 +169,7 @@ public class MapDef {
 	/**
 	 * Return true if this mapping is defined by a character, false otherwise
 	 * 
-	 * @return
+	 * @return character def
 	 */
 	public boolean isCharacterDef() {
 		return characterDef;
@@ -176,7 +179,7 @@ public class MapDef {
 	 * Return true if the keystroke defined in this mapping requires that the
 	 * Control key be down
 	 * 
-	 * @return
+	 * @return ctrl down
 	 */
 	public boolean isCtrlDown() {
 		return ctrlDown;
@@ -186,7 +189,7 @@ public class MapDef {
 	 * Return true if the keystroke defined in this mapping requires that the
 	 * Shift key be down
 	 * 
-	 * @return
+	 * @return shift down
 	 */
 	public boolean isShiftDown() {
 		return shiftDown;
@@ -256,7 +259,7 @@ public class MapDef {
 	 * Return true if this map definition applies to the supplied key event
 	 * 
 	 * @param e KeyEvent to check definition against
-	 * @return
+	 * @return applies
 	 */
 	protected boolean appliesToPressed(KeyEvent e) {
 		// only match special characters if the modifiers are consistent
@@ -274,7 +277,7 @@ public class MapDef {
 	 * Return true if this map definition applies to the supplied key event
 	 * 
 	 * @param e KeyEvent to check definition against
-	 * @return
+	 * @return applies
 	 */
 	protected boolean appliesToTyped(KeyEvent e) {
 		return ((characterDef) && (this.keyChar == e.getKeyChar()));

@@ -51,8 +51,8 @@ public class WrappedImage extends JComponent implements Display, Scrollable {
 	 * Force a colour to its true RGB representation (extracting from colour
 	 * model if indexed colour)
 	 * 
-	 * @param color
-	 * @return
+	 * @param color color
+	 * @return color
 	 */
 	@Override
 	public int checkColor(int color) {

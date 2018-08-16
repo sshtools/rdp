@@ -26,8 +26,8 @@ public interface Display {
 	 * Force a colour to its true RGB representation (extracting from colour
 	 * model if indexed colour)
 	 * 
-	 * @param color
-	 * @return
+	 * @param color color
+	 * @return color
 	 */
 	int checkColor(int color);
 

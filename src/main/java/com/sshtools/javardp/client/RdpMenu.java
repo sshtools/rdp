@@ -66,6 +66,9 @@ public class RdpMenu extends MenuBar {
 	}
 
 	/**
+	 * @param event event
+	 * @param arg  argument
+	 * @return handled
 	 * @deprecated Replaced by action listeners.
 	 */
 	@Deprecated

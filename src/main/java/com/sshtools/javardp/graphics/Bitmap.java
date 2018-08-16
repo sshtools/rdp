@@ -56,6 +56,7 @@ public class Bitmap {
 	/**
 	 * Constructor for Bitmap based on
 	 * 
+	 * @param state state
 	 * @param data Array of pixel data, each pixel represented by Bpp bytes.
 	 *            Should have a length of width*height*Bpp.
 	 * @param width Width of bitmap represented by data
@@ -155,7 +156,7 @@ public class Bitmap {
 	 * @param data Packet containing bitmap data
 	 * @param Bpp Bytes per-pixel for bitmap
 	 * @return Byte array of pixels containing decompressed bitmap data
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public static byte[] decompress(int width, int height, int size, Packet data, int Bpp) throws RdesktopException {
 		byte[] compressed_pixel = new byte[size];
@@ -526,6 +527,7 @@ public class Bitmap {
 	/**
 	 * Decompress bitmap data from packet and output as an Image
 	 * 
+	 * @param state state
 	 * @param width Width of bitmap
 	 * @param height Height of bitmap
 	 * @param size Size of compressed data in bytes
@@ -533,7 +535,7 @@ public class Bitmap {
 	 * @param Bpp Bytes per-pixel for bitmap
 	 * @param cm Colour model for bitmap (if using indexed palette)
 	 * @return Decompressed bitmap as Image object
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public static Image decompressImg(State state, int width, int height, int size, Packet data, int Bpp, IndexColorModel cm)
 			throws RdesktopException {
@@ -911,6 +913,7 @@ public class Bitmap {
 	 * Decompress bitmap data from packet and output directly to supplied image
 	 * object
 	 * 
+	 * @param state state
 	 * @param width Width of bitmap to decompress
 	 * @param height Height of bitmap to decompress
 	 * @param size Size of compressed data in bytes
@@ -922,7 +925,7 @@ public class Bitmap {
 	 * @param w Image to draw bitmap to
 	 * @return Original image object, with decompressed bitmap drawn at
 	 *         specified coordinates
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public static Display decompressImgDirect(State state, int width, int height, int size, Packet data, int Bpp,
 			IndexColorModel cm, int left, int top, Display w) throws RdesktopException {
@@ -1294,13 +1297,14 @@ public class Bitmap {
 	/**
 	 * Decompress bitmap data from packet and store in array of integers
 	 * 
+	 * @param state state
 	 * @param width Width of bitmap
 	 * @param height Height of bitmap
 	 * @param size Size of compressed data in bytes
 	 * @param data Packet containing bitmap data
 	 * @param Bpp Bytes per-pixel for bitmap
 	 * @return Integer array of pixels containing decompressed bitmap data
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public static int[] decompressInt(State state, int width, int height, int size, Packet data, int Bpp)
 			throws RdesktopException {
@@ -1673,6 +1677,7 @@ public class Bitmap {
 	/**
 	 * Convert byte array representing a bitmap into integer array of pixels
 	 * 
+	 * @param state state
 	 * @param bitmap Byte array of bitmap data
 	 * @param Bpp Bytes-per-pixel for bitmap
 	 * @return Integer array of pixel data representing input image data

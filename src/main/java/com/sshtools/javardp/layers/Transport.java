@@ -102,7 +102,7 @@ public class Transport implements Layer<ISO> {
 	 * @param length Length of data to read
 	 * @return Packet containing read data, appended to original data if
 	 *         provided
-	 * @throws IOException
+	 * @throws IOException on error
 	 */
 	public Packet receivePacket(Packet p, int length) throws IOException {
 		if (logger.isDebugEnabled())

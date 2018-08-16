@@ -61,6 +61,7 @@ public class RdesktopFrame extends Frame implements IContext {
 	/**
 	 * Create a new RdesktopFrame. Size defined by Options.width and
 	 * Options.height Creates RdesktopCanvas occupying entire frame
+	 * @param state state
 	 */
 	public RdesktopFrame(State state) {
 		super();
@@ -119,10 +120,8 @@ public class RdesktopFrame extends Frame implements IContext {
 	 * <p>
 	 * The application then exits iff sysexit == true
 	 * 
-	 * @param e
-	 * @param sysexit
-	 * @param RdpLayer
-	 * @param window
+	 * @param e exception
+	 * @param sysexit system exit
 	 */
 	@Override
 	public void error(Exception e, boolean sysexit) {

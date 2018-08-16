@@ -96,9 +96,11 @@ public class Secure implements Layer<Rdp> {
 
 	/**
 	 * Initialise Secure layer of communications
-	 *
+	 * 
+	 * @param context context
+	 * @param state state
 	 * @param channels Virtual channels for this connection
-	 * @throws RdesktopCryptoException
+	 * @param rdp rdp
 	 */
 	public Secure(IContext context, State state, VChannels channels, Rdp rdp) {
 		licence = new Licence(state, context, this);
@@ -152,14 +154,12 @@ public class Secure implements Layer<Rdp> {
 	/**
 	 * Connect to server
 	 *
-	 * @param host Address of server to connect to
-	 * @param port Port to connect to
-	 * @throws UnknownHostException
-	 * @throws IOException
-	 * @throws RdesktopException
-	 * @throws SocketException
-	 * @throws CryptoException
-	 * @throws OrderException
+	 * @param io io
+	 * @throws UnknownHostException on error
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
+	 * @throws SocketException on error
+	 * @throws OrderException on error
 	 */
 	public void connect(IO io) throws UnknownHostException, IOException, RdesktopException, SocketException, OrderException {
 		Packet mcs_data = this.sendMcsData();
@@ -178,8 +178,7 @@ public class Secure implements Layer<Rdp> {
 	 *
 	 * @param data Data to decrypt
 	 * @return Decrypted data
-	 * @throws RdesktopCryptoException
-	 * @throws CryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] decrypt(byte[] data) throws RdesktopCryptoException {
 		try {
@@ -211,8 +210,7 @@ public class Secure implements Layer<Rdp> {
 	 * @param data Data to decrypt
 	 * @param length Number of bytes to decrypt (from start of array)
 	 * @return Decrypted data
-	 * @throws RdesktopCryptoException
-	 * @throws CryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] decrypt(byte[] data, int length) throws RdesktopCryptoException {
 		try {
@@ -245,7 +243,7 @@ public class Secure implements Layer<Rdp> {
 	 *
 	 * @param data Data to encrypt
 	 * @return Encrypted data
-	 * @throws RdesktopCryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] encrypt(byte[] data) throws RdesktopCryptoException {
 		try {
@@ -269,7 +267,7 @@ public class Secure implements Layer<Rdp> {
 	 * @param data Data to encrypt
 	 * @param length Number of bytes to encrypt (from start of array)
 	 * @return Encrypted data
-	 * @throws RdesktopCryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] encrypt(byte[] data, int length) throws RdesktopCryptoException {
 		try {
@@ -313,9 +311,7 @@ public class Secure implements Layer<Rdp> {
 	/**
 	 * Generate encryption keys of applicable size for connection
 	 *
-	 * @param sessionKeyEncryptionMethod Size of keys to generate (1 if 40-bit
-	 *            encryption, 2 for 128-bit, 4 for 56-bit, 16 for FIPS)
-	 * @throws RdesktopCryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public void generateInitialKeys() throws RdesktopCryptoException {
 		int sessionKeyEncryptionMethod = state.getSessionKeyEncryptionMethod();
@@ -446,7 +442,7 @@ public class Secure implements Layer<Rdp> {
 	 * @param flags Encryption flags
 	 * @param length Length of packet
 	 * @return Intialised packet
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public Packet init(int flags, int length) throws RdesktopException {
 		int headerlength = 0;
@@ -470,8 +466,7 @@ public class Secure implements Layer<Rdp> {
 	 * MS-RDPBCGR 2.2.1.4.3 Server Security Data (TS_UD_SC_SEC1)
 	 *
 	 * @param data Packet to read encryption information from
-	 * @return Session Key Encryption Method
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 *
 	 */
 	private void parseServerSecurityData(Packet data) throws RdesktopException {
@@ -584,7 +579,7 @@ public class Secure implements Layer<Rdp> {
 	 *
 	 * @param data Secure layer PDU containing key data
 	 * @return True if key successfully read
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public boolean parsePublicKey(Packet data) throws RdesktopException {
 		int magic = 0, modulus_length = 0;
@@ -658,6 +653,7 @@ public class Secure implements Layer<Rdp> {
 	 * information)
 	 *
 	 * @param mcs_data Data received from server
+	 * @throws RdesktopException  on error
 	 */
 	public void processMcsData(Packet mcs_data) throws RdesktopException {
 		logger.debug("Secure.processMcsData");
@@ -696,10 +692,9 @@ public class Secure implements Layer<Rdp> {
 	 * Receive a Secure layer PDU from the MCS layer
 	 *
 	 * @return Packet representing received Secure PDU
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws CryptoException
-	 * @throws OrderException
+	 * @throws IOException on error
+	 * @throws RdesktopException on error
+	 * @throws OrderException on error
 	 */
 	public Packet receive() throws RdesktopException, IOException, OrderException {
 		// // TODO really not sure about this but it gets us further
@@ -834,9 +829,8 @@ public class Secure implements Layer<Rdp> {
 	 *
 	 * @param sec_data Data to send
 	 * @param flags Encryption flags
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws CryptoException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send(Packet sec_data, int flags) throws RdesktopException, IOException {
 		send_to_channel(sec_data, flags, MCS.MCS_GLOBAL_CHANNEL);
@@ -848,9 +842,8 @@ public class Secure implements Layer<Rdp> {
 	 * @param sec_data Data to send
 	 * @param flags Encryption flags
 	 * @param channel Channel over which to send data
-	 * @throws RdesktopException
-	 * @throws IOException
-	 * @throws CryptoException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send_to_channel(Packet sec_data, int flags, int channel) throws RdesktopException, IOException {
 		int datalength = 0;
@@ -1060,8 +1053,7 @@ public class Secure implements Layer<Rdp> {
 	 * @param data Data to sign
 	 * @param datalength Length of data to sign
 	 * @return Signature for data
-	 * @throws RdesktopCryptoException
-	 * @throws CryptoException
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] sign(byte[] session_key, int length, int keylen, byte[] data, int datalength) throws RdesktopCryptoException {
 		byte[] shasig = new byte[20];
@@ -1087,10 +1079,10 @@ public class Secure implements Layer<Rdp> {
 	}
 
 	/**
-	 * @param key
-	 * @param update_key
-	 * @return
-	 * @throws RdesktopCryptoException
+	 * @param key key
+	 * @param update_key update key
+	 * @return data
+	 * @throws RdesktopCryptoException on error
 	 */
 	public byte[] update(byte[] key, byte[] update_key) throws RdesktopCryptoException {
 		int keylength = key.length;

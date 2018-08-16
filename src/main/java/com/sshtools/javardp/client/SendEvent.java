@@ -47,6 +47,7 @@ public class SendEvent extends JFrame {
 
 	/**
 	 * This is the default constructor
+	 * @param rdp rdp
 	 */
 	public SendEvent(Rdp rdp) {
 		super();
@@ -237,8 +238,6 @@ public class SendEvent extends JFrame {
 
 	/**
 	 * This method initializes this
-	 * 
-	 * @return void
 	 */
 	private void initialize() {
 		this.setSize(300, 200);

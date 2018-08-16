@@ -110,7 +110,7 @@ public class MCS implements Layer<Secure> {
 	 * 
 	 * @param io IO
 	 * @param data Packet to use for sending connection data
-	 * @throws IOException
+	 * @throws IOException on error
 	 * @throws RdesktopException on error
 	 * @throws OrderException on error
 	 */

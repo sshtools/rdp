@@ -52,6 +52,8 @@ public class VChannels implements Iterable<VChannel> {
 
 	/**
 	 * Initialise the maximum number of Virtual Channels
+	 * 
+	 * @param state state
 	 */
 	public VChannels(State state) {
 		this.state = state;
@@ -76,8 +78,8 @@ public class VChannels implements Iterable<VChannel> {
 	 * 
 	 * @param data Packet sent to channel
 	 * @param mcsChannel Number specified for channel
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void channel_process(Packet data, int mcsChannel) throws RdesktopException, IOException {
 		int flags = 0;
@@ -157,7 +159,7 @@ public class VChannels implements Iterable<VChannel> {
 	 * 
 	 * @param v Virtual channel to be registered
 	 * @return True if successful
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public boolean register(VChannel v) throws RdesktopException {
 		if (!state.isRDP5()) {

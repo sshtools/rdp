@@ -52,7 +52,7 @@ public abstract class VChannel {
 	 * 
 	 * @param length Desired length of packet
 	 * @return Packet prepared for this channel
-	 * @throws RdesktopException
+	 * @throws RdesktopException on error
 	 */
 	public Packet init(int length) throws RdesktopException {
 		Packet s;
@@ -77,8 +77,8 @@ public abstract class VChannel {
 	 * Process a packet sent on this channel
 	 * 
 	 * @param data Packet sent to this channel
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public abstract void process(Packet data) throws RdesktopException, IOException;
 
@@ -86,8 +86,8 @@ public abstract class VChannel {
 	 * Send a packet over this virtual channel
 	 * 
 	 * @param data Packet to be sent
-	 * @throws RdesktopException
-	 * @throws IOException
+	 * @throws RdesktopException on error
+	 * @throws IOException on error
 	 */
 	public void send_packet(Packet data) throws RdesktopException, IOException {
 		if (secure == null)
